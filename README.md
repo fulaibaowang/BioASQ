@@ -26,7 +26,16 @@ https://ceur-ws.org/Vol-4038/paper_25.pdf
 https://bioasq.org/participate/thirteenth-challenge-winners
 
 
+Practical way to find “winner methods” fast
 
+Open the winners page to see the team names for the phase/batch you care about. 
+bioasq.org
+
+Go to the Phase B results table and locate those teams/systems; open their System Description. 
+BioASQ Participants Area
+
+Search that team name inside the CEUR-WS volume (Vol-4038 for 2025) to find their full system paper(s). 
+ceur-ws.org
 
 
 
