@@ -1,30 +1,11 @@
 #!/usr/bin/env python3
-"""
-Parse local PubMed *.xml.gz files into JSONL shards (1 xml.gz -> 1 jsonl).
-
-Input: a directory containing .xml.gz files (e.g. baseline/ or updatefiles/)
-Output: a directory for .jsonl files, same filenames except .jsonl
-
-Extracted fields per line:
-- pmid (str)
-- docno (str)  # same as pmid, PyTerrier-friendly
-- title (str)
-- abstract (str)
-- mesh_terms (str)    # "Dxxxx:Term; Dyyyy:Term" (descriptor-only)
-- keywords (list[str])
-- is_deleted (bool)   # True for DeleteCitation tombstones
-
-Requirements:
-    pip install lxml pubmed-parser
-"""
-
 from __future__ import annotations
 
 import argparse
 import gzip
 import json
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Set
 
 from lxml import etree
 
@@ -46,6 +27,7 @@ def _stringify(node: Optional[etree._Element]) -> str:
 
 
 def parse_mesh_terms(medline: etree._Element) -> str:
+    """Descriptor-only MeSH terms: 'D006973:Hypertension; D011247:Pregnancy'"""
     mesh_list = medline.find("MeshHeadingList")
     if mesh_list is None:
         return ""
@@ -63,16 +45,18 @@ def parse_mesh_terms(medline: etree._Element) -> str:
     return "; ".join(out)
 
 
-def parse_pmid(medline: etree._Element) -> str:
-    pmid = medline.find("PMID")
-    if pmid is not None and pmid.text:
-        return pmid.text.strip()
-    # fallback
-    article_ids = medline.find("PubmedData/ArticleIdList")
-    if article_ids is not None:
-        x = article_ids.find('ArticleId[@IdType="pubmed"]')
-        if x is not None and x.text:
-            return x.text.strip()
+def parse_pmid_version1(medline: etree._Element) -> str:
+    """
+    Only use PMID with Version="1".
+    Fallback: if none exists, return "" (skip record).
+    """
+    # Prefer the Version="1" PMID
+    pmid_v1 = medline.find('PMID[@Version="1"]')
+    if pmid_v1 is not None and pmid_v1.text:
+        return pmid_v1.text.strip()
+
+    # If the XML uses lowercase or missing attribute variations, you could relax here,
+    # but per your request we keep it strict: Version="1" only.
     return ""
 
 
@@ -80,7 +64,6 @@ def parse_keywords(medline: etree._Element) -> List[str]:
     if pp is not None:
         try:
             kws = pp.medline_parser.parse_keywords(medline)
-            # pubmed_parser sometimes returns None
             return kws if kws is not None else []
         except Exception:
             pass
@@ -119,9 +102,10 @@ def parse_title_abstract(medline: etree._Element) -> Dict[str, str]:
 
 
 def parse_article_record(medline: etree._Element) -> Optional[Dict]:
-    pmid = parse_pmid(medline)
+    pmid = parse_pmid_version1(medline)
     if not pmid:
         return None
+
     ta = parse_title_abstract(medline)
     return {
         "pmid": pmid,
@@ -134,24 +118,37 @@ def parse_article_record(medline: etree._Element) -> Optional[Dict]:
     }
 
 
-def iter_records_from_xml_gz(gz_path: Path) -> Iterable[Dict]:
+def iter_records_from_xml_gz(gz_path: Path, dedup: bool = True) -> Iterable[Dict]:
     """
-    Yields MedlineCitation records and DeleteCitation tombstones.
-    DeleteCitation mostly appears in updatefiles.
+    Yields MedlineCitation records (pmid Version=1 only), plus DeleteCitation tombstones.
+    Dedup: ensures each PMID appears at most once in this xml.gz output.
     """
-    parser = etree.XMLParser(recover=True, huge_tree=True)
+    seen: Set[str] = set()
+
     with gzip.open(gz_path, "rb") as fh:
         for _, elem in etree.iterparse(fh, events=("end",)):
+
             if elem.tag == "MedlineCitation":
                 rec = parse_article_record(elem)
-                if rec is not None:
-                    yield rec
                 elem.clear()
+                if rec is None:
+                    continue
+                pmid = rec["pmid"]
+                if dedup:
+                    if pmid in seen:
+                        continue
+                    seen.add(pmid)
+                yield rec
 
             elif elem.tag == "DeleteCitation":
+                # Updatefiles only. Keep as tombstone.
                 for pmid_node in elem.findall("PMID"):
                     if pmid_node.text and pmid_node.text.strip():
                         pmid = pmid_node.text.strip()
+                        if dedup:
+                            if pmid in seen:
+                                continue
+                            seen.add(pmid)
                         yield {
                             "pmid": pmid,
                             "docno": pmid,
@@ -169,11 +166,11 @@ def iter_records_from_xml_gz(gz_path: Path) -> Iterable[Dict]:
                     elem.clear()
 
 
-def xml_gz_to_jsonl(gz_path: Path, jsonl_path: Path) -> None:
+def xml_gz_to_jsonl(gz_path: Path, jsonl_path: Path, dedup: bool = True) -> None:
     jsonl_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = jsonl_path.with_suffix(".jsonl.partial")
     with open(tmp, "w", encoding="utf-8") as out:
-        for rec in iter_records_from_xml_gz(gz_path):
+        for rec in iter_records_from_xml_gz(gz_path, dedup=dedup):
             out.write(json.dumps(rec, ensure_ascii=False) + "\n")
     tmp.replace(jsonl_path)
 
@@ -182,9 +179,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--input_dir", required=True, help="Folder containing *.xml.gz files (baseline or updatefiles).")
     ap.add_argument("--output_dir", required=True, help="Folder to write *.jsonl shards.")
-    ap.add_argument("--glob", default="*.xml.gz", help="Glob pattern. Default: *.xml.gz")
-    ap.add_argument("--skip_existing", action="store_true", help="Skip if corresponding JSONL exists.")
-    ap.add_argument("--max_files", type=int, default=None, help="Parse only first N files (debug).")
+    ap.add_argument("--glob", default="*.xml.gz")
+    ap.add_argument("--skip_existing", action="store_true")
+    ap.add_argument("--max_files", type=int, default=None)
+    ap.add_argument("--no_dedup", action="store_true", help="Disable per-file PMID dedup (not recommended).")
     args = ap.parse_args()
 
     in_dir = Path(args.input_dir)
@@ -203,7 +201,7 @@ def main():
             print(f"[SKIP] {gz_path.name}")
             continue
         print(f"[PARSE] {gz_path.name} -> {jsonl_path.name}")
-        xml_gz_to_jsonl(gz_path, jsonl_path)
+        xml_gz_to_jsonl(gz_path, jsonl_path, dedup=(not args.no_dedup))
 
     print("[DONE]")
 
