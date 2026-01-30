@@ -1,20 +1,31 @@
-```
+cd /shared/home/yun.wang/biolab/yun
+srun -p dev --container-image=fulaibaowang/bioasq:28.01.26 --container-save=./bioasq_28.01.26.sqfs
+
+
 cd BioASQ
 srun -p dev --time=12:00:00 -c 4 \
-  --container-image=fulaibaowang/bioasq:28.01.26 \
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_28.01.26.sqfs \
   --container-mount-home \
   --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
   --container-workdir /work \
   --pty bash
-```
 
 
-```
-python /app/parse_pubmed_local.py \
-    --input_dir /pubmed/baseline \
-    --output_dir /pubmed/jsonl/baseline \
+python data/parse_pubmed_local.py \
+    --input_dir /pubmed/baseline2025 \
+    --output_dir /pubmed/jsonl/ \
     --skip_existing
-```
+
+
+python data/build_bm25_index_from_jsonl_shards.py \
+  --jsonl_glob "/pubmed/jsonl/*.jsonl" \
+  --index_path "/pubmed/pubmed_bm25" \
+  --threads 4 \
+  --overwrite
+
+
+
+
 
 
 srun -p dev --time=12:00:00 -c 4 \
