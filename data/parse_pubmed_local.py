@@ -127,11 +127,9 @@ def iter_records_from_xml_gz(gz_path: Path, dedup: bool = True) -> Iterable[Dict
     Dedup: ensures each PMID appears at most once in this xml.gz output.
     """
     seen: Set[str] = set()
-    parser = etree.XMLParser(recover=True, huge_tree=True)
 
     with gzip.open(gz_path, "rb") as fh:
-        for _, elem in etree.iterparse(fh, events=("end",), recover=True):
-
+        for _, elem in etree.iterparse(fh, events=("end",)):
             if elem.tag == "MedlineCitation":
                 rec = parse_article_record(elem)
                 elem.clear()
