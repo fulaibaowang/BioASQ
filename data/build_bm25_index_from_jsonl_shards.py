@@ -15,8 +15,7 @@ def iter_docs(jsonl_glob: str) -> Iterable[Dict]:
     Stream documents from many JSONL shards.
 
     Filters:
-      - is_deleted must be False (or missing)
-      - abstract must be non-empty
+      - Only valid PMID required
 
     Yields:
       {"docno": pmid, "text": title + "\\n\\n" + abstract}
@@ -29,20 +28,17 @@ def iter_docs(jsonl_glob: str) -> Iterable[Dict]:
                     continue
                 d = json.loads(line)
 
-                if bool(d.get("is_deleted", False)):
-                    continue
-
                 pmid = (d.get("pmid") or d.get("docno") or "").strip()
                 if not pmid:
                     continue
 
-                abstract = (d.get("abstract") or "").strip()
-                if not abstract:
-                    # <--- abstract-only indexing, as requested
-                    continue
-
                 title = (d.get("title") or "").strip()
+                abstract = (d.get("abstract") or "").strip()
                 text = (title + "\n\n" + abstract).strip()
+                
+                # Skip if both title and abstract are empty
+                if not text:
+                    continue
 
                 yield {"docno": pmid, "text": text}
 

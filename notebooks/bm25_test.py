@@ -17,7 +17,9 @@
 import re, json, math
 import pandas as pd
 import pyterrier as pt
-
+import random
+import matplotlib.pyplot as plt
+import os
 # -------------------------
 # Load Terrier index
 # -------------------------
@@ -29,7 +31,7 @@ if not pt.java.started():
 
 # %%
 # index
-INDEX_PROPERTIES = "../example/index/pubmed_bm25_example/data.properties"
+INDEX_PROPERTIES = "../example/toy/index/pubmed_bm25_example/data.properties"
 index = pt.IndexFactory.of(INDEX_PROPERTIES)
 
 bm25 = pt.BatchRetrieve(index, wmodel="BM25")  # you can pass num_results later via slicing
@@ -38,7 +40,7 @@ bm25 = pt.BatchRetrieve(index, wmodel="BM25")  # you can pass num_results later 
 # -------------------------
 # Load BioASQ golden file
 # -------------------------
-GOLD_PATH = "../example/example_query.json"  # adjust if needed
+GOLD_PATH = "../example/toy/example_query.json"  # adjust if needed
 
 with open(GOLD_PATH, "r", encoding="utf-8") as f:
     gold = json.load(f)
@@ -189,8 +191,6 @@ print("Number of tokens:", coll.getNumberOfTokens())
 print("Number of unique terms:", coll.getNumberOfUniqueTerms())
 print("Avg doc length:", coll.getAverageDocumentLength())
 
-# %%
-
 # %% [markdown]
 # # Evaluate with BioASQ Training13b data
 
@@ -229,20 +229,236 @@ print("example gold docnos:", list(train_gold_map[train_topics_df.iloc[0]["qid"]
 # Run BM25 with full 2025 baseline index
 bm25_full = pt.BatchRetrieve(index, wmodel="BM25")
 
-K_MAX = 500
-train_res = bm25_full.transform(train_topics_df)
+K_MAX = 2000
+train_res_raw = bm25_full.transform(train_topics_df)
 
 # Sort and rank
-train_res = train_res.sort_values(["qid", "score"], ascending=[True, False])
-train_res["rank"] = train_res.groupby("qid").cumcount() + 1
-train_res = train_res[train_res["rank"] <= K_MAX].copy()
+train_res_raw = train_res_raw.sort_values(["qid", "score"], ascending=[True, False])
+train_res_raw["rank"] = train_res_raw.groupby("qid").cumcount() + 1
+
+# %%
+train_res = train_res_raw[train_res_raw["rank"] <= K_MAX].copy()
 
 train_run_map = {qid: grp["docno"].astype(str).tolist()
                  for qid, grp in train_res.groupby("qid", sort=False)}
 
 # Evaluate
-train_summary, train_perq_df = evaluate_run(train_gold_map, train_run_map, ks_recall=(50,100,200,500), eps=1e-5)
+train_summary, train_perq_df = evaluate_run(train_gold_map, train_run_map, ks_recall=(50,100,200,500,2000), eps=1e-5)
 
 print("Training13b Evaluation Results:")
 print(train_summary)
 train_perq_df.head()
+
+# %%
+out = "../tmp/train_bm25_k500_initial.parquet"
+train_res.to_parquet(out, index=False)
+
+# %%
+pdf = train_perq_df
+
+# 1) RR@10 distribution
+plt.figure()
+plt.hist(pdf["RR@10"], bins=50)
+plt.title("Per-query RR@10 distribution")
+plt.xlabel("RR@10")
+plt.ylabel("Number of queries")
+plt.show()
+
+# 2) AP@10 distribution
+plt.figure()
+plt.hist(pdf["AP@10"], bins=50)
+plt.title("Per-query AP@10 distribution")
+plt.xlabel("AP@10")
+plt.ylabel("Number of queries")
+plt.show()
+
+# 3) Success@10 distribution (0/1)
+plt.figure()
+plt.hist(pdf["Success@10"], bins=[-0.5, 0.5, 1.5])
+plt.title("Per-query Success@10 distribution")
+plt.xlabel("Success@10")
+plt.ylabel("Number of queries")
+plt.xticks([0, 1])
+plt.show()
+
+# %%
+train_summary
+
+# %%
+# 4) Mean Recall@K bar chart
+Ks = [50, 100, 200, 500,2000]
+rec_vals = [train_summary.get(f"MeanR@{k}", 0.0) for k in Ks]
+
+plt.figure()
+plt.bar([str(k) for k in Ks], rec_vals)
+plt.title("Mean Recall@K (BM25 candidate set coverage)")
+plt.xlabel("K")
+plt.ylabel("Mean Recall@K")
+plt.ylim(0, 1)
+plt.show()
+
+# %%
+# 5) Optional: per-query Recall@K distributions
+
+col = f"R@2000"
+if col in pdf.columns:
+    plt.figure()
+    plt.hist(pdf[col], bins=30)
+    plt.title(f"Per-query {col} distribution")
+    plt.xlabel(col)
+    plt.ylabel("Number of queries")
+    plt.ylim(bottom=0)
+    plt.show()
+
+# %% [markdown]
+# # Build 10% Subset with Gold + Retrieved PMIDs
+
+# %%
+# Step 1: Collect all gold PMIDs from training data
+all_gold_pmids = set()
+for pmids in train_gold_map.values():
+    all_gold_pmids.update(pmids)
+
+print(f"Total gold PMIDs: {len(all_gold_pmids)}")
+
+# Step 2: Randomly pick 10% of questions (with fixed seed)
+random.seed(42)
+all_qids = list(train_gold_map.keys())
+sample_size = max(1, int(len(all_qids) * 0.1))
+sampled_qids = set(random.sample(all_qids, sample_size))
+
+print(f"Total questions: {len(all_qids)}")
+print(f"Sampled questions (10%): {len(sampled_qids)}")
+
+# Build sampled questions data for JSON export
+sampled_questions = [q for q in train_questions if str(q["id"]) in sampled_qids]
+sampled_data = {"questions": sampled_questions}
+
+# Save to example folder
+sample_json_path = "../example/training13b_10pct_sample.json"
+with open(sample_json_path, "w", encoding="utf-8") as f:
+    json.dump(sampled_data, f, indent=2, ensure_ascii=False)
+
+print(f"Saved sampled questions to: {sample_json_path}")
+
+# %%
+# Step 3: Collect top N=2000 retrieved PMIDs for sampled questions
+N_TOP = 2000
+
+retrieved_pool_pmids = set()
+
+# Filter train_res to only sampled questions and get top 2000 per question
+sampled_res = train_res[train_res["qid"].isin(sampled_qids)].copy()
+
+for qid in sampled_qids:
+    qid_results = sampled_res[sampled_res["qid"] == qid].head(N_TOP)
+    retrieved_pmids = qid_results["docno"].astype(str).tolist()
+    retrieved_pool_pmids.update(retrieved_pmids)
+
+print(f"Retrieved PMIDs from top {N_TOP} per question: {len(retrieved_pool_pmids)}")
+
+# %%
+# Step 4: Build subset PMIDs = gold ∪ retrieved
+subset_pmids = all_gold_pmids | retrieved_pool_pmids
+
+print(f"\nSubset Statistics:")
+print(f"  Gold PMIDs: {len(all_gold_pmids)}")
+print(f"  Retrieved PMIDs: {len(retrieved_pool_pmids)}")
+print(f"  Union (subset): {len(subset_pmids)}")
+print(f"  Overlap: {len(all_gold_pmids & retrieved_pool_pmids)}")
+
+# Save subset PMIDs to file
+subset_pmids_path = "../example/subset_pmids.txt"
+with open(subset_pmids_path, "w") as f:
+    for pmid in sorted(subset_pmids):
+        f.write(f"{pmid}\n")
+
+print(f"\nSaved subset PMIDs to: {subset_pmids_path}")
+
+# %% [markdown]
+# # check recall 0 ids
+
+# %%
+# Check if all gold PMIDs are in the index
+meta_index = index.getMetaIndex()
+
+gold_in_index = []
+gold_not_in_index = []
+
+for pmid in all_gold_pmids:
+    try:
+        docid = meta_index.getDocument("docno", pmid)
+        if docid >= 0:
+            gold_in_index.append(pmid)
+        else:
+            gold_not_in_index.append(pmid)
+    except:
+        gold_not_in_index.append(pmid)
+
+print(f"Gold PMIDs Coverage:")
+print(f"  Total gold PMIDs: {len(all_gold_pmids)}")
+print(f"  Found in index: {len(gold_in_index)}")
+print(f"  NOT in index: {len(gold_not_in_index)}")
+print(f"  Coverage: {100 * len(gold_in_index) / len(all_gold_pmids):.2f}%")
+
+if gold_not_in_index:
+    print(f"\nFirst 10 missing gold PMIDs: {gold_not_in_index[:10]}")
+
+# %%
+# Check beginSection for missing gold PMIDs
+from collections import Counter
+
+# Build a map of PMID -> list of beginSections from snippets
+pmid_to_sections = {}
+
+for q in train_questions:
+    for snippet in q.get("snippets", []):
+        # Extract PMID from document URL
+        doc_url = snippet.get("document", "")
+        pmid = url_to_pmid(doc_url)
+        if pmid:
+            section = snippet.get("beginSection", "unknown")
+            if pmid not in pmid_to_sections:
+                pmid_to_sections[pmid] = []
+            pmid_to_sections[pmid].append(section)
+
+# Check beginSection for missing PMIDs
+missing_sections = []
+for pmid in gold_not_in_index[:100]:  # Check first 100 missing
+    sections = pmid_to_sections.get(pmid, [])
+    if sections:
+        missing_sections.extend(sections)
+
+section_counts = Counter(missing_sections)
+
+print(f"\nbeginSection distribution for missing gold PMIDs:")
+print(f"  Total missing PMIDs checked: {min(100, len(gold_not_in_index))}")
+print(f"  Total snippets found: {len(missing_sections)}")
+print(f"\nSection breakdown:")
+for section, count in section_counts.most_common():
+    print(f"  {section}: {count} ({100*count/len(missing_sections):.1f}%)")
+
+# Check if any missing PMIDs have only title sections
+missing_with_only_title = []
+missing_with_abstract = []
+missing_with_both = []
+
+for pmid in gold_not_in_index[:100]:
+    sections = set(pmid_to_sections.get(pmid, []))
+    if sections:
+        if sections == {"title"}:
+            missing_with_only_title.append(pmid)
+        elif "abstract" in sections:
+            missing_with_abstract.append(pmid)
+        elif sections and "abstract" not in sections:
+            missing_with_both.append(pmid)
+
+print(f"\nMissing PMIDs by section type:")
+print(f"  Only title: {len(missing_with_only_title)}")
+print(f"  Has abstract: {len(missing_with_abstract)}")
+print(f"  Other (no abstract): {len(missing_with_both)}")
+
+# %%
+gold_not_in_index
+
+# %%

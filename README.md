@@ -2,11 +2,10 @@
 
 ## download and prepare pubmed 
 
-! download 2026 baseline when it is there !
 
 download
 ```
-for i in $(seq -w 0001 1274); do   rsync -av --partial --progress --contimeout=60 --timeout=600     rsync://ftp.ncbi.nlm.nih.gov/pubmed/baseline/pubmed25n${i}.xml.gz     baseline2025/; done
+for i in $(seq -w 0001 1334); do   rsync -av --partial --progress --contimeout=60 --timeout=600     rsync://ftp.ncbi.nlm.nih.gov/pubmed/baseline/pubmed26n${i}.xml.gz     baseline2026/; done
 ```
 
 xml to jsonl
