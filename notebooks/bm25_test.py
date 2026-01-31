@@ -180,7 +180,9 @@ print(summary)
 perq_df.head()
 
 # %% [markdown]
-# # after indexing 2025 baseline
+# # after indexing 2026 baseline
+#
+# for index we shall include articles that does not have abstracts
 
 # %%
 index = pt.IndexFactory.of("/Users/yun/develop/pubmed_bm25_index/data.properties")
@@ -457,8 +459,5 @@ print(f"\nMissing PMIDs by section type:")
 print(f"  Only title: {len(missing_with_only_title)}")
 print(f"  Has abstract: {len(missing_with_abstract)}")
 print(f"  Other (no abstract): {len(missing_with_both)}")
-
-# %%
-gold_not_in_index
 
 # %%

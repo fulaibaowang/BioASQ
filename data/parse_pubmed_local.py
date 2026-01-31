@@ -45,18 +45,21 @@ def parse_mesh_terms(medline: etree._Element) -> str:
     return "; ".join(out)
 
 
-def parse_pmid_version1(medline: etree._Element) -> str:
+def parse_pmid_all(medline: etree._Element) -> str:
     """
-    Only use PMID with Version="1".
-    Fallback: if none exists, return "" (skip record).
+    Extract PMID from any version (Version="1" or others).
+    Prefers Version="1" if available, falls back to first PMID found.
     """
     # Prefer the Version="1" PMID
     pmid_v1 = medline.find('PMID[@Version="1"]')
     if pmid_v1 is not None and pmid_v1.text:
         return pmid_v1.text.strip()
-
-    # If the XML uses lowercase or missing attribute variations, you could relax here,
-    # but per your request we keep it strict: Version="1" only.
+    
+    # Fall back to any PMID element
+    pmid_any = medline.find('PMID')
+    if pmid_any is not None and pmid_any.text:
+        return pmid_any.text.strip()
+    
     return ""
 
 
@@ -102,7 +105,7 @@ def parse_title_abstract(medline: etree._Element) -> Dict[str, str]:
 
 
 def parse_article_record(medline: etree._Element) -> Optional[Dict]:
-    pmid = parse_pmid_version1(medline)
+    pmid = parse_pmid_all(medline)
     if not pmid:
         return None
 
@@ -120,13 +123,14 @@ def parse_article_record(medline: etree._Element) -> Optional[Dict]:
 
 def iter_records_from_xml_gz(gz_path: Path, dedup: bool = True) -> Iterable[Dict]:
     """
-    Yields MedlineCitation records (pmid Version=1 only), plus DeleteCitation tombstones.
+    Yields MedlineCitation records (all PMID versions), plus DeleteCitation tombstones.
     Dedup: ensures each PMID appears at most once in this xml.gz output.
     """
     seen: Set[str] = set()
+    parser = etree.XMLParser(recover=True, huge_tree=True)
 
     with gzip.open(gz_path, "rb") as fh:
-        for _, elem in etree.iterparse(fh, events=("end",)):
+        for _, elem in etree.iterparse(fh, events=("end",), recover=True):
 
             if elem.tag == "MedlineCitation":
                 rec = parse_article_record(elem)
