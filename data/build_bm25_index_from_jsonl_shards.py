@@ -70,10 +70,6 @@ def main():
 
     if not pt.started():
         pt.init()
-    
-    # Allow duplicate PMIDs in meta index (useful for multi-threaded indexing)
-    import jnius
-    jnius.autoclass('java.lang.System').setProperty('metaindex.compressed.reverse.allow.duplicates', 'true')
 
     indexref = build_index(
         index_path=args.index_path,
