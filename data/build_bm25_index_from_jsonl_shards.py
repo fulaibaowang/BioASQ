@@ -9,6 +9,38 @@ from typing import Dict, Iterable
 
 import pyterrier as pt
 
+import re
+
+# letters + optional separators + digits (capture long digit runs)
+CODE_RE = re.compile(r"\b([A-Za-z]{2,12})\s*[-–-]?\s*(\d{2,})\b")
+
+def chunk_digits(d: str, k: int = 4) -> list[str]:
+    # chunk into <=4 digits; keeps leading zeros
+    return [d[i:i+k] for i in range(0, len(d), k)]
+
+def augment_text_for_codes(text: str) -> str:
+    extras = []
+    for pfx, digits in CODE_RE.findall(text):
+        p = pfx.lower()
+        # always keep prefix as a token (often survives even when digits are dropped)
+        extras.append(p)
+
+        if len(digits) >= 5:
+            # critical: create <=4-digit chunks so Terrier won't discard them
+            chunks = chunk_digits(digits, 4)
+            extras.extend(chunks)                 # e.g. 0066101 -> 0066 101
+            extras.append(p + " " + " ".join(chunks))
+        else:
+            # for short digits (2-4), variants usually survive
+            extras.append(digits)
+            extras.append(f"{p}{digits}")
+            extras.append(f"{p}-{digits}")
+            extras.append(f"{p} {digits}")
+
+    if extras:
+        # append extras as additional terms (index-only hints)
+        return text + "\n\n" + " ".join(sorted(set(extras)))
+    return text
 
 def iter_docs(jsonl_glob: str) -> Iterable[Dict]:
     """
@@ -39,7 +71,8 @@ def iter_docs(jsonl_glob: str) -> Iterable[Dict]:
                 # Skip if both title and abstract are empty
                 if not text:
                     continue
-
+                text = augment_text_for_codes(text)
+    
                 yield {"docno": pmid, "text": text}
 
 
