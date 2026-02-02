@@ -36,7 +36,7 @@ index = pt.IndexFactory.of(INDEX_PROPERTIES)
 
 bm25 = pt.BatchRetrieve(index, wmodel="BM25")  # you can pass num_results later via slicing
 
-# %%
+# %% jupyter={"source_hidden": true}
 # -------------------------
 # Load BioASQ golden file
 # -------------------------
@@ -182,10 +182,10 @@ perq_df.head()
 # %% [markdown]
 # # after indexing 2026 baseline
 #
-# for index we shall include articles that does not have abstracts
+# for index we shall include also articles that does not have abstracts, because BIOASQ uses also titles
 
 # %%
-index = pt.IndexFactory.of("/Users/yun/develop/pubmed_bm25_index/data.properties")
+index = pt.IndexFactory.of("/Users/yun/develop/pubmed_bm25_2026_index/data.properties")
 coll = index.getCollectionStatistics()
 
 print("Number of documents:", coll.getNumberOfDocuments())
@@ -229,30 +229,43 @@ print("example gold docnos:", list(train_gold_map[train_topics_df.iloc[0]["qid"]
 
 # %%
 # Run BM25 with full 2025 baseline index
-bm25_full = pt.BatchRetrieve(index, wmodel="BM25")
+K_MAX = 10_000
+bm25_full = pt.BatchRetrieve(index, wmodel="BM25", num_results=K_MAX)
 
-K_MAX = 2000
+# %%
 train_res_raw = bm25_full.transform(train_topics_df)
-
 # Sort and rank
 train_res_raw = train_res_raw.sort_values(["qid", "score"], ascending=[True, False])
 train_res_raw["rank"] = train_res_raw.groupby("qid").cumcount() + 1
 
 # %%
-train_res = train_res_raw[train_res_raw["rank"] <= K_MAX].copy()
+# Check how many results you're actually getting with K_MAX=2000
+print(f"train_res shape: {train_res_raw.shape}")
+print(f"Unique queries: {train_res_raw['qid'].nunique()}")
+print(f"Avg results per query: {len(train_res_raw) / train_res_raw['qid'].nunique()}")
+
+# %%
+K_CHECK = 10_000
+train_res = train_res_raw[train_res_raw["rank"] <= K_CHECK].copy()
 
 train_run_map = {qid: grp["docno"].astype(str).tolist()
                  for qid, grp in train_res.groupby("qid", sort=False)}
 
 # Evaluate
-train_summary, train_perq_df = evaluate_run(train_gold_map, train_run_map, ks_recall=(50,100,200,500,2000), eps=1e-5)
+train_summary, train_perq_df = evaluate_run(train_gold_map, train_run_map, ks_recall=(50,100,200,500,2000,5000,10_000), eps=1e-5)
 
 print("Training13b Evaluation Results:")
 print(train_summary)
 train_perq_df.head()
 
 # %%
-out = "../tmp/train_bm25_k500_initial.parquet"
+# Check how many results you're actually getting with K_MAX=2000
+print(f"train_res shape: {train_res.shape}")
+print(f"Unique queries: {train_res['qid'].nunique()}")
+print(f"Avg results per query: {len(train_res) / train_res['qid'].nunique()}")
+
+# %%
+out = "../tmp/train_bm25_k5000_initial.parquet"
 train_res.to_parquet(out, index=False)
 
 # %%
@@ -288,7 +301,7 @@ train_summary
 
 # %%
 # 4) Mean Recall@K bar chart
-Ks = [50, 100, 200, 500,2000]
+Ks = [50, 100, 200, 500,2000,5000,10_000]
 rec_vals = [train_summary.get(f"MeanR@{k}", 0.0) for k in Ks]
 
 plt.figure()
@@ -313,72 +326,22 @@ if col in pdf.columns:
     plt.show()
 
 # %% [markdown]
-# # Build 10% Subset with Gold + Retrieved PMIDs
-
-# %%
-# Step 1: Collect all gold PMIDs from training data
-all_gold_pmids = set()
-for pmids in train_gold_map.values():
-    all_gold_pmids.update(pmids)
-
-print(f"Total gold PMIDs: {len(all_gold_pmids)}")
-
-# Step 2: Randomly pick 10% of questions (with fixed seed)
-random.seed(42)
-all_qids = list(train_gold_map.keys())
-sample_size = max(1, int(len(all_qids) * 0.1))
-sampled_qids = set(random.sample(all_qids, sample_size))
-
-print(f"Total questions: {len(all_qids)}")
-print(f"Sampled questions (10%): {len(sampled_qids)}")
-
-# Build sampled questions data for JSON export
-sampled_questions = [q for q in train_questions if str(q["id"]) in sampled_qids]
-sampled_data = {"questions": sampled_questions}
-
-# Save to example folder
-sample_json_path = "../example/training13b_10pct_sample.json"
-with open(sample_json_path, "w", encoding="utf-8") as f:
-    json.dump(sampled_data, f, indent=2, ensure_ascii=False)
-
-print(f"Saved sampled questions to: {sample_json_path}")
-
-# %%
-# Step 3: Collect top N=2000 retrieved PMIDs for sampled questions
-N_TOP = 2000
-
-retrieved_pool_pmids = set()
-
-# Filter train_res to only sampled questions and get top 2000 per question
-sampled_res = train_res[train_res["qid"].isin(sampled_qids)].copy()
-
-for qid in sampled_qids:
-    qid_results = sampled_res[sampled_res["qid"] == qid].head(N_TOP)
-    retrieved_pmids = qid_results["docno"].astype(str).tolist()
-    retrieved_pool_pmids.update(retrieved_pmids)
-
-print(f"Retrieved PMIDs from top {N_TOP} per question: {len(retrieved_pool_pmids)}")
-
-# %%
-# Step 4: Build subset PMIDs = gold ∪ retrieved
-subset_pmids = all_gold_pmids | retrieved_pool_pmids
-
-print(f"\nSubset Statistics:")
-print(f"  Gold PMIDs: {len(all_gold_pmids)}")
-print(f"  Retrieved PMIDs: {len(retrieved_pool_pmids)}")
-print(f"  Union (subset): {len(subset_pmids)}")
-print(f"  Overlap: {len(all_gold_pmids & retrieved_pool_pmids)}")
-
-# Save subset PMIDs to file
-subset_pmids_path = "../example/subset_pmids.txt"
-with open(subset_pmids_path, "w") as f:
-    for pmid in sorted(subset_pmids):
-        f.write(f"{pmid}\n")
-
-print(f"\nSaved subset PMIDs to: {subset_pmids_path}")
+# 'MeanR@2000': 0.8756404757106547,
+#
+# 'MeanR@5000': 0.9181976363297758
+#
+# let us 
+# - check those zeros for recall@5000
+# - build a subset with
+#  - for  10% Subset with Gold retreieve top 5000
+#  - gold pmids
+# - use this subset we test our system furthur
 
 # %% [markdown]
-# # check recall 0 ids
+# # check zero-recall
+
+# %% [markdown]
+# ## quick check if gold pmids are in the pubmed index at all
 
 # %%
 # Check if all gold PMIDs are in the index
@@ -406,58 +369,125 @@ print(f"  Coverage: {100 * len(gold_in_index) / len(all_gold_pmids):.2f}%")
 if gold_not_in_index:
     print(f"\nFirst 10 missing gold PMIDs: {gold_not_in_index[:10]}")
 
+# %% [markdown]
+# those ids are fine, it seems there are either gene books (not in FTP) or deleted paper
+
 # %%
-# Check beginSection for missing gold PMIDs
-from collections import Counter
+## extract the zero-recall questions
 
-# Build a map of PMID -> list of beginSections from snippets
-pmid_to_sections = {}
+# %%
+zero_recall_df = train_perq_df[train_perq_df[f"R@{K_CHECK}"] == 0].copy()
+print("Zero-recall @10000 count:", len(zero_recall_df))
+zero_recall_df.head(1)
 
-for q in train_questions:
-    for snippet in q.get("snippets", []):
-        # Extract PMID from document URL
-        doc_url = snippet.get("document", "")
-        pmid = url_to_pmid(doc_url)
-        if pmid:
-            section = snippet.get("beginSection", "unknown")
-            if pmid not in pmid_to_sections:
-                pmid_to_sections[pmid] = []
-            pmid_to_sections[pmid].append(section)
+# %%
+# Attach the question body + gold PMIDs for those qids
 
-# Check beginSection for missing PMIDs
-missing_sections = []
-for pmid in gold_not_in_index[:100]:  # Check first 100 missing
-    sections = pmid_to_sections.get(pmid, [])
-    if sections:
-        missing_sections.extend(sections)
+qid_to_body = {str(q["id"]): q["body"] for q in train_questions}
 
-section_counts = Counter(missing_sections)
+# Add body + a compact gold pmid list column for quick viewing
+zero_recall_df["body"] = zero_recall_df["qid"].map(qid_to_body)
+zero_recall_df["gold_pmids"] = zero_recall_df["qid"].apply(lambda qid: sorted(train_gold_map.get(qid, [])))
 
-print(f"\nbeginSection distribution for missing gold PMIDs:")
-print(f"  Total missing PMIDs checked: {min(100, len(gold_not_in_index))}")
-print(f"  Total snippets found: {len(missing_sections)}")
-print(f"\nSection breakdown:")
-for section, count in section_counts.most_common():
-    print(f"  {section}: {count} ({100*count/len(missing_sections):.1f}%)")
+# View a few (truncate gold list in print to avoid huge output)
+for _, row in zero_recall_df.head(20).iterrows():
+    qid = row["qid"]
+    print("\n---")
+    print("qid:", qid)
+    print("n_gold:", row["n_gold"])
+    print("body:", row["body"])
+    print("gold_pmids (first 20):", row["gold_pmids"][:30])
 
-# Check if any missing PMIDs have only title sections
-missing_with_only_title = []
-missing_with_abstract = []
-missing_with_both = []
+# %%
+dbg_topics = pd.DataFrame([
+    {"qid":"t1", "query":"CRT0066101"},
+    {"qid":"t3", "query":"What are the 3 types of immunoglobulin heavy chain containing antibodies found in human breast milk"},
+])
 
-for pmid in gold_not_in_index[:100]:
-    sections = set(pmid_to_sections.get(pmid, []))
-    if sections:
-        if sections == {"title"}:
-            missing_with_only_title.append(pmid)
-        elif "abstract" in sections:
-            missing_with_abstract.append(pmid)
-        elif sections and "abstract" not in sections:
-            missing_with_both.append(pmid)
+dbg = bm25_full.transform(dbg_topics).sort_values(["qid","score"], ascending=[True, False])
+for qid in ["t1","t3"]:
+    print(qid, dbg[dbg.qid==qid].head(5)[["docno","score"]].to_string(index=False))
 
-print(f"\nMissing PMIDs by section type:")
-print(f"  Only title: {len(missing_with_only_title)}")
-print(f"  Has abstract: {len(missing_with_abstract)}")
-print(f"  Other (no abstract): {len(missing_with_both)}")
+
+# %% [markdown]
+# **I saw several issues here**
+#
+# - RM3 / PRF: eravacycline, miR
+# - hyphen issue LB-100, CPX351(query rewrite)
+# - CRT0066101 been discarded (tokenize issue)
+# - words like "how, what are noisy" (query rewrite)
+# - broad topic e,g Alzheimer
+
+# %% [markdown]
+# # Build 10% Subset with Gold + zero recall ids + Retrieved PMIDs top 5000
+
+# %%
+# Step 1: Collect all gold PMIDs from training data
+all_gold_pmids = set()
+for pmids in train_gold_map.values():
+    all_gold_pmids.update(pmids)
+
+print(f"Total gold PMIDs: {len(all_gold_pmids)}")
+
+# %%
+# Step 2: Randomly pick 10% of questions (with fixed seed)
+random.seed(42)
+all_qids = list(train_gold_map.keys())
+sample_size = max(1, int(len(all_qids) * 0.1))
+sampled_qids = set(random.sample(all_qids, sample_size))
+
+print(f"Total questions: {len(all_qids)}")
+print(f"Sampled questions (10%): {len(sampled_qids)}")
+
+# %%
+# Step 3: add zero recall qids
+sampled_qids_expanded = set(zero_recall_df['qid']) | sampled_qids
+print(f"Sampled questions plus zero recall qids: {len(sampled_qids_expanded)}")
+
+# %%
+# Build sampled questions data for JSON export
+sampled_questions = [q for q in train_questions if str(q["id"]) in sampled_qids_expanded]
+sampled_data = {"questions": sampled_questions}
+
+# Save to example folder
+sample_json_path = "../example/training13b_10pct_sample.json"
+with open(sample_json_path, "w", encoding="utf-8") as f:
+    json.dump(sampled_data, f, indent=2, ensure_ascii=False)
+
+print(f"Saved sampled questions to: {sample_json_path}")
+
+# %%
+# Step 4: Collect top N=5000 retrieved PMIDs for sampled questions
+N_TOP = 5000
+
+retrieved_pool_pmids = set()
+
+# Filter train_res to only sampled questions and get top 2000 per question
+sampled_res = train_res[train_res["qid"].isin(sampled_qids_expanded)].copy()
+
+for qid in sampled_qids_expanded:
+    qid_results = sampled_res[sampled_res["qid"] == qid].head(N_TOP)
+    retrieved_pmids = qid_results["docno"].astype(str).tolist()
+    retrieved_pool_pmids.update(retrieved_pmids)
+
+print(f"Retrieved PMIDs from top {N_TOP} per question: {len(retrieved_pool_pmids)}")
+
+# %%
+# Step 4: Build subset PMIDs = gold ∪ retrieved
+subset_pmids = all_gold_pmids | retrieved_pool_pmids
+
+print(f"\nSubset Statistics:")
+print(f"  Gold PMIDs: {len(all_gold_pmids)}")
+print(f"  Retrieved PMIDs: {len(retrieved_pool_pmids)}")
+print(f"  Union (subset): {len(subset_pmids)}")
+print(f"  Overlap: {len(all_gold_pmids & retrieved_pool_pmids)}")
+
+# Save subset PMIDs to file
+subset_pmids_path = "../example/subset_pmids.txt"
+with open(subset_pmids_path, "w") as f:
+    for pmid in sorted(subset_pmids):
+        f.write(f"{pmid}\n")
+
+print(f"\nSaved subset PMIDs to: {subset_pmids_path}")
 
 # %%
