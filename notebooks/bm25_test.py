@@ -198,7 +198,7 @@ print("Avg doc length:", coll.getAverageDocumentLength())
 
 # %%
 # Load BioASQ training13b data
-TRAIN_PATH = "/Users/yun/develop/BioASQ/BioASQ-training13b/training13b.json"
+TRAIN_PATH = "../BioASQ-training13b/training13b.json"
 
 with open(TRAIN_PATH, "r", encoding="utf-8") as f:
     train_data = json.load(f)
