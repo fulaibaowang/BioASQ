@@ -456,8 +456,9 @@ with open(test_batch_qids_path, "r", encoding="utf-8") as f:
         qid = line.strip()
         if qid:
             test_batch_qids.add(qid)
-            
-sampled_qids_expanded = set(zero_recall_df['qid']) | sampled_qids | test_batch_qids
+
+# %%
+sampled_qids_expanded = zero_recall_qids | sampled_qids | test_batch_qids
 print(f"Sampled questions plus zero recall qids: {len(sampled_qids_expanded)}")
 
 # %%
@@ -603,6 +604,14 @@ subset_topics_df_trainset = subset_topics_df[
     ~subset_topics_df["qid"].isin(test_batch_qids)
 ].reset_index(drop=True)
 
+eval_qids = set(subset_topics_df_trainset["qid"].astype(str))
+
+subset_gold_map_eval = {
+    qid: pmids
+    for qid, pmids in subset_gold_map.items()
+    if qid in eval_qids
+}
+
 # %%
 subset_topics_df_trainset.shape
 
@@ -635,7 +644,7 @@ subset_run_map = {qid: grp["docno"].astype(str).tolist()
 
 # Evaluate with recall up to 5000
 subset_summary, subset_perq_df = evaluate_run(
-    subset_gold_map, 
+    subset_gold_map_eval, 
     subset_run_map, 
     ks_recall=(50, 100, 200, 500, 2000, 5000), 
     eps=1e-5
@@ -665,7 +674,7 @@ print(f"\n{'='*80}")
 print(f"ZERO-RECALL QUESTIONS (n={len(subset_zero_recall_df)})")
 print(f"{'='*80}\n")
 
-for _, row in subset_zero_recall_df.head(10).iterrows():
+for _, row in subset_zero_recall_df.head(40).iterrows():
     qid = row["qid"]
     print(f"\n{'-'*80}")
     print(f"QID: {qid}")
@@ -817,7 +826,224 @@ for fp in TEST_BATCHES:
 metrics_df = pd.DataFrame(all_summaries)
 metrics_df
 
+# %% [markdown]
+# # RM3
+
 # %%
+_PREFIX_PATTERNS = [
+    r"^\s*what\s+is\s+",
+    r"^\s*what\s+are\s+",
+    r"^\s*what\s+was\s+",
+    r"^\s*what\s+were\s+",
+    r"^\s*what\s+does\s+",
+    r"^\s*which\s+",
+    r"^\s*when\s+",
+    r"^\s*how\s+many\s+",
+    r"^\s*list\s+",
+    r"^\s*describe\s+",
+    r"^\s*define\s+",
+]
+
+def clean_seed_query(q: str) -> str:
+    """Lightly strip common question prefixes to make RM3 seed retrieval cleaner."""
+    if q is None:
+        return ""
+    s = str(q).strip()
+    s = re.sub(r"\s+", " ", s)
+    s = s.rstrip(" ?")
+
+    low = s.lower()
+    for pat in _PREFIX_PATTERNS:
+        # apply case-insensitive but preserve original remainder as much as possible
+        m = re.match(pat, low)
+        if m:
+            s = s[m.end():].strip()
+            break
+
+    # if we stripped everything, fall back to original sans punctuation
+    if not s:
+        s = re.sub(r"[?]+$", "", str(q)).strip()
+
+    return s
+
+
+
+# %%
+subset_topics_df_rm3 = subset_topics_df_trainset.copy()
+subset_topics_df_rm3["seed_query"] = subset_topics_df_rm3["query"].map(clean_seed_query)
+subset_topics_df_rm3[["qid", "query", "seed_query"]].head(6)
+
+
+# %%
+# Reuse baseline BM25 results (subset_res_raw) computed earlier
+# No need to rerun BM25
+subset_res_base = subset_res_raw.copy()
+
+print(f"Reusing baseline results shape: {subset_res_base.shape}")
+print(f"Unique queries: {subset_res_base['qid'].nunique()}")
+
+# %%
+# Baseline retriever (you likely already have this)
+bm25 = pt.BatchRetrieve(index, wmodel="BM25")
+
+# RM3 query expansion.
+# fb_docs: how many top docs to look at for feedback
+# fb_terms: how many expansion terms to add
+# fb_lambda: weight of original query in expanded query (0-1, default 0.6)
+rm3 = pt.rewrite.RM3(
+    index,
+    fb_docs=10,
+    fb_terms=20,
+    fb_lambda=0.7
+)
+
+# We need to feed RM3 a dataframe column named "query".
+# So: temporarily rename seed_query -> query for the feedback stage.
+def use_seed_query(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["query_raw"] = out["query"]
+    out["query"] = out["seed_query"]
+    return out
+
+def restore_raw_query(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    # After RM3, the expanded query is now in out["query"].
+    # We typically DON'T want to restore raw query; RM3 already mixed it via original_query_weight.
+    # But keep raw around for debugging.
+    return out
+
+pipe_rm3 = (pt.apply.generic(use_seed_query) >> rm3 >> bm25 >> pt.apply.generic(restore_raw_query))
+
+# %%
+# ---- RM3 run ----
+subset_res_rm3 = pipe_rm3(subset_topics_df_rm3)[ : K_MAX ]
+
+# Convert results to {qid: [docno,...]}.
+# Adjust docno column name if yours differs (usually "docno").
+def results_to_run_map(res_df: pd.DataFrame, qid_col="qid", docno_col="docno") -> dict[str, list[str]]:
+    run = {}
+    for qid, g in res_df.groupby(qid_col, sort=False):
+        run[str(qid)] = [str(x) for x in g[docno_col].tolist()]
+    return run
+
+subset_run_map_base = results_to_run_map(subset_res_base)
+subset_run_map_rm3  = results_to_run_map(subset_res_rm3)
+
+# ---- evaluate ----
+subset_summary_base, subset_perq_base = evaluate_run(
+    subset_gold_map_eval, subset_run_map_base,
+    ks_recall=(50, 100, 200, 500, 2000, 5000),
+)
+
+subset_summary_rm3, subset_perq_rm3 = evaluate_run(
+    subset_gold_map_eval, subset_run_map_rm3,
+    ks_recall=(50, 100, 200, 500, 2000, 5000),
+)
+
+print("=== BASELINE ===")
+print(subset_summary_base)
+
+print("\n=== RM3 (seed-cleaned) ===")
+print(subset_summary_rm3)
+
+
+# %% [markdown]
+# ## RM3 Evaluation on Test Batches
+
+# %%
+# Helper function to evaluate with RM3
+def evaluate_rm3_on_questions(questions: list[dict], label: str) -> dict:
+    """Evaluate RM3 on a set of questions and return summary metrics."""
+    topics_df, gold_map = build_topics_and_gold(questions)
+    
+    # Create seed query column for RM3
+    topics_df["seed_query"] = topics_df["query"].map(clean_seed_query)
+    
+    # Run RM3 pipeline
+    res_rm3 = pipe_rm3.transform(topics_df)
+    
+    # Sort + rank + cut to K_CHECK_SUBSET (5000)
+    res_rm3 = res_rm3.sort_values(["qid", "score"], ascending=[True, False])
+    res_rm3["rank"] = res_rm3.groupby("qid").cumcount() + 1
+    res_rm3 = res_rm3[res_rm3["rank"] <= K_CHECK_SUBSET].copy()
+    
+    run_map = {
+        qid: grp["docno"].astype(str).tolist()
+        for qid, grp in res_rm3.groupby("qid", sort=False)
+    }
+    
+    summary, _ = evaluate_run(
+        gold_map,
+        run_map,
+        ks_recall=(50, 100, 200, 500, 2000, 5000),
+        eps=1e-5,
+    )
+    summary = {"batch": label, **summary}
+    return summary
+
+
+# %%
+# Build RM3 metrics table for train subset + test batches
+all_rm3_summaries = []
+
+# Train subset RM3 summary already computed above
+all_rm3_summaries.append({"batch": "train_subset", **subset_summary_rm3})
+
+# Test batches with RM3
+from pathlib import Path
+
+TEST_DIR = Path("../Task13BGoldenEnriched")
+TEST_BATCHES = [
+    TEST_DIR / "13B1_golden.json",
+    TEST_DIR / "13B2_golden.json",
+    TEST_DIR / "13B3_golden.json",
+    TEST_DIR / "13B4_golden.json",
+]
+
+for fp in TEST_BATCHES:
+    with open(fp, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    batch_label = fp.stem  # e.g., 13B1_golden
+    print(f"Evaluating RM3 on {batch_label}...")
+    all_rm3_summaries.append(evaluate_rm3_on_questions(data["questions"], batch_label))
+
+metrics_df_rm3 = pd.DataFrame(all_rm3_summaries)
+print("\n=== RM3 Metrics (Train Subset + Test Batches) ===")
+metrics_df_rm3
+
+# %% [markdown]
+# ## Compare Baseline vs RM3
+
+# %%
+# Add method column to distinguish baseline vs RM3
+# First get the baseline metrics (already computed in the earlier section)
+all_baseline_summaries = []
+all_baseline_summaries.append({"batch": "train_subset", **subset_summary})
+
+# Evaluate baseline on test batches
+for fp in TEST_BATCHES:
+    with open(fp, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    batch_label = fp.stem
+    print(f"Evaluating Baseline on {batch_label}...")
+    all_baseline_summaries.append(evaluate_bm25_on_questions(data["questions"], batch_label))
+
+metrics_df_baseline = pd.DataFrame(all_baseline_summaries)
+metrics_df_baseline["method"] = "BM25"
+
+# Add method column to RM3 metrics
+metrics_df_rm3_copy = metrics_df_rm3.copy()
+metrics_df_rm3_copy["method"] = "BM25+RM3"
+
+# Combine both
+metrics_df = pd.concat([metrics_df_baseline, metrics_df_rm3_copy], ignore_index=True)
+
+# Reorder columns to have method and batch first
+cols = ["method", "batch"] + [c for c in metrics_df.columns if c not in ["method", "batch"]]
+metrics_df = metrics_df[cols]
+
+print("\n=== Combined Metrics (Baseline vs RM3) ===")
+metrics_df
 
 # %%
 
