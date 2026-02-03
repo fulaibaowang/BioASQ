@@ -34,8 +34,4 @@ srun -p dev --time=12:00:00 -c 4 \
   --container-workdir /work \
   --pty bash
 
-python data/build_bm25_index_from_jsonl_shards.py \
-  --jsonl_glob "output/subset_pubmed.jsonl" \
-  --index_path "/output/pubmed_bm25_2026_subset_index" \
-  --threads 4 \
-  --overwrite
+python data/build_bm25_index_from_jsonl_shards.py   --jsonl_glob "/work/output/subset_pubmed.jsonl"   --index_path "/work/output/pubmed_bm25_2026_subset_index"   --threads 4   --overwrite

@@ -26,6 +26,16 @@ import os
 if not pt.java.started():
     pt.java.init()
 
+
+# %%
+def url_to_pmid(url: str) -> str | None:
+    m = re.search(r"pubmed/(\d+)", url)
+    return m.group(1) if m else None
+
+
+# %%
+os.chdir('/Users/yun/develop/BioASQ/notebooks')
+
 # %% [markdown]
 # # testing with example
 
@@ -36,7 +46,7 @@ index = pt.IndexFactory.of(INDEX_PROPERTIES)
 
 bm25 = pt.BatchRetrieve(index, wmodel="BM25")  # you can pass num_results later via slicing
 
-# %% jupyter={"source_hidden": true}
+# %%
 # -------------------------
 # Load BioASQ golden file
 # -------------------------
@@ -46,10 +56,6 @@ with open(GOLD_PATH, "r", encoding="utf-8") as f:
     gold = json.load(f)
 
 questions = gold["questions"]
-
-def url_to_pmid(url: str) -> str | None:
-    m = re.search(r"pubmed/(\d+)", url)
-    return m.group(1) if m else None
 
 topics = []
 gold_map = {}  # qid -> set(docno=pmid)
@@ -194,11 +200,11 @@ print("Number of unique terms:", coll.getNumberOfUniqueTerms())
 print("Avg doc length:", coll.getAverageDocumentLength())
 
 # %% [markdown]
-# # Evaluate with BioASQ Training13b data
+# #### Evaluate with BioASQ Training14b data
 
 # %%
-# Load BioASQ training13b data
-TRAIN_PATH = "../BioASQ-training13b/training13b.json"
+# Load BioASQ training14b data
+TRAIN_PATH = "../BioASQ-training14b/trainining14b.json"
 
 with open(TRAIN_PATH, "r", encoding="utf-8") as f:
     train_data = json.load(f)
@@ -254,7 +260,7 @@ train_run_map = {qid: grp["docno"].astype(str).tolist()
 # Evaluate
 train_summary, train_perq_df = evaluate_run(train_gold_map, train_run_map, ks_recall=(50,100,200,500,2000,5000,10_000), eps=1e-5)
 
-print("Training13b Evaluation Results:")
+print("Training14b Evaluation Results:")
 print(train_summary)
 train_perq_df.head()
 
@@ -265,7 +271,7 @@ print(f"Unique queries: {train_res['qid'].nunique()}")
 print(f"Avg results per query: {len(train_res) / train_res['qid'].nunique()}")
 
 # %%
-out = "../tmp/train_bm25_k5000_initial.parquet"
+out = "../tmp/train_bm25_k10000_initial.parquet"
 train_res.to_parquet(out, index=False)
 
 # %%
@@ -326,9 +332,9 @@ if col in pdf.columns:
     plt.show()
 
 # %% [markdown]
-# 'MeanR@2000': 0.8756404757106547,
-#
-# 'MeanR@5000': 0.9181976363297758
+#  'MeanR@2000': 0.8720740787086406,
+#  'MeanR@5000': 0.9160551444706584,
+#  'MeanR@10000': 0.9398105257177296}
 #
 # let us 
 # - check those zeros for recall@5000
@@ -372,8 +378,8 @@ if gold_not_in_index:
 # %% [markdown]
 # those ids are fine, it seems there are either gene books (not in FTP) or deleted paper
 
-# %%
-## extract the zero-recall questions
+# %% [markdown]
+# ## extract the zero-recall questions
 
 # %%
 zero_recall_df = train_perq_df[train_perq_df[f"R@{K_CHECK}"] == 0].copy()
@@ -440,8 +446,18 @@ print(f"Total questions: {len(all_qids)}")
 print(f"Sampled questions (10%): {len(sampled_qids)}")
 
 # %%
-# Step 3: add zero recall qids
-sampled_qids_expanded = set(zero_recall_df['qid']) | sampled_qids
+# Step 3: add zero recall qids and test batch qids
+
+# Load test batch qids
+test_batch_qids_path = "../Task13BGoldenEnriched/test_batch_qids.txt"
+test_batch_qids = set()
+with open(test_batch_qids_path, "r", encoding="utf-8") as f:
+    for line in f:
+        qid = line.strip()
+        if qid:
+            test_batch_qids.add(qid)
+            
+sampled_qids_expanded = set(zero_recall_df['qid']) | sampled_qids | test_batch_qids
 print(f"Sampled questions plus zero recall qids: {len(sampled_qids_expanded)}")
 
 # %%
@@ -450,7 +466,7 @@ sampled_questions = [q for q in train_questions if str(q["id"]) in sampled_qids_
 sampled_data = {"questions": sampled_questions}
 
 # Save to example folder
-sample_json_path = "../example/training13b_10pct_sample.json"
+sample_json_path = "../example/training14b_10pct_sample.json"
 with open(sample_json_path, "w", encoding="utf-8") as f:
     json.dump(sampled_data, f, indent=2, ensure_ascii=False)
 
@@ -489,5 +505,320 @@ with open(subset_pmids_path, "w") as f:
         f.write(f"{pmid}\n")
 
 print(f"\nSaved subset PMIDs to: {subset_pmids_path}")
+
+# %% [markdown]
+# # rebuild bm25 index
+
+# %% [markdown]
+# python3 data/extract_jsonl_subset_by_pmids.py  --jsonl_glob "../biolab/pubmed/jsonl_2026/*.jsonl" --pmid_list "example/subset_pmids.txt" --output_jsonl "output/subset_pubmed.jsonl" --dedup --stop_when_complete 
+#
+# python data/build_bm25_index_from_jsonl_shards.py   --jsonl_glob "/work/output/subset_pubmed.jsonl"   --index_path "/work/output/pubmed_bm25_2026_subset_index"   --threads 4   --overwrite
+#
+# in this step, build_bm25_index_from_jsonl_shards.py was changed slightly for handle digitals longer than 4 (cases like crt0066101)
+
+# %% [markdown]
+# # our new baseline on subset
+
+# %%
+index = pt.IndexFactory.of("../output/pubmed_bm25_2026_subset_index/data.properties")
+coll = index.getCollectionStatistics()
+
+print("Number of documents:", coll.getNumberOfDocuments())
+print("Number of tokens:", coll.getNumberOfTokens())
+print("Number of unique terms:", coll.getNumberOfUniqueTerms())
+print("Avg doc length:", coll.getAverageDocumentLength())
+
+# %%
+# Define the regex and helper for augmentation (used in both query and index)
+CODE_RE = re.compile(r"\b([A-Za-z]{2,12})\s*[-–-]?\s*(\d{2,})\b")
+
+def chunk_digits(d: str, k: int = 4) -> list[str]:
+    # chunk into <=4 digits; keeps leading zeros
+    return [d[i:i+k] for i in range(0, len(d), k)]
+
+
+# %%
+def augment_text_for_codes(text: str) -> str:
+    extras = []
+    for pfx, digits in CODE_RE.findall(text):
+        p = pfx.lower()
+        # always keep prefix as a token (often survives even when digits are dropped)
+        extras.append(p)
+
+        if len(digits) >= 5:
+            # critical: create <=4-digit chunks so Terrier won't discard them
+            chunks = chunk_digits(digits, 4)
+            extras.extend(chunks)                 # e.g. 0066101 -> 0066 101
+            extras.append(p + " " + " ".join(chunks))
+        else:
+            # for short digits (2-4), variants usually survive
+            extras.append(digits)
+            extras.append(f"{p}{digits}")
+            extras.append(f"{p}-{digits}")
+            extras.append(f"{p} {digits}")
+
+    if extras:
+        # append extras as additional terms (index-only hints)
+        return text + "\n\n" + " ".join(sorted(set(extras)))
+    return text
+
+
+# %%
+# Load subset questions from saved file (independent of earlier cells)
+SUBSET_PATH = "../example/training14b_10pct_sample.json"
+
+with open(SUBSET_PATH, "r", encoding="utf-8") as f:
+    subset_data = json.load(f)
+
+subset_questions = subset_data["questions"]
+
+# Build topics and gold_map from loaded data
+subset_topics = []
+subset_gold_map = {}
+
+for q in subset_questions:
+    qid = str(q["id"])
+    query = q["body"]
+    subset_topics.append({"qid": qid, "query": query})
+    
+    pmids = set()
+    for u in q.get("documents", []):
+        pmid = url_to_pmid(u)
+        if pmid:
+            pmids.add(pmid)
+    subset_gold_map[qid] = pmids
+
+subset_topics_df = pd.DataFrame(subset_topics)
+
+print(f"Subset evaluation questions: {len(subset_topics_df)}")
+print(f"Example query: {subset_topics_df.iloc[0]['query'][:100]}")
+
+# %% [markdown]
+# **small fix**
+#
+# we need to seprate train_qids and test_batches_qids here for stats
+
+# %%
+subset_topics_df_trainset = subset_topics_df[
+    ~subset_topics_df["qid"].isin(test_batch_qids)
+].reset_index(drop=True)
+
+# %%
+subset_topics_df_trainset.shape
+
+# %%
+# Run BM25 with query augmentation on subset index
+K_MAX = 5_000
+bm25_subset = pt.BatchRetrieve(index, wmodel="BM25", num_results=K_MAX)
+
+# Apply query augmentation to subset topics
+qe_subset = pt.apply.query(lambda r: augment_text_for_codes(r["query"]))
+pipe_subset = qe_subset >> bm25_subset
+
+subset_res_raw = pipe_subset.transform(subset_topics_df_trainset)
+
+# Sort and rank
+subset_res_raw = subset_res_raw.sort_values(["qid", "score"], ascending=[True, False])
+subset_res_raw["rank"] = subset_res_raw.groupby("qid").cumcount() + 1
+
+print(f"subset_res shape: {subset_res_raw.shape}")
+print(f"Unique queries: {subset_res_raw['qid'].nunique()}")
+print(f"Avg results per query: {len(subset_res_raw) / subset_res_raw['qid'].nunique():.1f}")
+
+# %%
+# Evaluate on subset with K up to 5000
+K_CHECK_SUBSET = 5_000
+subset_res = subset_res_raw[subset_res_raw["rank"] <= K_CHECK_SUBSET].copy()
+
+subset_run_map = {qid: grp["docno"].astype(str).tolist()
+                  for qid, grp in subset_res.groupby("qid", sort=False)}
+
+# Evaluate with recall up to 5000
+subset_summary, subset_perq_df = evaluate_run(
+    subset_gold_map, 
+    subset_run_map, 
+    ks_recall=(50, 100, 200, 500, 2000, 5000), 
+    eps=1e-5
+)
+
+print("Subset Evaluation Results (with query augmentation):")
+print(subset_summary)
+subset_perq_df.head(2)
+
+# %%
+# Extract zero-recall questions from subset
+subset_zero_recall_df = subset_perq_df[subset_perq_df[f"R@{K_CHECK_SUBSET}"] == 0].copy()
+print(f"Zero-recall @{K_CHECK_SUBSET} count: {len(subset_zero_recall_df)}")
+subset_zero_recall_df.head(1)
+
+# %%
+# Attach question body + gold PMIDs for zero-recall questions
+subset_qid_to_body = {str(q["id"]): q["body"] for q in subset_questions}
+
+subset_zero_recall_df["body"] = subset_zero_recall_df["qid"].map(subset_qid_to_body)
+subset_zero_recall_df["gold_pmids"] = subset_zero_recall_df["qid"].apply(
+    lambda qid: sorted(subset_gold_map.get(qid, []))
+)
+
+# Print examples of zero-recall questions
+print(f"\n{'='*80}")
+print(f"ZERO-RECALL QUESTIONS (n={len(subset_zero_recall_df)})")
+print(f"{'='*80}\n")
+
+for _, row in subset_zero_recall_df.head(10).iterrows():
+    qid = row["qid"]
+    print(f"\n{'-'*80}")
+    print(f"QID: {qid}")
+    print(f"Gold docs: {row['n_gold']}")
+    print(f"Query: {row['body']}")
+    print(f"Gold PMIDs (first 30): {row['gold_pmids'][:30]}")
+    
+if len(subset_zero_recall_df) == 0:
+    print("✓ No zero-recall questions! All queries found at least one relevant doc in top 5000.")
+
+# %%
+# Plot distributions for subset evaluation
+pdf_subset = subset_perq_df
+
+# 1) RR@10 distribution
+plt.figure(figsize=(10, 4))
+
+plt.subplot(1, 3, 1)
+plt.hist(pdf_subset["RR@10"], bins=30)
+plt.title("Per-query RR@10 (subset)")
+plt.xlabel("RR@10")
+plt.ylabel("Count")
+
+# 2) AP@10 distribution
+plt.subplot(1, 3, 2)
+plt.hist(pdf_subset["AP@10"], bins=30)
+plt.title("Per-query AP@10 (subset)")
+plt.xlabel("AP@10")
+plt.ylabel("Count")
+
+# 3) Success@10 distribution
+plt.subplot(1, 3, 3)
+plt.hist(pdf_subset["Success@10"], bins=[-0.5, 0.5, 1.5])
+plt.title("Success@10 (subset)")
+plt.xlabel("Success@10")
+plt.ylabel("Count")
+plt.xticks([0, 1])
+
+plt.tight_layout()
+plt.show()
+
+# %%
+# Mean Recall@K bar chart for subset
+Ks_subset = [50, 100, 200, 500, 2000, 5000]
+rec_vals_subset = [subset_summary.get(f"MeanR@{k}", 0.0) for k in Ks_subset]
+
+plt.figure()
+plt.bar([str(k) for k in Ks_subset], rec_vals_subset)
+plt.title("Mean Recall@K (BM25 subset with query augmentation)")
+plt.xlabel("K")
+plt.ylabel("Mean Recall@K")
+plt.ylim(0, 1)
+for i, v in enumerate(rec_vals_subset):
+    plt.text(i, v + 0.02, f"{v:.3f}", ha='center', fontsize=9)
+plt.show()
+
+# %%
+# Quick check for specific qid CRT0066101
+target_qid = "5c83ff91617e120c34000005"
+
+# Get gold PMIDs
+gold_pmids = sorted(subset_gold_map.get(target_qid, set()))
+print(f"QID: {target_qid}")
+print(f"Gold PMIDs ({len(gold_pmids)}): {gold_pmids}\n")
+
+# Get query
+query_text = subset_topics_df_trainset[subset_topics_df_trainset["qid"] == target_qid]["query"].values
+if len(query_text) > 0:
+    print(f"Query: {query_text[0]}\n")
+
+# Get retrieved results
+retrieved = subset_res[subset_res["qid"] == target_qid].sort_values("rank")
+
+# Get metrics
+metrics = subset_perq_df[subset_perq_df["qid"] == target_qid]
+metrics
+
+# %%
+# Evaluate BM25 (with query augmentation) on test batches + merge metrics
+from pathlib import Path
+
+TEST_DIR = Path("../Task13BGoldenEnriched")
+TEST_BATCHES = [
+    TEST_DIR / "13B1_golden.json",
+    TEST_DIR / "13B2_golden.json",
+    TEST_DIR / "13B3_golden.json",
+    TEST_DIR / "13B4_golden.json",
+]
+
+
+def build_topics_and_gold(questions: list[dict]) -> tuple[pd.DataFrame, dict[str, set[str]]]:
+    topics = []
+    gold_map = {}
+    for q in questions:
+        qid = str(q["id"])
+        query = q["body"]
+        topics.append({"qid": qid, "query": query})
+
+        pmids = set()
+        for u in q.get("documents", []):
+            pmid = url_to_pmid(u)
+            if pmid:
+                pmids.add(pmid)
+        gold_map[qid] = pmids
+    return pd.DataFrame(topics), gold_map
+
+
+def evaluate_bm25_on_questions(questions: list[dict], label: str) -> dict:
+    topics_df, gold_map = build_topics_and_gold(questions)
+
+    # apply augmentation
+    qe = pt.apply.query(lambda r: augment_text_for_codes(r["query"]))
+    pipe = qe >> bm25_subset
+    res_raw = pipe.transform(topics_df)
+
+    # sort + rank + cut
+    res_raw = res_raw.sort_values(["qid", "score"], ascending=[True, False])
+    res_raw["rank"] = res_raw.groupby("qid").cumcount() + 1
+    res = res_raw[res_raw["rank"] <= K_CHECK_SUBSET].copy()
+
+    run_map = {
+        qid: grp["docno"].astype(str).tolist()
+        for qid, grp in res.groupby("qid", sort=False)
+    }
+
+    summary, _ = evaluate_run(
+        gold_map,
+        run_map,
+        ks_recall=(50, 100, 200, 500, 2000, 5000),
+        eps=1e-5,
+    )
+    summary = {"batch": label, **summary}
+    return summary
+
+
+# Build merged metrics table (includes train subset_summary)
+all_summaries = []
+
+# Train subset summary already computed above
+all_summaries.append({"batch": "train_subset", **subset_summary})
+
+# Test batches
+for fp in TEST_BATCHES:
+    with open(fp, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    batch_label = fp.stem  # e.g., 13B1_golden
+    all_summaries.append(evaluate_bm25_on_questions(data["questions"], batch_label))
+
+metrics_df = pd.DataFrame(all_summaries)
+metrics_df
+
+# %%
+
+# %%
 
 # %%
