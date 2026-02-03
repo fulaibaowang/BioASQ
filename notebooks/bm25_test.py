@@ -1091,6 +1091,143 @@ metrics_df = metrics_df[cols]
 print("\n=== Combined Metrics (Baseline vs RM3) ===")
 metrics_df
 
+# %% [markdown]
+# conclusion: RM3 stably improves recall
+
+# %% [markdown]
+# # RM3 Parameter Tuning
+#
+# Testing different RM3 configurations across train subset and test batches
+
 # %%
+# Sanity: make sure these exist in your notebook
+_required = ["index", "subset_topics_df_rm3", "subset_gold_map_eval", "augment_text_for_codes",
+             "clean_seed_query", "use_seed_query", "build_topics_and_gold", "evaluate_run",
+             "TEST_BATCHES", "K_CHECK_SUBSET"]
+missing = [x for x in _required if x not in globals()]
+if missing:
+    raise NameError(f"Missing required variables/functions: {missing}")
+
+print("K_CHECK_SUBSET =", K_CHECK_SUBSET)
+print("Num test batches =", len(TEST_BATCHES))
+print("Train subset queries =", subset_topics_df_rm3["qid"].nunique())
+
+
+# %%
+# Define RM3 configurations to test
+rm3_configs = {
+    "Conservative_5_10_0.8": {"fb_docs": 5, "fb_terms": 10, "fb_lambda": 0.8},
+    "Conservative_10_10_0.8": {"fb_docs": 10, "fb_terms": 10, "fb_lambda": 0.8},
+    "Balanced_10_20_0.7": {"fb_docs": 10, "fb_terms": 20, "fb_lambda": 0.7},  # current
+    "Balanced_20_20_0.7": {"fb_docs": 20, "fb_terms": 20, "fb_lambda": 0.7},
+    "Aggressive_10_30_0.6": {"fb_docs": 10, "fb_terms": 30, "fb_lambda": 0.6},
+    "Aggressive_20_30_0.6": {"fb_docs": 20, "fb_terms": 30, "fb_lambda": 0.6},
+}
+
+
+# %%
+# %%
+# Common retrievers (keep constant across configs)
+bm25_for_feedback = pt.BatchRetrieve(index, wmodel="BM25", num_results=50)
+bm25_final_5k = pt.BatchRetrieve(index, wmodel="BM25", num_results=K_CHECK_SUBSET)
+
+# Evaluate one RM3 config across train_subset + test batches
+def eval_one_rm3_config(config_name: str, params: dict) -> list[dict]:
+    rm3 = pt.rewrite.RM3(index, **params)
+
+    pipe = (
+        pt.apply.generic(use_seed_query)
+        >> pt.apply.generic(apply_augment_text_for_codes)
+        >> bm25_for_feedback
+        >> rm3
+        >> bm25_final_5k
+    )
+
+    rows = []
+
+    # --- train subset ---
+    res_train = pipe(subset_topics_df_rm3)
+    run_map_train = {
+        str(qid): grp["docno"].astype(str).tolist()
+        for qid, grp in res_train.groupby("qid", sort=False)
+    }
+    summ_train, _ = evaluate_run(
+        subset_gold_map_eval,
+        run_map_train,
+        ks_recall=(50, 100, 200, 500, 2000, 5000),
+        eps=1e-5,
+    )
+    rows.append({"method": "BM25+RM3", "config": config_name, "batch": "train_subset", **summ_train})
+
+    # --- test batches ---
+    for fp in TEST_BATCHES:
+        with open(fp, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        batch = fp.stem
+
+        topics_test, gold_test = build_topics_and_gold(data["questions"])
+        topics_test = topics_test.copy()
+        topics_test["seed_query"] = topics_test["query"].map(clean_seed_query)
+
+        res_test = pipe(topics_test)
+        run_map_test = {
+            str(qid): grp["docno"].astype(str).tolist()
+            for qid, grp in res_test.groupby("qid", sort=False)
+        }
+
+        summ_test, _ = evaluate_run(
+            gold_test,
+            run_map_test,
+            ks_recall=(50, 100, 200, 500, 2000, 5000),
+            eps=1e-5,
+        )
+        rows.append({"method": "BM25+RM3", "config": config_name, "batch": batch, **summ_test})
+
+    return rows
+
+
+
+# %%
+# %%
+# Run sweep
+all_rows = []
+for name, params in rm3_configs.items():
+    print(f"Running RM3 config: {name}")
+    all_rows.extend(eval_one_rm3_config(name, params))
+
+rm3_sweep_df = pd.DataFrame(all_rows)
+print("Done.")
+rm3_sweep_df
+
+# %%
+# View full table (sorted)
+rm3_sweep_df.sort_values(["batch", "MeanR@500"], ascending=[True, False])
+
+# %%
+#  Select best config by test-batch average of MeanR@200 and MeanR@500
+test_batch_names = [p.stem for p in TEST_BATCHES]
+rm3_test_df = rm3_sweep_df[rm3_sweep_df["batch"].isin(test_batch_names)].copy()
+
+rm3_test_avg = (
+    rm3_test_df.groupby("config")[["MeanR@200", "MeanR@500", "MeanR@50", "MeanR@100", "MeanR@5000", "MAP@10", "MRR@10"]]
+    .mean()
+    .round(6)
+)
+
+# %%
+# score: equal weight on R@200 and R@500 (candidate pool quality)
+rm3_test_avg["score_R200_R500"] = (0.5 * rm3_test_avg["MeanR@200"] + 0.5 * rm3_test_avg["MeanR@500"]).round(6)
+
+rm3_test_avg = rm3_test_avg.sort_values("score_R200_R500", ascending=False)
+rm3_test_avg
+
+
+# %%
+best_config = rm3_test_avg.index[0]
+print("Best config (by test avg 0.5*R@200 + 0.5*R@500):", best_config)
+print("Params:", rm3_configs[best_config])
+
+# %% [markdown]
+# let us take Aggressive_20_30_0.6
 
 # %%
