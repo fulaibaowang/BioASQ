@@ -530,6 +530,16 @@ print("Number of unique terms:", coll.getNumberOfUniqueTerms())
 print("Avg doc length:", coll.getAverageDocumentLength())
 
 # %%
+# Re-Load test batch qids
+test_batch_qids_path = "../Task13BGoldenEnriched/test_batch_qids.txt"
+test_batch_qids = set()
+with open(test_batch_qids_path, "r", encoding="utf-8") as f:
+    for line in f:
+        qid = line.strip()
+        if qid:
+            test_batch_qids.add(qid)
+
+# %%
 # Define the regex and helper for augmentation (used in both query and index)
 CODE_RE = re.compile(r"\b([A-Za-z]{2,12})\s*[-–-]?\s*(\d{2,})\b")
 
@@ -782,21 +792,17 @@ def build_topics_and_gold(questions: list[dict]) -> tuple[pd.DataFrame, dict[str
     return pd.DataFrame(topics), gold_map
 
 
-def evaluate_bm25_on_questions(questions: list[dict], label: str) -> dict:
+def evaluate_bm25_on_questions(questions: list[dict], label: str, retriever) -> dict:
     topics_df, gold_map = build_topics_and_gold(questions)
 
-    # apply augmentation
-    qe = pt.apply.query(lambda r: augment_text_for_codes(r["query"]))
-    pipe = qe >> bm25_subset
-    res_raw = pipe.transform(topics_df)
+    # apply augmentation to df["query"]
+    out = topics_df.copy()
+    out["query"] = out["query"].astype(str).map(augment_text_for_codes)
 
-    # sort + rank + cut
-    res_raw = res_raw.sort_values(["qid", "score"], ascending=[True, False])
-    res_raw["rank"] = res_raw.groupby("qid").cumcount() + 1
-    res = res_raw[res_raw["rank"] <= K_CHECK_SUBSET].copy()
+    res = retriever(out)
 
     run_map = {
-        qid: grp["docno"].astype(str).tolist()
+        str(qid): grp["docno"].astype(str).tolist()
         for qid, grp in res.groupby("qid", sort=False)
     }
 
@@ -806,10 +812,16 @@ def evaluate_bm25_on_questions(questions: list[dict], label: str) -> dict:
         ks_recall=(50, 100, 200, 500, 2000, 5000),
         eps=1e-5,
     )
-    summary = {"batch": label, **summary}
-    return summary
+    return {"batch": label, **summary}
 
 
+# %%
+# define once, near the top of your RM3 section
+K_CHECK_SUBSET = 5_000
+bm25_eval_5k = pt.BatchRetrieve(index, wmodel="BM25", num_results=K_CHECK_SUBSET)  # e.g. 5000
+
+
+# %%
 # Build merged metrics table (includes train subset_summary)
 all_summaries = []
 
@@ -821,13 +833,22 @@ for fp in TEST_BATCHES:
     with open(fp, "r", encoding="utf-8") as f:
         data = json.load(f)
     batch_label = fp.stem  # e.g., 13B1_golden
-    all_summaries.append(evaluate_bm25_on_questions(data["questions"], batch_label))
+    all_summaries.append(evaluate_bm25_on_questions(data["questions"], batch_label, bm25_eval_5k))
 
 metrics_df = pd.DataFrame(all_summaries)
 metrics_df
 
+
 # %% [markdown]
 # # RM3
+
+# %%
+def apply_augment_text_for_codes(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["query"] = out["query"].astype(str).map(augment_text_for_codes)
+    return out
+
+
 
 # %%
 _PREFIX_PATTERNS = [
@@ -836,13 +857,14 @@ _PREFIX_PATTERNS = [
     r"^\s*what\s+was\s+",
     r"^\s*what\s+were\s+",
     r"^\s*what\s+does\s+",
-    r"^\s*which\s+",
-    r"^\s*when\s+",
+    r"^\s*which\s+(is|are)\s+",
+    r"^\s*when\s+(is|was)\s+",
     r"^\s*how\s+many\s+",
     r"^\s*list\s+",
     r"^\s*describe\s+",
     r"^\s*define\s+",
 ]
+
 
 def clean_seed_query(q: str) -> str:
     """Lightly strip common question prefixes to make RM3 seed retrieval cleaner."""
@@ -875,16 +897,23 @@ subset_topics_df_rm3[["qid", "query", "seed_query"]].head(6)
 
 
 # %%
-# Reuse baseline BM25 results (subset_res_raw) computed earlier
-# No need to rerun BM25
-subset_res_base = subset_res_raw.copy()
+# Reuse baseline BM25 results 
+K_MAX = 5_000
+bm25_base = pt.BatchRetrieve(index, wmodel="BM25", num_results=K_MAX)
+
+pipe_base = (
+    pt.apply.generic(lambda df: df.assign(query=df["query"].map(augment_text_for_codes)))
+    >> bm25_base
+)
+
+subset_res_base = pipe_base(subset_topics_df_trainset)
 
 print(f"Reusing baseline results shape: {subset_res_base.shape}")
 print(f"Unique queries: {subset_res_base['qid'].nunique()}")
 
 # %%
 # Baseline retriever (you likely already have this)
-bm25 = pt.BatchRetrieve(index, wmodel="BM25")
+bm25_final = pt.BatchRetrieve(index, wmodel="BM25", num_results=K_MAX)
 
 # RM3 query expansion.
 # fb_docs: how many top docs to look at for feedback
@@ -897,7 +926,7 @@ rm3 = pt.rewrite.RM3(
     fb_lambda=0.7
 )
 
-# We need to feed RM3 a dataframe column named "query".
+# We need to feed RM3 a dataframe column named "query" AND retrieval results with docno.
 # So: temporarily rename seed_query -> query for the feedback stage.
 def use_seed_query(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
@@ -908,16 +937,32 @@ def use_seed_query(df: pd.DataFrame) -> pd.DataFrame:
 def restore_raw_query(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     # After RM3, the expanded query is now in out["query"].
-    # We typically DON'T want to restore raw query; RM3 already mixed it via original_query_weight.
-    # But keep raw around for debugging.
+    # We typically DON'T want to restore raw query; RM3 already mixed it via fb_lambda.
     return out
 
-pipe_rm3 = (pt.apply.generic(use_seed_query) >> rm3 >> bm25 >> pt.apply.generic(restore_raw_query))
+# RM3 needs initial retrieval results. Pipeline: seed_query -> BM25 (for feedback) -> RM3 (expand) -> BM25 (final retrieval)
+bm25_for_feedback = pt.BatchRetrieve(index, wmodel="BM25", num_results=50)  # Only top docs for feedback
+
+pipe_rm3 = (
+    pt.apply.generic(use_seed_query)
+    >> pt.apply.generic(apply_augment_text_for_codes)
+    >> bm25_for_feedback
+    >> rm3
+    >> bm25_final
+)
+
 
 # %%
 # ---- RM3 run ----
-subset_res_rm3 = pipe_rm3(subset_topics_df_rm3)[ : K_MAX ]
+subset_res_rm3 = pipe_rm3(subset_topics_df_rm3)
 
+# %%
+print("Expected qids:", subset_topics_df_trainset["qid"].nunique())
+print("BASE qids:", subset_res_base["qid"].nunique(), "rows:", len(subset_res_base))
+print("RM3  qids:", subset_res_rm3["qid"].nunique(),  "rows:", len(subset_res_rm3))
+
+
+# %%
 # Convert results to {qid: [docno,...]}.
 # Adjust docno column name if yours differs (usually "docno").
 def results_to_run_map(res_df: pd.DataFrame, qid_col="qid", docno_col="docno") -> dict[str, list[str]]:
@@ -1018,7 +1063,7 @@ metrics_df_rm3
 # Add method column to distinguish baseline vs RM3
 # First get the baseline metrics (already computed in the earlier section)
 all_baseline_summaries = []
-all_baseline_summaries.append({"batch": "train_subset", **subset_summary})
+all_baseline_summaries.append({"batch": "train_subset", **subset_summary_base})
 
 # Evaluate baseline on test batches
 for fp in TEST_BATCHES:
@@ -1026,7 +1071,8 @@ for fp in TEST_BATCHES:
         data = json.load(f)
     batch_label = fp.stem
     print(f"Evaluating Baseline on {batch_label}...")
-    all_baseline_summaries.append(evaluate_bm25_on_questions(data["questions"], batch_label))
+    all_baseline_summaries.append(evaluate_bm25_on_questions(data["questions"], batch_label, bm25_eval_5k))
+
 
 metrics_df_baseline = pd.DataFrame(all_baseline_summaries)
 metrics_df_baseline["method"] = "BM25"
