@@ -1,0 +1,289 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+from pathlib import Path
+from typing import Dict, List, Tuple
+
+import pandas as pd
+import pyterrier as pt
+
+from retrieval_eval.common import (
+    BatchResult,
+    build_topics_and_gold,
+    collect_qids_from_questions,
+    evaluate_run,
+    load_questions,
+    run_df_to_run_map,
+    zero_recall_qids,
+)
+
+# ---------------------------
+# Query augmentation (same logic as your notebook)
+# ---------------------------
+CODE_RE = re.compile(r"\b([A-Za-z]{0,6})\s*[-_:/]?\s*(\d{2,})\b")
+
+
+def chunk_digits(d: str, k: int = 4) -> list[str]:
+    return [d[i : i + k] for i in range(0, len(d), k)]
+
+
+def augment_text_for_codes(text: str) -> str:
+    if text is None:
+        return ""
+    text = str(text)
+    extras = []
+    for pfx, digits in CODE_RE.findall(text):
+        p = (pfx or "").lower()
+        if p:
+            extras.append(p)
+
+        if len(digits) >= 5:
+            chunks = chunk_digits(digits, 4)
+            extras.extend(chunks)
+            if p:
+                extras.append(p + " " + " ".join(chunks))
+        else:
+            extras.append(digits)
+            if p:
+                extras.append(f"{p}{digits}")
+                extras.append(f"{p}-{digits}")
+                extras.append(f"{p} {digits}")
+
+    if extras:
+        return text + " " + " ".join(extras)
+    return text
+
+
+def apply_augment_text_for_codes(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["query"] = out["query"].map(augment_text_for_codes)
+    return out
+
+
+# ---------------------------
+# RM3 seed cleaning (same idea as your notebook)
+# ---------------------------
+_PREFIX_PATTERNS = [
+    r"^\s*what\s+is\s+",
+    r"^\s*what\s+are\s+",
+    r"^\s*what\s+was\s+",
+    r"^\s*what\s+were\s+",
+    r"^\s*what\s+does\s+",
+    r"^\s*which\s+(is|are)\s+",
+    r"^\s*when\s+(is|was)\s+",
+    r"^\s*how\s+many\s+",
+    r"^\s*list\s+",
+    r"^\s*describe\s+",
+    r"^\s*define\s+",
+]
+
+
+def clean_seed_query(q: str) -> str:
+    if q is None:
+        return ""
+    s = str(q).strip()
+    s = re.sub(r"\s+", " ", s).rstrip(" ?")
+
+    low = s.lower()
+    for pat in _PREFIX_PATTERNS:
+        m = re.match(pat, low)
+        if m:
+            s = s[m.end() :].strip()
+            break
+
+    if not s:
+        s = re.sub(r"[?]+$", "", str(q)).strip()
+    return s
+
+
+def use_seed_query(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["query_raw"] = out["query"]
+    out["query"] = out["seed_query"]
+    return out
+
+
+# ---------------------------
+# Retrieval & evaluation helpers
+# ---------------------------
+def cut_to_k(res: pd.DataFrame, k: int) -> pd.DataFrame:
+    # Ensure rank exists and cut
+    if "rank" not in res.columns:
+        res = res.sort_values(["qid", "score"], ascending=[True, False])
+        res["rank"] = res.groupby("qid").cumcount() + 1
+    return res[res["rank"] <= k].copy()
+
+
+def eval_one(
+    method: str,
+    batch_name: str,
+    topics_df: pd.DataFrame,
+    gold_map: Dict[str, List[str]],
+    pipe: pt.Transformer,
+    k_eval: int,
+    ks_recall=(50, 100, 200, 500, 2000, 5000),
+    eps: float = 1e-5,
+) -> Tuple[BatchResult, pd.DataFrame, Dict[str, List[str]]]:
+    res = pipe(topics_df)
+    res = cut_to_k(res, k_eval)
+    run_map = run_df_to_run_map(res, qid_col="qid", docno_col="docno")
+    summary, perq = evaluate_run(gold_map, run_map, ks_recall=ks_recall, eps=eps)
+    br = BatchResult(method=method, batch=batch_name, n_queries=len(topics_df), metrics=summary)
+    return br, perq, run_map
+
+
+def ensure_pt(java_mem: str | None = None):
+    if not pt.java.started():
+        opts = []
+        if java_mem:
+            opts.append(f"-Xmx{java_mem}")
+        pt.java.init(jvm_opts=opts if opts else None)
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Evaluate BM25 and BM25+RM3 on BioASQ train subset + 13B test batches.")
+    ap.add_argument("--index_path", required=True, help="Path to Terrier index directory")
+    ap.add_argument("--train_json", required=True, help="Path to training subset json (e.g. training14b_10pct_sample.json)")
+    ap.add_argument("--test_dir", required=True, help="Directory containing 13B1_golden.json .. 13B4_golden.json")
+    ap.add_argument("--out_dir", required=True, help="Output directory")
+    ap.add_argument("--threads", type=int, default=4, help="Terrier retrieval threads")
+    ap.add_argument("--java_mem", default=None, help='Optional JVM heap, e.g. "8g"')
+
+    ap.add_argument("--k_eval", type=int, default=5000, help="Retrieve/evaluate top K")
+    ap.add_argument("--k_feedback", type=int, default=50, help="BM25 feedback pool for RM3")
+    ap.add_argument("--rm3_fb_docs", type=int, default=20)
+    ap.add_argument("--rm3_fb_terms", type=int, default=30)
+    ap.add_argument("--rm3_lambda", type=float, default=0.6)
+
+    ap.add_argument("--no_exclude_test_qids", action="store_true", help="Do not remove test qids from train set")
+    ap.add_argument("--save_runs", action="store_true", help="Save run TSVs (qid docno rank score)")
+    ap.add_argument("--save_per_query", action="store_true", help="Save per-query metrics CSV")
+    ap.add_argument("--save_zero_recall", action="store_true", help="Save zero-recall reports (default off)")
+    args = ap.parse_args()
+
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "runs").mkdir(exist_ok=True)
+    (out_dir / "per_query").mkdir(exist_ok=True)
+    (out_dir / "zero_recall").mkdir(exist_ok=True)
+
+    ensure_pt(java_mem=args.java_mem)
+
+    index_ref = pt.IndexRef.of(args.index_path)
+
+    # Build pipelines
+    bm25_final = pt.BatchRetrieve(index_ref, wmodel="BM25", num_results=args.k_eval, threads=args.threads)
+    bm25_feedback = pt.BatchRetrieve(index_ref, wmodel="BM25", num_results=args.k_feedback, threads=args.threads)
+
+    pipe_bm25 = pt.apply.generic(apply_augment_text_for_codes) >> bm25_final
+
+    rm3 = pt.rewrite.RM3(
+        index_ref,
+        fb_docs=args.rm3_fb_docs,
+        fb_terms=args.rm3_fb_terms,
+        fb_lambda=args.rm3_lambda,
+    )
+
+    pipe_bm25_rm3 = (
+        pt.apply.generic(lambda df: df.assign(seed_query=df["query"].map(clean_seed_query)))
+        >> pt.apply.generic(use_seed_query)
+        >> pt.apply.generic(apply_augment_text_for_codes)  # important: same code augmentation before feedback
+        >> bm25_feedback
+        >> rm3
+        >> bm25_final
+    )
+
+    # Load datasets
+    test_dir = Path(args.test_dir)
+    test_files = [
+        test_dir / "13B1_golden.json",
+        test_dir / "13B2_golden.json",
+        test_dir / "13B3_golden.json",
+        test_dir / "13B4_golden.json",
+    ]
+    for fp in test_files:
+        if not fp.exists():
+            raise FileNotFoundError(f"Missing test batch: {fp}")
+
+    train_questions = load_questions(Path(args.train_json))
+
+    # Collect test qids for exclusion
+    test_qids = set()
+    test_batches: List[Tuple[str, List[dict]]] = []
+    for fp in test_files:
+        qs = load_questions(fp)
+        test_batches.append((fp.stem, qs))
+        test_qids |= collect_qids_from_questions(qs)
+
+    # Build train topics/gold and optionally exclude test qids
+    train_topics, train_gold = build_topics_and_gold(train_questions)
+    if not args.no_exclude_test_qids:
+        mask = ~train_topics["qid"].astype(str).isin(test_qids)
+        train_topics = train_topics.loc[mask].reset_index(drop=True)
+        # filter gold accordingly
+        keep = set(train_topics["qid"].astype(str).tolist())
+        train_gold = {qid: pmids for qid, pmids in train_gold.items() if qid in keep}
+
+    # Evaluate
+    all_rows = []
+    config = vars(args)
+    config["index_path"] = str(args.index_path)
+    (out_dir / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
+
+    def maybe_save(method: str, batch: str, res_run: Dict[str, List[str]], res_df: pd.DataFrame, perq: pd.DataFrame, gold: Dict[str, List[str]]):
+        if args.save_runs:
+            run_path = out_dir / "runs" / f"{method}__{batch}__top{args.k_eval}.tsv"
+            # ensure rank exists
+            if "rank" not in res_df.columns:
+                tmp = res_df.sort_values(["qid", "score"], ascending=[True, False]).copy()
+                tmp["rank"] = tmp.groupby("qid").cumcount() + 1
+            else:
+                tmp = res_df
+            tmp = tmp.loc[tmp["rank"] <= args.k_eval, ["qid", "docno", "rank", "score"]]
+            tmp.to_csv(run_path, sep="\t", index=False)
+
+        if args.save_per_query:
+            perq_path = out_dir / "per_query" / f"{method}__{batch}__perq.csv"
+            perq.to_csv(perq_path, index=False)
+
+        if args.save_zero_recall:
+            zr = zero_recall_qids(gold, res_run, k=args.k_eval)
+            zr_path = out_dir / "zero_recall" / f"{method}__{batch}__zero_recall_at{args.k_eval}.txt"
+            with open(zr_path, "w", encoding="utf-8") as f:
+                f.write(f"ZERO-RECALL QUESTIONS (n={len(zr)}) at {args.k_eval}\n\n")
+                for qid in zr:
+                    f.write(qid + "\n")
+
+    # Train subset
+    for method, pipe in [("BM25", pipe_bm25), ("BM25_RM3", pipe_bm25_rm3)]:
+        br, perq, run_map = eval_one(method, "train_subset", train_topics, train_gold, pipe, args.k_eval)
+        all_rows.append(br.to_row())
+
+        # For saving runs/perq/zero_recall we need the raw df; rerun pipe once (cheap relative to eval) or capture above.
+        # We'll rerun once but keep it simple.
+        res_df = cut_to_k(pipe(train_topics), args.k_eval)
+        maybe_save(method, "train_subset", run_map, res_df, perq, train_gold)
+
+    # Test batches
+    for batch_name, questions in test_batches:
+        topics, gold = build_topics_and_gold(questions)
+        for method, pipe in [("BM25", pipe_bm25), ("BM25_RM3", pipe_bm25_rm3)]:
+            br, perq, run_map = eval_one(method, batch_name, topics, gold, pipe, args.k_eval)
+            all_rows.append(br.to_row())
+
+            res_df = cut_to_k(pipe(topics), args.k_eval)
+            maybe_save(method, batch_name, run_map, res_df, perq, gold)
+
+    metrics_df = pd.DataFrame(all_rows)
+    metrics_path = out_dir / "metrics.csv"
+    metrics_df.to_csv(metrics_path, index=False)
+    print(metrics_df)
+    print(f"\nSaved metrics: {metrics_path}")
+
+
+if __name__ == "__main__":
+    main()
