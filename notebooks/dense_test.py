@@ -1,6 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
@@ -444,8 +445,12 @@ def dense_retrieve_topics(
     
     Args:
         ef: efSearch parameter for HNSW (higher = better recall but slower).
-            If None, uses the index's current ef setting.
+            If provided, sets the index's ef before querying.
     """
+    # Set ef on the index if provided
+    if ef is not None:
+        index.set_ef(ef)
+    
     qids = topics_df["qid"].astype(str).tolist()
     queries = topics_df["query"].astype(str).tolist()
 
@@ -464,11 +469,8 @@ def dense_retrieve_topics(
             show_progress_bar=False,
         ).astype(np.float32)
 
-        # Pass ef explicitly to knn_query if provided
-        if ef is not None:
-            labels, dists = index.knn_query(q_emb, k=topk, ef=ef)
-        else:
-            labels, dists = index.knn_query(q_emb, k=topk)
+        # Query with the index's current ef setting
+        labels, dists = index.knn_query(q_emb, k=topk)
 
         # Convert to rows
         for qi, qid in enumerate(batch_qids):

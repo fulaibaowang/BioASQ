@@ -1,4 +1,4 @@
 {
 	"jupytext.formats": "ipynb,py:percent",
-    "files.readonlyInclude": ["notebooks/**/*.py"]
+	"files.readonlyInclude": []
 }
