@@ -445,11 +445,17 @@ def dense_retrieve_topics(
     
     Args:
         ef: efSearch parameter for HNSW (higher = better recall but slower).
-            If provided, sets the index's ef before querying.
+            Note: hnswlib effectively requires efSearch >= k (topk). If ef < topk,
+            it will behave like ef=topk, so you won't see differences.
     """
     # Set ef on the index if provided
     if ef is not None:
-        index.set_ef(ef)
+        ef = int(ef)
+        topk_i = int(topk)
+        eff_ef = max(ef, topk_i)
+        if eff_ef != ef:
+            print(f"[warn] efSearch={ef} < k={topk_i}; clamping efSearch -> {eff_ef}")
+        index.set_ef(eff_ef)
     
     qids = topics_df["qid"].astype(str).tolist()
     queries = topics_df["query"].astype(str).tolist()
@@ -535,9 +541,12 @@ metrics_df_dense
 
 # %%
 # Try higher efSearch for better recall (slower queries)
-for ef in [50, 100, 200, 400]:
+print(f"K_QUERY={K_QUERY}. For hnswlib, efSearch should be >= k to have any effect.")
+
+# These values are meaningful when k=5000
+for ef in [K_QUERY, 2 * K_QUERY, 4 * K_QUERY]:
     print("\n== efSearch =", ef, "==")
     s = evaluate_dense_on_questions(train_questions, f"train_subset_ef{ef}", topk=K_QUERY, ef=ef)
-    print({k: s[k] for k in ["MAP@10","MRR@10","MeanR@200","MeanR@500","MeanR@5000"]})
+    print({k: s[k] for k in ["MAP@10", "MRR@10", "MeanR@200", "MeanR@500", "MeanR@5000"]})
 
 # %%
