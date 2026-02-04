@@ -5,11 +5,15 @@ import argparse
 import json
 import os
 import re
+import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
 import pandas as pd
 import pyterrier as pt
+
+# Add parent directory to path so we can import retrieval_eval
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from retrieval_eval.common import (
     BatchResult,
@@ -138,10 +142,10 @@ def eval_one(
 
 def ensure_pt(java_mem: str | None = None):
     if not pt.java.started():
-        opts = []
+        jvm_opts = []
         if java_mem:
-            opts.append(f"-Xmx{java_mem}")
-        pt.java.init(jvm_opts=opts if opts else None)
+            jvm_opts.append(f"-Xmx{java_mem}")
+        pt.java.init() if not jvm_opts else pt.init(jvm_args=jvm_opts)
 
 
 def main():

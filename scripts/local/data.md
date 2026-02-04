@@ -20,3 +20,14 @@ python data/build_dense_hnsw_index_from_jsonl_shards.py \
   --device "mps" \
   --batch_size 64 \
   --dedup_pmids
+
+python retrieval/eval_bm25_rm3_bioasq.py \
+  --index_path "output/pubmed_bm25_2026_subset_index" \
+  --train_json "../example/training14b_10pct_sample.json" \
+  --test_dir "../Task13BGoldenEnriched" \
+  --out_dir "../output/eval_bm25_rm3" \
+  --threads 4 \
+  --k_eval 5000 \
+  --k_feedback 50 \
+  --rm3_fb_docs 20 --rm3_fb_terms 30 --rm3_lambda 0.6 \
+  --save_runs --save_per_query --save_zero_recall
