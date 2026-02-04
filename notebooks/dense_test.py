@@ -17,8 +17,9 @@ import os
 import re
 import numpy as np
 import pandas as pd
-import orjson
+import json, math
 from tqdm import tqdm
+from pathlib import Path
 
 from sentence_transformers import SentenceTransformer
 import hnswlib
@@ -228,5 +229,306 @@ print("emb ok:", emb.shape)
 
 
 # %%
+# run data/build_dense_hnsw_index_from_jsonl_shards.py to build vector database (10% data first)
+
+# %%
+# test on subset
+
+# %%
+import torch
+
+if torch.cuda.is_available():
+    device = "cuda"
+elif getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+    device = "mps"
+else:
+    device = "cpu"
+
+
+# %%
+# ---------- Paths ----------
+SUBSET_PATH = Path("../example/training14b_10pct_sample.json")
+
+TEST_DIR = Path("../Task13BGoldenEnriched")
+TEST_BATCHES = [
+    TEST_DIR / "13B1_golden.json",
+    TEST_DIR / "13B2_golden.json",
+    TEST_DIR / "13B3_golden.json",
+    TEST_DIR / "13B4_golden.json",
+]
+
+# Dense index output dir from your build script
+DENSE_INDEX_DIR = Path("../tmp/toy_hnsw_medembed")  # <-- change to yours
+HNSW_INDEX_PATH = DENSE_INDEX_DIR / "hnsw_index.bin"
+ROWID_MAP_PATH  = DENSE_INDEX_DIR / "rowid_to_pmid.tsv"
+META_PATH       = DENSE_INDEX_DIR / "meta.json"
+
+# ---------- Eval settings ----------
+K_CHECK_SUBSET = 5000   # evaluate recall up to 5000
+K_QUERY = 5000          # how many hits to retrieve per query (match eval)
+
+
+# %%
+# Load metadata if available (recommended)
+meta = None
+if META_PATH.exists():
+    meta = json.loads(META_PATH.read_text(encoding="utf-8"))
+    print("Loaded meta:", {k: meta[k] for k in ["model_name","dim","max_seq_length","hnsw_space","hnsw_ef_search","hnsw_M","hnsw_ef_construction"] if k in meta})
+
+# Model name: prefer meta, otherwise set manually
+model_name = meta["model_name"] if meta and "model_name" in meta else "abhinand/MedEmbed-small-v0.1"
+
+model = SentenceTransformer(model_name, device=device)
+# Ensure truncation is consistent with how you built doc embeddings
+if meta and "max_seq_length" in meta:
+    model.max_seq_length = int(meta["max_seq_length"])
+else:
+    model.max_seq_length = 512
+
+print("Model:", model_name, "device:", device, "max_seq_length:", model.max_seq_length)
+
+# Load rowid -> pmid mapping
+rowid_to_pmid = []
+with open(ROWID_MAP_PATH, "r", encoding="utf-8") as f:
+    for line in f:
+        line = line.rstrip("\n")
+        if not line:
+            continue
+        rid, pmid = line.split("\t", 1)
+        rowid_to_pmid.append(pmid)
+
+n_docs = len(rowid_to_pmid)
+print("Docs in dense index:", n_docs)
+
+# Load HNSW index
+# Need dim + space. Use meta if possible. Otherwise probe dim from model and use cosine.
+dim = int(meta["dim"]) if meta and "dim" in meta else int(model.get_sentence_embedding_dimension())
+space = meta["hnsw_space"] if meta and "hnsw_space" in meta else "cosine"
+
+index = hnswlib.Index(space=space, dim=dim)
+index.load_index(str(HNSW_INDEX_PATH), max_elements=n_docs)
+
+# Set efSearch (query-time). Can override meta.
+ef_search = int(meta["hnsw_ef_search"]) if meta and "hnsw_ef_search" in meta else 100
+index.set_ef(ef_search)
+
+print("HNSW loaded:", HNSW_INDEX_PATH.name, "space:", space, "dim:", dim, "efSearch:", ef_search)
+
+
+# %%
+def normalize_pmid(x) -> str:
+    # BioASQ sometimes stores document URLs; sometimes raw pmid strings
+    if x is None:
+        return ""
+    s = str(x).strip()
+    # common BioASQ format: "http://www.ncbi.nlm.nih.gov/pubmed/12345"
+    m = re.search(r"/pubmed/(\d+)", s)
+    if m:
+        return m.group(1)
+    # or just digits
+    m = re.fullmatch(r"\d+", s)
+    if m:
+        return s
+    # fallback: return as-is
+    return s
+
+def build_topics_and_gold(questions: list[dict]) -> tuple[pd.DataFrame, dict[str, list[str]]]:
+    rows = []
+    gold_map = {}
+    for i, q in enumerate(questions):
+        qid = q.get("id") or q.get("qid") or str(i)
+        qid = str(qid)
+        query = q.get("body") or q.get("query") or q.get("question") or ""
+        query = str(query).strip()
+
+        # BioASQ "documents" are typically a list of URLs; normalize to PMIDs
+        docs = q.get("documents") or []
+        pmids = [normalize_pmid(d) for d in docs]
+        pmids = [p for p in pmids if p]  # drop empties
+
+        rows.append({"qid": qid, "query": query})
+        gold_map[qid] = pmids
+
+    topics_df = pd.DataFrame(rows)
+    return topics_df, gold_map
+
+
+
+# %%
+def ap_bioasq(gold: set[str], ranked: list[str], k: int = 10) -> float:
+    """Average precision @k."""
+    if not gold:
+        return 0.0
+    hit = 0
+    s = 0.0
+    for i, doc in enumerate(ranked[:k], start=1):
+        if doc in gold:
+            hit += 1
+            s += hit / i
+    return s / len(gold)
+
+def rr_at_k(gold: set[str], ranked: list[str], k: int = 10) -> float:
+    for i, doc in enumerate(ranked[:k], start=1):
+        if doc in gold:
+            return 1.0 / i
+    return 0.0
+
+def success_at_k(gold: set[str], ranked: list[str], k: int = 10) -> float:
+    return 1.0 if any(doc in gold for doc in ranked[:k]) else 0.0
+
+def recall_at_k(gold: set[str], ranked: list[str], k: int) -> float:
+    if not gold:
+        return 0.0
+    return len(gold.intersection(ranked[:k])) / len(gold)
+
+def evaluate_run(
+    gold_map: dict[str, list[str]],
+    run_map: dict[str, list[str]],
+    ks_recall=(50, 100, 200, 500, 2000, 5000),
+    eps: float = 1e-8,
+) -> tuple[dict, pd.DataFrame]:
+    qids = list(gold_map.keys())
+    perq = []
+
+    ap10s, rr10s, succ10s = [], [], []
+    recalls = {k: [] for k in ks_recall}
+
+    for qid in qids:
+        gold = set(map(str, gold_map.get(qid, [])))
+        ranked = list(map(str, run_map.get(qid, [])))
+
+        ap10 = ap_bioasq(gold, ranked, k=10)
+        rr10 = rr_at_k(gold, ranked, k=10)
+        succ10 = success_at_k(gold, ranked, k=10)
+
+        ap10s.append(ap10)
+        rr10s.append(rr10)
+        succ10s.append(succ10)
+
+        row = {"qid": qid, "AP@10": ap10, "RR@10": rr10, "Success@10": succ10}
+        for k in ks_recall:
+            r = recall_at_k(gold, ranked, k=k)
+            recalls[k].append(r)
+            row[f"R@{k}"] = r
+        perq.append(row)
+
+    # GMAP@10 uses geometric mean of AP@10 with epsilon smoothing (BioASQ style)
+    gmap10 = math.exp(sum(math.log(max(eps, x)) for x in ap10s) / max(1, len(ap10s)))
+
+    summary = {
+        "MAP@10": float(np.mean(ap10s)) if ap10s else 0.0,
+        "GMAP@10": float(gmap10) if ap10s else 0.0,
+        "MRR@10": float(np.mean(rr10s)) if rr10s else 0.0,
+        "Success@10": float(np.mean(succ10s)) if succ10s else 0.0,
+    }
+    for k in ks_recall:
+        summary[f"MeanR@{k}"] = float(np.mean(recalls[k])) if recalls[k] else 0.0
+
+    return summary, pd.DataFrame(perq)
+
+
+
+# %%
+def dense_retrieve_topics(
+    topics_df: pd.DataFrame,
+    topk: int,
+    batch_size: int = 256,
+) -> pd.DataFrame:
+    """
+    Returns a DataFrame with columns: qid, docno, score, rank
+    docno is PMID.
+    score is similarity-ish (we convert distance -> similarity for cosine)
+    """
+    qids = topics_df["qid"].astype(str).tolist()
+    queries = topics_df["query"].astype(str).tolist()
+
+    out_rows = []
+
+    for i in tqdm(range(0, len(queries), batch_size), desc="Dense retrieve", unit="batch"):
+        batch_q = queries[i:i+batch_size]
+        batch_qids = qids[i:i+batch_size]
+
+        # Encode batch queries
+        q_emb = model.encode(
+            batch_q,
+            batch_size=min(64, batch_size),
+            convert_to_numpy=True,
+            normalize_embeddings=True,  # must match how docs were embedded if using cosine
+            show_progress_bar=False,
+        ).astype(np.float32)
+
+        labels, dists = index.knn_query(q_emb, k=topk)
+
+        # Convert to rows
+        for qi, qid in enumerate(batch_qids):
+            # hnswlib cosine returns distance (smaller is better).
+            # We convert to a "similarity" score = 1 - distance for convenience.
+            for rank, (rid, dist) in enumerate(zip(labels[qi], dists[qi]), start=1):
+                pmid = rowid_to_pmid[int(rid)]
+                score = 1.0 - float(dist)
+                out_rows.append((qid, pmid, score, rank))
+
+    res = pd.DataFrame(out_rows, columns=["qid", "docno", "score", "rank"])
+    return res
+
+
+
+# %%
+def results_df_to_run_map(res_df: pd.DataFrame) -> dict[str, list[str]]:
+    # Ensure sorted by rank (it already is), then build run map
+    run_map = {}
+    for qid, grp in res_df.groupby("qid", sort=False):
+        run_map[str(qid)] = grp.sort_values("rank")["docno"].astype(str).tolist()
+    return run_map
+
+def evaluate_dense_on_questions(questions: list[dict], label: str, topk: int = K_QUERY) -> dict:
+    topics_df, gold_map = build_topics_and_gold(questions)
+
+    res = dense_retrieve_topics(topics_df, topk=topk, batch_size=256)
+
+    # cut to K_CHECK_SUBSET for evaluation (should already be == topk)
+    res = res[res["rank"] <= K_CHECK_SUBSET].copy()
+
+    run_map = results_df_to_run_map(res)
+    summary, _ = evaluate_run(
+        gold_map,
+        run_map,
+        ks_recall=(50, 100, 200, 500, 2000, 5000),
+        eps=1e-5,
+    )
+    return {"method": "Dense", "batch": label, **summary}
+
+
+
+# %%
+# ---- Run evaluations ----
+all_dense_summaries = []
+
+# Train subset
+train_data = json.loads(SUBSET_PATH.read_text(encoding="utf-8"))
+train_questions = train_data["questions"]
+print("Train questions:", len(train_questions))
+
+all_dense_summaries.append(evaluate_dense_on_questions(train_questions, "train_subset", topk=K_QUERY))
+
+# Test batches
+for fp in TEST_BATCHES:
+    data = json.loads(fp.read_text(encoding="utf-8"))
+    label = fp.stem
+    print("Test batch:", label, "questions:", len(data["questions"]))
+    all_dense_summaries.append(evaluate_dense_on_questions(data["questions"], label, topk=K_QUERY))
+
+metrics_df_dense = pd.DataFrame(all_dense_summaries)
+metrics_df_dense
+
+
+# %%
+# Try higher efSearch for better recall (slower queries)
+for ef in [50, 100, 200, 400]:
+    index.set_ef(ef)
+    print("\n== efSearch =", ef, "==")
+    s = evaluate_dense_on_questions(train_questions, f"train_subset_ef{ef}", topk=K_QUERY)
+    print({k: s[k] for k in ["MAP@10","MRR@10","MeanR@200","MeanR@500","MeanR@5000"]})
+
 
 # %%

@@ -1,5 +1,5 @@
 cd /shared/home/yun.wang/biolab/yun
-srun -p dev --container-image=fulaibaowang/bioasq:28.01.26 --container-save=./bioasq_28.01.26.sqfs
+srun -p dev --container-image=fulaibaowang/bioasq:28.01.26 --container-save=./bioasq_28.01.26.sqfs true
 
 # parse xlm and build bm25
 cd ~/BioASQ
@@ -19,7 +19,7 @@ python data/parse_pubmed_local.py \
 
 python data/build_bm25_index_from_jsonl_shards.py \
   --jsonl_glob "/pubmed/jsonl_2026/*.jsonl" \
-  --index_path "/pubmed/pubmed_bm26_index" \
+  --index_path "/pubmed/pubmed_bm25_2026_index" \
   --threads 4 \
   --overwrite
 
@@ -37,9 +37,41 @@ srun -p dev --time=12:00:00 -c 4 \
 python data/build_bm25_index_from_jsonl_shards.py   --jsonl_glob "/work/output/subset_pubmed.jsonl"   --index_path "/work/output/pubmed_bm25_2026_subset_index"   --threads 4   --overwrite
 
 # dense
+cd /shared/home/yun.wang/biolab/yun
+srun -p dev --container-image=fulaibaowang/bioasq:04.02.26 --container-save=./bioasq_04.02.26.sqfs  true
+
 srun -p dev --time=12:00:00 --gres=gpu:L4:1 -c 4 --mem=64G\
-  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_28.01.26.sqfs \
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs \
   --container-mount-home \
   --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
   --container-workdir /work \
   --pty bash
+
+python data/build_dense_hnsw_index_from_jsonl_shards.py \
+  --jsonl_glob "/work/output/subset_pubmed.jsonl" \
+  --out_dir "/pubmed/pubmed_medembed_2026_subset_index" \
+  --device "cuda" \
+  --batch_size 256 \
+  --M 32 \
+  --ef_construction 200 \
+  --ef_search 100 \
+  --dedup_pmids
+
+sbatch sbatch_dense_pubmedbert.sh
+
+srun -p dev --time=12:00:00 --gres=gpu:A100_80GB:1 -c 4 --mem=64G\
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs \
+  --container-mount-home \
+  --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
+  --container-workdir /work \
+  --pty bash
+
+python data/build_dense_hnsw_index_from_jsonl_shards.py \
+  --jsonl_glob "/pubmed/jsonl_2026/*.jsonl" \
+  --out_dir "/pubmed/pubmed_medembed_2026_index" \
+  --device "cuda" \
+  --batch_size 512 \
+  --M 32 \
+  --ef_construction 200 \
+  --ef_search 100 \
+  --dedup_pmids
