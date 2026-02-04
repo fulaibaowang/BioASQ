@@ -15,6 +15,7 @@ import pandas as pd
 # BioASQ parsing
 # ---------------------------
 _PUBMED_URL_RE = re.compile(r"/pubmed/(\d+)", re.IGNORECASE)
+_PUBMED_NCBI_URL_RE = re.compile(r"pubmed\.ncbi\.nlm\.nih\.gov/(\d+)", re.IGNORECASE)
 _DIGITS_RE = re.compile(r"^\d+$")
 
 
@@ -26,6 +27,9 @@ def normalize_pmid(x) -> str:
     if not s:
         return ""
     m = _PUBMED_URL_RE.search(s)
+    if m:
+        return m.group(1)
+    m = _PUBMED_NCBI_URL_RE.search(s)
     if m:
         return m.group(1)
     if _DIGITS_RE.fullmatch(s):
@@ -69,15 +73,24 @@ def collect_qids_from_questions(questions: List[dict]) -> set[str]:
 # Evaluation (BioASQ-style)
 # ---------------------------
 def ap_at_k(gold: set[str], ranked: List[str], k: int = 10) -> float:
+    """
+    BioASQ-style AP@k:
+      AP@k = (1 / min(|gold|, k)) * sum_{i=1..k} P@i * rel(i)
+    """
     if not gold:
         return 0.0
+
+    denom = min(len(gold), k)
+    if denom == 0:
+        return 0.0
+
     hit = 0
     s = 0.0
     for i, doc in enumerate(ranked[:k], start=1):
         if doc in gold:
             hit += 1
             s += hit / i
-    return s / len(gold)
+    return s / denom
 
 
 def rr_at_k(gold: set[str], ranked: List[str], k: int = 10) -> float:

@@ -28,8 +28,7 @@ from retrieval_eval.common import (
 # ---------------------------
 # Query augmentation (same logic as your notebook)
 # ---------------------------
-CODE_RE = re.compile(r"\b([A-Za-z]{0,6})\s*[-_:/]?\s*(\d{2,})\b")
-
+CODE_RE = re.compile(r"\b([A-Za-z]{2,20})?[-–_:/\s]*([0-9]{5,})\b")
 
 def chunk_digits(d: str, k: int = 4) -> list[str]:
     return [d[i : i + k] for i in range(0, len(d), k)]
@@ -188,8 +187,8 @@ def main():
     index = pt.IndexFactory.of(str(index_path))
 
     # Build pipelines
-    bm25_final = pt.BatchRetrieve(index, wmodel="BM25", num_results=args.k_eval, threads=args.threads)
-    bm25_feedback = pt.BatchRetrieve(index, wmodel="BM25", num_results=args.k_feedback, threads=args.threads)
+    bm25_final = pt.terrier.Retriever(index, wmodel="BM25", num_results=args.k_eval)
+    bm25_feedback = pt.terrier.Retriever(index, wmodel="BM25", num_results=args.k_feedback)
 
     pipe_bm25 = pt.apply.generic(apply_augment_text_for_codes) >> bm25_final
 
