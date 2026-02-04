@@ -18,7 +18,7 @@ CONTAINER_IMG="/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs"
 WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
 
---jsonl_glob "/work/output/subset_pubmed.jsonl" \ # <-- EDIT
+JSONL_GLOB="/work/output/subset_pubmed.jsonl" # <-- EDIT
 OUT_DIR="/pubmed/pubmed_pubmedbert_2026_subset_index"    # <-- EDIT
 
 MODEL_NAME="NeuML/pubmedbert-base-embeddings"

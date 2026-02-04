@@ -4,3 +4,4 @@ tmp/
 **/.ipynb_checkpoints
 output/
 .env
+logs/
