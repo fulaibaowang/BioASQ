@@ -177,16 +177,24 @@ def main():
 
     ensure_pt(java_mem=args.java_mem)
 
-    index_ref = pt.IndexRef.of(args.index_path)
+    # Load index - handle both directory path and properties file path
+    index_path = Path(args.index_path).resolve()  # Convert to absolute path
+    if index_path.is_dir():
+        index_path = index_path / "data.properties"
+    
+    if not index_path.exists():
+        raise FileNotFoundError(f"Index properties file not found: {index_path}")
+    
+    index = pt.IndexFactory.of(str(index_path))
 
     # Build pipelines
-    bm25_final = pt.BatchRetrieve(index_ref, wmodel="BM25", num_results=args.k_eval, threads=args.threads)
-    bm25_feedback = pt.BatchRetrieve(index_ref, wmodel="BM25", num_results=args.k_feedback, threads=args.threads)
+    bm25_final = pt.BatchRetrieve(index, wmodel="BM25", num_results=args.k_eval, threads=args.threads)
+    bm25_feedback = pt.BatchRetrieve(index, wmodel="BM25", num_results=args.k_feedback, threads=args.threads)
 
     pipe_bm25 = pt.apply.generic(apply_augment_text_for_codes) >> bm25_final
 
     rm3 = pt.rewrite.RM3(
-        index_ref,
+        index,
         fb_docs=args.rm3_fb_docs,
         fb_terms=args.rm3_fb_terms,
         fb_lambda=args.rm3_lambda,
@@ -202,7 +210,7 @@ def main():
     )
 
     # Load datasets
-    test_dir = Path(args.test_dir)
+    test_dir = Path(args.test_dir).resolve()
     test_files = [
         test_dir / "13B1_golden.json",
         test_dir / "13B2_golden.json",
@@ -213,7 +221,7 @@ def main():
         if not fp.exists():
             raise FileNotFoundError(f"Missing test batch: {fp}")
 
-    train_questions = load_questions(Path(args.train_json))
+    train_questions = load_questions(Path(args.train_json).resolve())
 
     # Collect test qids for exclusion
     test_qids = set()
