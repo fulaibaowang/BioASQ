@@ -1,7 +1,7 @@
 cd /shared/home/yun.wang/biolab/yun
 srun -p dev --container-image=fulaibaowang/bioasq:28.01.26 --container-save=./bioasq_28.01.26.sqfs
 
-
+# parse xlm and build bm25
 cd ~/BioASQ
 srun -p dev --time=12:00:00 -c 4 \
   --container-image=/shared/home/yun.wang/biolab/yun/bioasq_28.01.26.sqfs \
@@ -35,3 +35,11 @@ srun -p dev --time=12:00:00 -c 4 \
   --pty bash
 
 python data/build_bm25_index_from_jsonl_shards.py   --jsonl_glob "/work/output/subset_pubmed.jsonl"   --index_path "/work/output/pubmed_bm25_2026_subset_index"   --threads 4   --overwrite
+
+# dense
+srun -p dev --time=12:00:00 --gres=gpu:L4:1 -c 4 --mem=64G\
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_28.01.26.sqfs \
+  --container-mount-home \
+  --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
+  --container-workdir /work \
+  --pty bash

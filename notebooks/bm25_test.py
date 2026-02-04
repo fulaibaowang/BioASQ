@@ -1231,3 +1231,143 @@ print("Params:", rm3_configs[best_config])
 # let us take Aggressive_20_30_0.6
 
 # %%
+# # Save cached runs (BM25 baseline + RM3 Aggressive) for hybrid
+#
+# Saves: qid, docno, score, rank (top-K per qid) as parquet
+# plus a small json metadata file per run.
+
+RUNS_DIR = Path("../tmp")
+RUNS_DIR.mkdir(parents=True, exist_ok=True)
+
+TOPK_SAVE = 5000  # adjust if you prefer 500/1000/2000 etc.
+
+def _normalize_rank_cut(res_df: pd.DataFrame, topk: int) -> pd.DataFrame:
+    df = res_df.copy()
+    df["qid"] = df["qid"].astype(str)
+    df["docno"] = df["docno"].astype(str)
+    df = df.sort_values(["qid", "score"], ascending=[True, False], kind="mergesort")
+    df["rank"] = df.groupby("qid", sort=False).cumcount() + 1
+    df = df[df["rank"] <= topk].copy()
+    return df[["qid", "docno", "score", "rank"]]
+
+def _save_run_df(run_df: pd.DataFrame, *, method: str, config: str, batch: str, topk: int) -> Path:
+    fname = f"{method}__{config}__{batch}__top{topk}"
+    out_parquet = RUNS_DIR / f"{fname}.parquet"
+    out_meta = RUNS_DIR / f"{fname}.meta.json"
+
+    run_df.to_parquet(out_parquet, index=False)
+
+    meta = {
+        "method": method,
+        "config": config,
+        "batch": batch,
+        "topk": topk,
+        "n_rows": int(len(run_df)),
+        "n_qids": int(run_df["qid"].nunique()),
+        "columns": list(run_df.columns),
+    }
+    out_meta.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+
+    print("Saved", out_parquet.name, "| qids:", meta["n_qids"], "rows:", meta["n_rows"])
+    return out_parquet
+
+print("Saving to:", RUNS_DIR.resolve())
+print("TOPK_SAVE =", TOPK_SAVE)
+
+# --- Baseline BM25 runner (topK, with your query augmentation) ---
+bm25_baseline_k = pt.BatchRetrieve(index, wmodel="BM25", num_results=TOPK_SAVE)
+
+def run_bm25_baseline_on_questions(questions: list[dict]) -> pd.DataFrame:
+    topics_df, _ = build_topics_and_gold(questions)
+    topics_df = topics_df.copy()
+    topics_df["query"] = topics_df["query"].astype(str).map(augment_text_for_codes)
+    return bm25_baseline_k(topics_df)
+
+# %%
+# --- RM3 Aggressive runner (topK) ---
+AGG_NAME = "Aggressive_20_30_0.6"
+AGG_PARAMS = {"fb_docs": 20, "fb_terms": 30, "fb_lambda": 0.6}
+
+bm25_feedback = pt.BatchRetrieve(index, wmodel="BM25", num_results=50)
+bm25_final_k = pt.BatchRetrieve(index, wmodel="BM25", num_results=TOPK_SAVE)
+rm3_agg = pt.rewrite.RM3(index, **AGG_PARAMS)
+
+pipe_rm3_agg = (
+    pt.apply.generic(use_seed_query)
+    >> pt.apply.generic(apply_augment_text_for_codes)
+    >> bm25_feedback
+    >> rm3_agg
+    >> bm25_final_k
+)
+
+def run_rm3_agg_on_questions(questions: list[dict]) -> pd.DataFrame:
+    topics_df, _ = build_topics_and_gold(questions)
+    topics_df = topics_df.copy()
+    topics_df["seed_query"] = topics_df["query"].map(clean_seed_query)
+    return pipe_rm3_agg(topics_df)
+
+# ---- Save train_subset runs ----
+# Baseline: reuse subset_res_base if present, else run fresh
+try:
+    res_base_train = subset_res_base
+    print("Using existing subset_res_base for baseline train_subset")
+except NameError:
+    print("subset_res_base not found; running baseline on train_subset...")
+    # build a "questions-like" input is unnecessary; just run on df you already have
+    topics_df = subset_topics_df_trainset.copy()
+    topics_df["query"] = topics_df["query"].astype(str).map(augment_text_for_codes)
+    res_base_train = bm25_baseline_k(topics_df)
+
+base_train_df = _normalize_rank_cut(res_base_train, TOPK_SAVE)
+_save_run_df(base_train_df, method="BM25", config="baseline", batch="train_subset", topk=TOPK_SAVE)
+
+# RM3 Aggressive: reuse if already computed, else run fresh
+try:
+    res_rm3_train = res_rm3_train  # if you already named it this way
+    print("Using existing res_rm3_train for RM3 train_subset")
+except NameError:
+    try:
+        res_rm3_train = subset_res_rm3  # some notebooks use this name
+        print("Using existing subset_res_rm3 for RM3 train_subset")
+    except NameError:
+        print("RM3 train run not found; running RM3 Aggressive on train_subset...")
+        res_rm3_train = pipe_rm3_agg(subset_topics_df_rm3)
+
+rm3_train_df = _normalize_rank_cut(res_rm3_train, TOPK_SAVE)
+_save_run_df(rm3_train_df, method="BM25+RM3", config=AGG_NAME, batch="train_subset", topk=TOPK_SAVE)
+
+# ---- Save test batch runs ----
+for fp in TEST_BATCHES:
+    with open(fp, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    batch = fp.stem
+    print("\nBatch:", batch)
+
+    # Baseline BM25
+    res_base = run_bm25_baseline_on_questions(data["questions"])
+    base_df = _normalize_rank_cut(res_base, TOPK_SAVE)
+    _save_run_df(base_df, method="BM25", config="baseline", batch=batch, topk=TOPK_SAVE)
+
+    # RM3 Aggressive
+    res_rm3 = run_rm3_agg_on_questions(data["questions"])
+    rm3_df = _normalize_rank_cut(res_rm3, TOPK_SAVE)
+    _save_run_df(rm3_df, method="BM25+RM3", config=AGG_NAME, batch=batch, topk=TOPK_SAVE)
+
+print("\nAll runs saved to:", RUNS_DIR.resolve())
+
+
+# %%
+
+# %%
+
+# %%
+df_ttt = pd.read_parquet("../tmp/BM25__baseline__13B1_golden__top5000.parquet")
+
+
+# %%
+df_ttt
+
+# %%
+415003/5000
+
+# %%
