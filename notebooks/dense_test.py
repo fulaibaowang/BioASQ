@@ -228,11 +228,13 @@ print("emb ok:", emb.shape)
 
 
 
-# %%
-# run data/build_dense_hnsw_index_from_jsonl_shards.py to build vector database (10% data first)
+# %% [markdown]
+# # run data/build_dense_hnsw_index_from_jsonl_shards.py to build vector database (10% data first)
+#
+# we first use abhinand/MedEmbed-small-v0.1
 
-# %%
-# test on subset
+# %% [markdown]
+# # test on subset
 
 # %%
 import torch
@@ -258,7 +260,7 @@ TEST_BATCHES = [
 ]
 
 # Dense index output dir from your build script
-DENSE_INDEX_DIR = Path("../tmp/toy_hnsw_medembed")  # <-- change to yours
+DENSE_INDEX_DIR = Path("/Users/yun/develop/pubmed_medembed_2026_subset_index")  # <-- change to yours
 HNSW_INDEX_PATH = DENSE_INDEX_DIR / "hnsw_index.bin"
 ROWID_MAP_PATH  = DENSE_INDEX_DIR / "rowid_to_pmid.tsv"
 META_PATH       = DENSE_INDEX_DIR / "meta.json"
@@ -433,11 +435,16 @@ def dense_retrieve_topics(
     topics_df: pd.DataFrame,
     topk: int,
     batch_size: int = 256,
+    ef: int = None,
 ) -> pd.DataFrame:
     """
     Returns a DataFrame with columns: qid, docno, score, rank
     docno is PMID.
     score is similarity-ish (we convert distance -> similarity for cosine)
+    
+    Args:
+        ef: efSearch parameter for HNSW (higher = better recall but slower).
+            If None, uses the index's current ef setting.
     """
     qids = topics_df["qid"].astype(str).tolist()
     queries = topics_df["query"].astype(str).tolist()
@@ -457,7 +464,11 @@ def dense_retrieve_topics(
             show_progress_bar=False,
         ).astype(np.float32)
 
-        labels, dists = index.knn_query(q_emb, k=topk)
+        # Pass ef explicitly to knn_query if provided
+        if ef is not None:
+            labels, dists = index.knn_query(q_emb, k=topk, ef=ef)
+        else:
+            labels, dists = index.knn_query(q_emb, k=topk)
 
         # Convert to rows
         for qi, qid in enumerate(batch_qids):
@@ -472,7 +483,6 @@ def dense_retrieve_topics(
     return res
 
 
-
 # %%
 def results_df_to_run_map(res_df: pd.DataFrame) -> dict[str, list[str]]:
     # Ensure sorted by rank (it already is), then build run map
@@ -481,10 +491,10 @@ def results_df_to_run_map(res_df: pd.DataFrame) -> dict[str, list[str]]:
         run_map[str(qid)] = grp.sort_values("rank")["docno"].astype(str).tolist()
     return run_map
 
-def evaluate_dense_on_questions(questions: list[dict], label: str, topk: int = K_QUERY) -> dict:
+def evaluate_dense_on_questions(questions: list[dict], label: str, topk: int = K_QUERY, ef: int = None) -> dict:
     topics_df, gold_map = build_topics_and_gold(questions)
 
-    res = dense_retrieve_topics(topics_df, topk=topk, batch_size=256)
+    res = dense_retrieve_topics(topics_df, topk=topk, batch_size=256, ef=ef)
 
     # cut to K_CHECK_SUBSET for evaluation (should already be == topk)
     res = res[res["rank"] <= K_CHECK_SUBSET].copy()
@@ -497,7 +507,6 @@ def evaluate_dense_on_questions(questions: list[dict], label: str, topk: int = K
         eps=1e-5,
     )
     return {"method": "Dense", "batch": label, **summary}
-
 
 
 # %%
@@ -525,10 +534,8 @@ metrics_df_dense
 # %%
 # Try higher efSearch for better recall (slower queries)
 for ef in [50, 100, 200, 400]:
-    index.set_ef(ef)
     print("\n== efSearch =", ef, "==")
-    s = evaluate_dense_on_questions(train_questions, f"train_subset_ef{ef}", topk=K_QUERY)
+    s = evaluate_dense_on_questions(train_questions, f"train_subset_ef{ef}", topk=K_QUERY, ef=ef)
     print({k: s[k] for k in ["MAP@10","MRR@10","MeanR@200","MeanR@500","MeanR@5000"]})
-
 
 # %%
