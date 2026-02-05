@@ -651,6 +651,69 @@ def evaluate_and_save_dense_on_questions(
     return {"method": "Dense", "batch": label, **summary}
 
 
+
 # %%
+def evaluate_and_save_dense_on_questions(
+    questions: list[dict],
+    label: str,
+    topk: int = K_QUERY,
+    ef: int | None = None,
+    save: bool = True,
+) -> dict:
+    """
+    Runs dense retrieval on questions, saves per-query results, evaluates, returns summary.
+    """
+    topics_df, gold_map = build_topics_and_gold(questions)
+
+    # dense retrieval (this returns the long-form results DF)
+    res_df = dense_retrieve_topics(topics_df, topk=topk, batch_size=256, ef=ef)
+
+    # Keep consistent with evaluation cutoff
+    res_df = res_df[res_df["rank"] <= K_CHECK_SUBSET].copy()
+
+    if save:
+        meta = {**dense_run_meta,
+                "split": label,
+                "n_queries": int(topics_df.shape[0]),
+                "ef_search_used": int(ef) if ef is not None else int(index.get_ef()),
+               }
+        save_dense_split(res_df, split=label, meta=meta, save_run_map=True)
+
+    run_map = results_df_to_run_map(res_df)
+    summary, _ = evaluate_run(
+        gold_map,
+        run_map,
+        ks_recall=(50, 100, 200, 500, 2000, 5000),
+        eps=1e-5,
+    )
+    return {"method": "Dense", "batch": label, **summary}
+
+
+
+# %%
+all_dense_summaries = []
+
+# Train subset
+train_data = json.loads(SUBSET_PATH.read_text(encoding="utf-8"))
+train_questions = train_data["questions"]
+print("Train questions:", len(train_questions))
+
+all_dense_summaries.append(
+    evaluate_and_save_dense_on_questions(train_questions, "train_subset", topk=K_QUERY, save=True)
+)
+
+# Test batches
+for fp in TEST_BATCHES:
+    data = json.loads(fp.read_text(encoding="utf-8"))
+    label = fp.stem
+    print("Test batch:", label, "questions:", len(data["questions"]))
+
+    all_dense_summaries.append(
+        evaluate_and_save_dense_on_questions(data["questions"], label, topk=K_QUERY, save=True)
+    )
+
+metrics_df_dense = pd.DataFrame(all_dense_summaries)
+metrics_df_dense
+
 
 # %%
