@@ -26,10 +26,10 @@ from tqdm import tqdm
 
 # %%
 # -------- paths --------
-BM25_ROOT = Path("../eval_bm25_rm3")
+BM25_ROOT = Path("../output/eval_bm25_rm3")
 BM25_RUNS_DIR = BM25_ROOT / "runs"
 
-DENSE_ROOT = Path("../eval_dense_MedEmbed")
+DENSE_ROOT = Path("../output/eval_dense_MedEmbed")
 
 SUBSET_PATH = Path("../example/training14b_10pct_sample.json")
 
@@ -389,5 +389,39 @@ for split in splits:
     dense_runs[split] = load_dense_parquet_run(dense_path)
 
 print("Loaded splits:", splits)
+
+# %%
+# Tuning grid
+K_BM25_LIST = [500, 1000, 2000, 5000]
+K_DENSE_LIST = [100, 200, 500, 1000]
+K_RRF_LIST = [60]  # expand later if you want: [10, 30, 60, 100]
+
+all_rows = []
+
+for krrf in K_RRF_LIST:
+    for kb in K_BM25_LIST:
+        for kd in K_DENSE_LIST:
+            # Evaluate all splits for this config
+            for split in splits:
+                rows = evaluate_split(
+                    split=split,
+                    bm25_df=bm25_runs[split],
+                    dense_df=dense_runs[split],
+                    gold_map=gold_maps[split],
+                    k_bm25=kb,
+                    k_dense=kd,
+                    k_rrf=krrf,
+                )
+                for r in rows:
+                    # attach config fields
+                    r = dict(r)
+                    r["k_bm25"] = kb
+                    r["k_dense"] = kd
+                    r["k_rrf"] = krrf
+                    all_rows.append(r)
+
+results_df = pd.DataFrame(all_rows)
+results_df.head()
+
 
 # %%
