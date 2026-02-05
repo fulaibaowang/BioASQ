@@ -76,3 +76,6 @@ python data/build_dense_hnsw_index_from_jsonl_shards.py \
   --ef_construction 200 \
   --ef_search 100 \
   --dedup_pmids
+  
+max_elements 39994988
+max_elements 42000000

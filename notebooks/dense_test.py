@@ -549,4 +549,108 @@ for ef in [K_QUERY, 2 * K_QUERY, 4 * K_QUERY]:
     s = evaluate_dense_on_questions(train_questions, f"train_subset_ef{ef}", topk=K_QUERY, ef=ef)
     print({k: s[k] for k in ["MAP@10", "MRR@10", "MeanR@200", "MeanR@500", "MeanR@5000"]})
 
+# %% [markdown]
+# # save long table for hybird
+
+# %%
+# where to save per-query dense results for later hybrid tuning
+DENSE_RUNS_DIR = Path("../output/eval_dense")   # change if you want
+DENSE_RUNS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+# %%
+def ensure_dense_schema(res_df: pd.DataFrame) -> pd.DataFrame:
+    req = {"qid", "docno", "score", "rank"}
+    missing = req - set(res_df.columns)
+    if missing:
+        raise ValueError(f"Missing columns in dense results: {missing}")
+
+    out = res_df.copy()
+    out["qid"] = out["qid"].astype(str)
+    out["docno"] = out["docno"].astype(str)
+    out["rank"] = out["rank"].astype(int)
+    out["score"] = out["score"].astype(float)
+    out = out.sort_values(["qid", "rank"], ascending=[True, True]).reset_index(drop=True)
+    return out
+
+def save_dense_split(res_df: pd.DataFrame, split: str, meta: dict | None = None, save_run_map: bool = True):
+    res_df = ensure_dense_schema(res_df)
+
+    pq_path = DENSE_RUNS_DIR / f"dense_{split}.parquet"
+    res_df.to_parquet(pq_path, index=False, compression="zstd")
+
+    if save_run_map:
+        run_map = results_df_to_run_map(res_df)  # you already defined this
+        jm_path = DENSE_RUNS_DIR / f"dense_{split}_run_map.json"
+        with open(jm_path, "w", encoding="utf-8") as f:
+            json.dump(run_map, f)
+
+    if meta is not None:
+        meta_path = DENSE_RUNS_DIR / f"dense_{split}_meta.json"
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2)
+
+    print("Saved:", pq_path)
+    if save_run_map:
+        print("Saved:", jm_path)
+    if meta is not None:
+        print("Saved:", meta_path)
+
+
+# %%
+dense_run_meta = {
+    "model_name": model_name,
+    "device": device,
+    "max_seq_length": int(getattr(model, "max_seq_length", 0) or 0),
+    "space": space,
+    "dim": int(dim),
+    "ef_search_default": int(ef_search),
+    "topk_retrieved": int(K_QUERY),
+    "k_eval": int(K_CHECK_SUBSET),
+    "index_dir": str(DENSE_INDEX_DIR),
+    "index_file": str(HNSW_INDEX_PATH),
+    "rowid_map_file": str(ROWID_MAP_PATH),
+}
+dense_run_meta
+
+
+# %%
+def evaluate_and_save_dense_on_questions(
+    questions: list[dict],
+    label: str,
+    topk: int = K_QUERY,
+    ef: int | None = None,
+    save: bool = True,
+) -> dict:
+    """
+    Runs dense retrieval on questions, saves per-query results, evaluates, returns summary.
+    """
+    topics_df, gold_map = build_topics_and_gold(questions)
+
+    # dense retrieval (this returns the long-form results DF)
+    res_df = dense_retrieve_topics(topics_df, topk=topk, batch_size=256, ef=ef)
+
+    # Keep consistent with evaluation cutoff
+    res_df = res_df[res_df["rank"] <= K_CHECK_SUBSET].copy()
+
+    if save:
+        meta = {**dense_run_meta,
+                "split": label,
+                "n_queries": int(topics_df.shape[0]),
+                "ef_search_used": int(ef) if ef is not None else int(index.get_ef()),
+               }
+        save_dense_split(res_df, split=label, meta=meta, save_run_map=True)
+
+    run_map = results_df_to_run_map(res_df)
+    summary, _ = evaluate_run(
+        gold_map,
+        run_map,
+        ks_recall=(50, 100, 200, 500, 2000, 5000),
+        eps=1e-5,
+    )
+    return {"method": "Dense", "batch": label, **summary}
+
+
+# %%
+
 # %%
