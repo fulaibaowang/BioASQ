@@ -554,7 +554,7 @@ for ef in [K_QUERY, 2 * K_QUERY, 4 * K_QUERY]:
 
 # %%
 # where to save per-query dense results for later hybrid tuning
-DENSE_RUNS_DIR = Path("../output/eval_dense")   # change if you want
+DENSE_RUNS_DIR = Path("../output/eval_dense_MedEmbed")   # change if you want
 DENSE_RUNS_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -659,7 +659,7 @@ def evaluate_and_save_dense_on_questions(
     topk: int = K_QUERY,
     ef: int | None = None,
     save: bool = True,
-) -> dict:
+ ) -> dict:
     """
     Runs dense retrieval on questions, saves per-query results, evaluates, returns summary.
     """
@@ -675,7 +675,7 @@ def evaluate_and_save_dense_on_questions(
         meta = {**dense_run_meta,
                 "split": label,
                 "n_queries": int(topics_df.shape[0]),
-                "ef_search_used": int(ef) if ef is not None else int(index.get_ef()),
+                "ef_search_used": int(ef) if ef is not None else int(ef_search),
                }
         save_dense_split(res_df, split=label, meta=meta, save_run_map=True)
 
