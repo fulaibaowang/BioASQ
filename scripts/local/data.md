@@ -19,7 +19,8 @@ python data/build_dense_hnsw_index_from_jsonl_shards.py \
   --out_dir "tmp/toy_hnsw_medembed" \
   --device "mps" \
   --batch_size 64 \
-  --dedup_pmids
+  --dedup_pmids \
+  --max_elements 150000
 
 python retrieval/eval_bm25_rm3_bioasq.py \
   --index_path "output/pubmed_bm25_2026_subset_index" \

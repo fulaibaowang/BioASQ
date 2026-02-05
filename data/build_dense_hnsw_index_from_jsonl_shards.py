@@ -9,7 +9,7 @@ import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
-
+import time
 import numpy as np
 from tqdm import tqdm
 
@@ -159,16 +159,21 @@ def main():
     ap.add_argument("--ef_construction", type=int, default=200, help="HNSW efConstruction")
     ap.add_argument("--ef_search", type=int, default=100, help="HNSW efSearch (query-time)")
     ap.add_argument("--save_every", type=int, default=0, help="If >0, save checkpoint every N docs")
+    ap.add_argument("--max_elements", type=int, default=None, help="If set, skip counting pass and use this max_elements for HNSW.")
     args = ap.parse_args()
 
     os.makedirs(args.out_dir, exist_ok=True)
 
     # 1) Count docs for max_elements (HNSW requires it)
-    n_docs_target = count_unique_pmids(
-        args.jsonl_glob,
-        dedup_pmids=args.dedup_pmids,
-        max_docs=args.max_docs,
-    )
+    if args.max_elements is not None:
+        n_docs_target = args.max_elements
+        print(f"[count] Skipping counting pass. Using max_elements={n_docs_target:,}")
+    else:
+        n_docs_target = count_unique_pmids(
+            args.jsonl_glob,
+            dedup_pmids=args.dedup_pmids,
+            max_docs=args.max_docs,
+        )
     if n_docs_target <= 0:
         raise RuntimeError("No docs found to index (after filtering/dedup).")
     print(f"[count] Will index n_docs={n_docs_target:,} (dedup_pmids={args.dedup_pmids})")
@@ -206,10 +211,12 @@ def main():
     batch_ids: List[int] = []
     batch_pmids: List[str] = []
 
-    def flush_batch():
-        nonlocal next_id
-        if not batch_texts:
-            return
+    def flush_batch() -> int:
+        n = len(batch_texts)
+        if n == 0:
+            return 0
+
+        t0 = time.time()
         emb = model.encode(
             batch_texts,
             batch_size=args.batch_size,
@@ -217,14 +224,26 @@ def main():
             normalize_embeddings=normalize,
             show_progress_bar=False,
         ).astype(np.float32)
+        t1 = time.time()
 
         index.add_items(emb, np.array(batch_ids, dtype=np.int64))
-        rowid_to_pmid.extend(batch_pmids)
+        t2 = time.time()
 
+        # "indexed_in_index" = how many have been flushed into rowid_to_pmid so far (before extending)
+        indexed_in_index_before = len(rowid_to_pmid)
+
+        print(
+            f"[flush] indexed_in_index_before={indexed_in_index_before} next_id_assigned={next_id} "
+            f"n={n} encode={t1-t0:.1f}s add={t2-t1:.1f}s total={t2-t0:.1f}s",
+            flush=True,
+        )
+
+        rowid_to_pmid.extend(batch_pmids)
         batch_texts.clear()
         batch_ids.clear()
         batch_pmids.clear()
-
+        return n
+    
     pbar = tqdm(total=n_docs_target, desc="Indexing", unit="doc")
     for _, rec in iter_jsonl_records(args.jsonl_glob):
         pmid = get_pmid(rec)
@@ -255,8 +274,8 @@ def main():
         batch_pmids.append(pmid)
 
         if len(batch_texts) >= args.batch_size:
-            flush_batch()
-            pbar.update(args.batch_size)
+            n_flushed = flush_batch()
+            pbar.update(n_flushed)
 
             if args.save_every and next_id % args.save_every == 0:
                 # checkpoint
@@ -271,16 +290,17 @@ def main():
             break
 
         if next_id >= n_docs_target:
+            print(f"[warn] Reached max_elements={n_docs_target:,}; stopping early.", flush=True)
             break
 
     # flush remaining
-    flush_batch()
-    # progress bar might be slightly off if last batch < batch_size
-    pbar.update(max(0, next_id - pbar.n))
+    n_flushed = flush_batch()
+    pbar.update(n_flushed)
     pbar.close()
 
     n_indexed = next_id
-    print(f"[done] Indexed docs: {n_indexed:,}")
+    print(f"[done] Indexed docs (assigned ids): {n_indexed:,}")
+    print(f"[done] rowid_to_pmid: {len(rowid_to_pmid):,}  hnsw_count: {index.get_current_count():,}")
 
     # 5) Save index + mapping + metadata
     index_path = os.path.join(args.out_dir, "hnsw_index.bin")

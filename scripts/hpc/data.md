@@ -58,6 +58,7 @@ python data/build_dense_hnsw_index_from_jsonl_shards.py \
   --dedup_pmids
 
 sbatch sbatch_dense_pubmedbert.sh
+#change max_elements accordingly
 
 srun -p dev --time=12:00:00 --gres=gpu:A100_80GB:1 -c 4 --mem=64G\
   --container-image=/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs \

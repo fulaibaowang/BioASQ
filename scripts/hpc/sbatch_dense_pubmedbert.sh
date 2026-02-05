@@ -47,7 +47,8 @@ srun \
       --batch_size ${BATCH_SIZE} \
       --M 32 \
       --ef_construction 200 \
-      --ef_search 100
+      --ef_search 100 \
+      --max_elements 3600000
   "
 
 echo "Finished at $(date)"
