@@ -83,7 +83,8 @@ def ap_bioasq(gold: set[str], ranked: list[str], k: int = 10) -> float:
         if doc in gold:
             hit += 1
             s += hit / i
-    return s / len(gold)
+    # BioASQ MAP@10 uses AP@10, normalized by min(|gold|, 10)
+    return s / min(len(gold), k)
 
 def rr_at_k(gold: set[str], ranked: list[str], k: int = 10) -> float:
     for i, doc in enumerate(ranked[:k], start=1):
@@ -152,7 +153,7 @@ def load_bm25_tsv_run(path: Path) -> pd.DataFrame:
 
     out = pd.DataFrame({
         "qid": df[qid_col].astype(str),
-        "docno": df[doc_col].astype(str),
+        "docno": df[doc_col].astype(str).map(normalize_pmid),
     })
 
     if rank_col:
@@ -167,7 +168,7 @@ def load_bm25_tsv_run(path: Path) -> pd.DataFrame:
             tmp["_rank"] = tmp.groupby("_qid").cumcount() + 1
             out = pd.DataFrame({
                 "qid": tmp["_qid"],
-                "docno": tmp[doc_col].astype(str),
+                "docno": tmp[doc_col].astype(str).map(normalize_pmid),
                 "rank": tmp["_rank"].astype(int),
                 "score": tmp["_score"].astype(float),
             })
@@ -197,7 +198,7 @@ def load_dense_parquet_run(path: Path) -> pd.DataFrame:
         raise ValueError(f"{path} missing columns: {needed - set(df.columns)}")
     out = df.copy()
     out["qid"] = out["qid"].astype(str)
-    out["docno"] = out["docno"].astype(str)
+    out["docno"] = out["docno"].astype(str).map(normalize_pmid)
     out["rank"] = out["rank"].astype(int)
     # score exists in your dense parquet
     if "score" in out.columns:
@@ -370,12 +371,48 @@ dense_runs = {}
 gold_maps = {}
 
 # train_subset gold
-train_questions = load_questions_from_json(SUBSET_PATH)
+EXCLUDE_TEST_QIDS_FROM_TRAIN = True
+
+train_questions_all = load_questions_from_json(SUBSET_PATH)
+
+test_qids = set()
+for fp in TEST_BATCHES:
+    qs = load_questions_from_json(fp)
+    for i, q in enumerate(qs):
+        test_qids.add(str(q.get("id") or q.get("qid") or i))
+
+if EXCLUDE_TEST_QIDS_FROM_TRAIN:
+    train_questions = [
+        q for i, q in enumerate(train_questions_all)
+        if str(q.get("id") or q.get("qid") or i) not in test_qids
+    ]
+else:
+    train_questions = train_questions_all
+
+print("train_questions_all:", len(train_questions_all), "train_questions_used:", len(train_questions))
 gold_maps["train_subset"] = build_gold_map_from_questions(train_questions)
 
 # test golds
 for fp in TEST_BATCHES:
     gold_maps[fp.stem] = load_gold_for_test_file(fp)
+
+# %%
+# Quick sanity-check: BM25_RM3 only (no dense load)
+split = "13B1_golden"
+bm25_df = load_bm25_tsv_run(bm25_run_path(split))
+bm25_run = df_to_run_map(cut_topk(bm25_df, K_EVAL))
+print(split, evaluate_run(gold_maps[split], bm25_run))
+
+# %%
+# BM25_RM3 recall sanity-check across all splits
+rows = []
+for split in splits:
+    bm25_df = load_bm25_tsv_run(bm25_run_path(split))
+    bm25_run = df_to_run_map(cut_topk(bm25_df, K_EVAL))
+    m = evaluate_run(gold_maps[split], bm25_run)
+    rows.append({"split": split, **m})
+
+pd.DataFrame(rows)[["split","MAP@10","MeanR@50","MeanR@100","MeanR@200","MeanR@500","MeanR@2000","MeanR@5000"]]
 
 # %%
 
@@ -422,6 +459,42 @@ for krrf in K_RRF_LIST:
 
 results_df = pd.DataFrame(all_rows)
 results_df.head()
+
+
+# %%
+results_df
+
+# %% [markdown]
+# # 8) Pick best config by MeanR@200/500 on test batches only
+
+# %%
+test_splits = [fp.stem for fp in TEST_BATCHES]
+
+def agg_score(df: pd.DataFrame) -> pd.DataFrame:
+    # Only hybrid rows, only test splits
+    d = df[df["split"].isin(test_splits)].copy()
+    d = d[d["method"].str.startswith("Hybrid-")].copy()
+
+    grp = d.groupby(["method", "k_bm25", "k_dense", "k_rrf"], as_index=False).agg({
+        "MeanR@200": "mean",
+        "MeanR@500": "mean",
+        "MeanR@50": "mean",
+        "MeanR@100": "mean",
+        "MeanR@5000": "mean",
+        "MAP@10": "mean",
+        "MRR@10": "mean",
+    })
+    grp["score_R200_R500"] = 0.5 * grp["MeanR@200"] + 0.5 * grp["MeanR@500"]
+    return grp.sort_values("score_R200_R500", ascending=False)
+
+hybrid_ranked = agg_score(results_df)
+hybrid_ranked.head(20)
+
+
+
+# %%
+best = hybrid_ranked.iloc[0].to_dict()
+best
 
 
 # %%

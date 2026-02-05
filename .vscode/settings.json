@@ -1,4 +1,7 @@
 {
 	"jupytext.formats": "ipynb,py:percent",
-	"files.readonlyInclude": []
+	"files.readonlyInclude": [],
+	"chat.tools.terminal.autoApprove": {
+		"/opt/homebrew/bin/python3": true
+	}
 }
