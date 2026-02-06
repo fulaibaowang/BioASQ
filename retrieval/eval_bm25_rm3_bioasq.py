@@ -130,13 +130,13 @@ def eval_one(
     k_eval: int,
     ks_recall=(50, 100, 200, 500, 2000, 5000),
     eps: float = 1e-5,
-) -> Tuple[BatchResult, pd.DataFrame, Dict[str, List[str]]]:
-    res = pipe(topics_df)
-    res = cut_to_k(res, k_eval)
-    run_map = run_df_to_run_map(res, qid_col="qid", docno_col="docno")
+) -> Tuple[BatchResult, pd.DataFrame, Dict[str, List[str]], pd.DataFrame]:
+    res_df = pipe(topics_df)
+    res_df = cut_to_k(res_df, k_eval)
+    run_map = run_df_to_run_map(res_df, qid_col="qid", docno_col="docno")
     summary, perq = evaluate_run(gold_map, run_map, ks_recall=ks_recall, eps=eps)
     br = BatchResult(method=method, batch=batch_name, n_queries=len(topics_df), metrics=summary)
-    return br, perq, run_map
+    return br, perq, run_map, res_df
 
 
 def ensure_pt(java_mem: str | None = None):
@@ -299,22 +299,17 @@ def main():
 
     # Train subset
     for method, pipe in methods_to_run:
-        br, perq, run_map = eval_one(method, "train_subset", train_topics, train_gold, pipe, args.k_eval)
+        br, perq, run_map, res_df = eval_one(method, "train_subset", train_topics, train_gold, pipe, args.k_eval)
         all_rows.append(br.to_row())
 
-        # For saving runs/perq/zero_recall we need the raw df; rerun pipe once (cheap relative to eval) or capture above.
-        # We'll rerun once but keep it simple.
-        res_df = cut_to_k(pipe(train_topics), args.k_eval)
         maybe_save(method, "train_subset", run_map, res_df, perq, train_gold)
 
     # Test batches
     for batch_name, questions in test_batches:
         topics, gold = build_topics_and_gold(questions)
         for method, pipe in methods_to_run:
-            br, perq, run_map = eval_one(method, batch_name, topics, gold, pipe, args.k_eval)
+            br, perq, run_map, res_df = eval_one(method, batch_name, topics, gold, pipe, args.k_eval)
             all_rows.append(br.to_row())
-
-            res_df = cut_to_k(pipe(topics), args.k_eval)
             maybe_save(method, batch_name, run_map, res_df, perq, gold)
 
     metrics_df = pd.DataFrame(all_rows)
