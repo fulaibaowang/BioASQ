@@ -140,7 +140,9 @@ def dense_retrieve_topics(
         raise ValueError("topk must be positive")
 
     if ef is not None:
-        index.set_ef(int(max(int(ef), topk)))
+        # efSearch controls how many candidates HNSW explores.
+        # Larger efSearch tends to improve recall but costs time.
+        index.set_ef(int(ef))
 
     qids = topics_df["qid"].astype(str).tolist()
     queries = topics_df["query"].astype(str).tolist()
@@ -310,7 +312,18 @@ def main():
 
     ap.add_argument("--topk", type=int, default=5000)
     ap.add_argument("--ks", type=str, default="50,100,200,500,1000,2000,5000")
-    ap.add_argument("--ef_search", type=int, default=None, help="Override HNSW efSearch (default from meta.json)")
+    ap.add_argument(
+        "--ef_search",
+        type=int,
+        default=None,
+        help="Override HNSW efSearch (if omitted, use meta.json/default); effective efSearch defaults to >= topk unless limited by --ef_cap",
+    )
+    ap.add_argument(
+        "--ef_cap",
+        type=int,
+        default=None,
+        help="Optional cap on effective efSearch to bound runtime. If ef_cap < topk, deep recall@topk may degrade.",
+    )
     ap.add_argument("--batch_size", type=int, default=256)
 
     ap.add_argument("--device", type=str, default="cpu", help='"cpu", "cuda", or "mps"')
@@ -339,6 +352,45 @@ def main():
         "runtime": runtime_meta,
     }
 
+    # Choose efSearch for this run.
+    # Strategy: aim for efSearch >= topk for strong deep recall, but allow --ef_cap to bound runtime.
+    ef_requested = int(args.ef_search) if args.ef_search is not None else None
+    ef_base = ef_requested
+    if ef_base is None:
+        ef_base = int(runtime_meta.get("loaded_ef_search") or 0) or None
+    if ef_base is None:
+        ef_base = int(args.topk)
+
+    ef_desired = int(max(int(ef_base), int(args.topk)))
+    ef_effective = int(ef_desired)
+    if args.ef_cap is not None:
+        ef_effective = int(min(int(ef_effective), int(args.ef_cap)))
+
+    print(
+        "[dense-runtime] ef_search:",
+        {
+            "requested": ef_requested,
+            "base": int(ef_base),
+            "desired_atleast_topk": int(ef_desired),
+            "cap": int(args.ef_cap) if args.ef_cap is not None else None,
+            "effective": int(ef_effective),
+            "topk": int(args.topk),
+        },
+    )
+    if args.ef_cap is not None and int(args.ef_cap) < int(args.topk):
+        print(
+            "[dense-runtime][warn] ef_cap < topk; expect lower recall@topk and/or less stable deep ranks.",
+            file=sys.stderr,
+        )
+
+    meta_base["ef_search"] = {
+        "requested": ef_requested,
+        "base": int(ef_base),
+        "desired_atleast_topk": int(ef_desired),
+        "cap": int(args.ef_cap) if args.ef_cap is not None else None,
+        "effective": int(ef_effective),
+    }
+
     all_rows = []
 
     # train subset
@@ -355,7 +407,7 @@ def main():
             space=space,
             topk=args.topk,
             ks_recall=ks_recall,
-            ef_search=args.ef_search,
+            ef_search=ef_effective,
             batch_size=args.batch_size,
             meta_base=meta_base,
             save=True,
@@ -379,7 +431,7 @@ def main():
                 space=space,
                 topk=args.topk,
                 ks_recall=ks_recall,
-                ef_search=args.ef_search,
+                ef_search=ef_effective,
                 batch_size=args.batch_size,
                 meta_base=meta_base,
                 save=True,

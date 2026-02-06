@@ -462,9 +462,9 @@ print("Loaded splits:", splits)
 # %%
 # Tuning grid (candidate cutoffs sized for deeper eval up to R@5000)
 K_BM25_LIST  = [500, 1000, 2000, 5000]
-K_DENSE_LIST = [200, 500, 1000, 2000, 5000]
-K_RRF_LIST   = [30, 60, 100, 150]
-WEIGHTS      = [(1.0, 1.0), (1.0, 2.0)]
+K_DENSE_LIST = [200, 500, 1000, 2000]
+K_RRF_LIST   = [60, 100, 150]
+WEIGHTS      = [(1.0, 1.0)]
 
 
 all_rows = []
@@ -591,13 +591,16 @@ def heatmap_metric(results_df, test_splits, method_prefix, metric="MeanR@500"):
 
 
 # %%
+sorted(results_df["method"].unique())
+
+# %%
 split = "train_subset"
 
 methods = [
     "BM25_RM3",
     "Dense",
-    "Hybrid-Union(kb=500,kd=200)",          # <-- replace with one that exists in your results_df
-    "Hybrid-RRF(kb=700,kd=500,krrf=100)",    # <-- replace with one that exists in your results_df
+    "Hybrid-Union(kb=5000,kd=2000)",          # <-- replace with one that exists in your results_df
+    "Hybrid-RRF(kb=5000,kd=2000,krrf=150,wb=1.0,wd=1.0)",    # <-- replace with one that exists in your results_df
 ]
 
 plot_recall_curve(results_df, split=split, methods=methods)

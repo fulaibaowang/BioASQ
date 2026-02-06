@@ -32,3 +32,10 @@ python retrieval/eval_bm25_rm3_bioasq.py \
   --k_feedback 50 \
   --rm3_fb_docs 20 --rm3_fb_terms 30 --rm3_lambda 0.6 \
   --save_runs --save_per_query --save_zero_recall
+
+python retrieval/eval_dense.py \
+  --train_subset_json example/training14b_10pct_sample.json \
+  --index_dir /Users/yun/develop/pubmed_medembed_2026_subset_index \
+  --test_batch_jsons Task13BGoldenEnriched/13B1_golden.json Task13BGoldenEnriched/13B2_golden.json Task13BGoldenEnriched/13B3_golden.json Task13BGoldenEnriched/13B4_golden.json \
+  --out_dir output/eval_dense_medembed_small \
+  --topk 5000 
