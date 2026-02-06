@@ -19,6 +19,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+
 
 
 # %% [markdown]
@@ -46,7 +48,7 @@ BM25_METHOD_NAME = "BM25_RM3"
 
 # -------- evaluation cutoffs --------
 K_EVAL = 5000
-KS_RECALL = (50, 100, 200, 500, 2000, 5000)
+KS_RECALL = (200, 500, 1000, 2000, 5000)
 
 
 # %% [markdown]
@@ -230,37 +232,53 @@ def df_to_run_map(df: pd.DataFrame) -> dict[str, list[str]]:
 # # 4.2 Union (BM25-first ordering)
 
 # %%
-def fuse_union(bm25_df: pd.DataFrame, dense_df: pd.DataFrame, k_bm25: int, k_dense: int, k_out: int = K_EVAL) -> dict[str, list[str]]:
-    b = cut_topk(bm25_df, k_bm25)
-    d = cut_topk(dense_df, k_dense)
+def fuse_union(
+    bm25_df: pd.DataFrame,
+    dense_df: pd.DataFrame,
+    k_bm25_head: int,
+    k_dense_head: int,
+    k_out: int = K_EVAL,
+) -> dict[str, list[str]]:
+    b_all  = cut_topk(bm25_df, k_out)          # bm25 tail for filling
+    b_head = cut_topk(bm25_df, k_bm25_head)
+    d_head = cut_topk(dense_df, k_dense_head)
 
+    b_all_grp  = {qid: grp for qid, grp in b_all.groupby("qid", sort=False)}
+    b_head_grp = {qid: grp for qid, grp in b_head.groupby("qid", sort=False)}
+    d_head_grp = {qid: grp for qid, grp in d_head.groupby("qid", sort=False)}
+
+    all_qids = list(dict.fromkeys(list(b_all_grp.keys()) + list(d_head_grp.keys())))
     run = {}
-    # group once for speed
-    b_grp = {qid: grp for qid, grp in b.groupby("qid", sort=False)}
-    d_grp = {qid: grp for qid, grp in d.groupby("qid", sort=False)}
-    all_qids = list(dict.fromkeys(list(b_grp.keys()) + list(d_grp.keys())))
 
     for qid in all_qids:
-        b_docs = b_grp.get(qid)
-        d_docs = d_grp.get(qid)
-        out = []
-        seen = set()
+        out, seen = [], set()
 
-        if b_docs is not None:
-            for doc in b_docs.sort_values("rank")["docno"].astype(str):
+        # 1) bm25 head
+        if qid in b_head_grp:
+            for doc in b_head_grp[qid].sort_values("rank")["docno"].astype(str):
                 if doc not in seen:
                     out.append(doc); seen.add(doc)
                 if len(out) >= k_out:
                     break
 
-        if len(out) < k_out and d_docs is not None:
-            for doc in d_docs.sort_values("rank")["docno"].astype(str):
+        # 2) dense head
+        if len(out) < k_out and qid in d_head_grp:
+            for doc in d_head_grp[qid].sort_values("rank")["docno"].astype(str):
                 if doc not in seen:
                     out.append(doc); seen.add(doc)
                 if len(out) >= k_out:
                     break
 
-        run[str(qid)] = out
+        # 3) fill with bm25 tail
+        if len(out) < k_out and qid in b_all_grp:
+            for doc in b_all_grp[qid].sort_values("rank")["docno"].astype(str):
+                if doc not in seen:
+                    out.append(doc); seen.add(doc)
+                if len(out) >= k_out:
+                    break
+
+        run[str(qid)] = out[:k_out]
+
     return run
 
 
@@ -337,7 +355,8 @@ def dense_run_path(split: str) -> Path:
 
 # %%
 def evaluate_split(split: str, bm25_df: pd.DataFrame, dense_df: pd.DataFrame, gold_map: dict[str, list[str]],
-                   k_bm25: int, k_dense: int, k_rrf: int = 60) -> list[dict]:
+                   k_bm25: int, k_dense: int, k_rrf: int = 60,
+                   w_bm25: float = 1.0, w_dense: float = 1.0) -> list[dict]:
     out = []
 
     # Baselines (cut to K_EVAL)
@@ -348,12 +367,25 @@ def evaluate_split(split: str, bm25_df: pd.DataFrame, dense_df: pd.DataFrame, go
     out.append({"method": "Dense", "split": split, **evaluate_run(gold_map, dense_run)})
 
     # Union
-    union_run = fuse_union(bm25_df, dense_df, k_bm25=k_bm25, k_dense=k_dense, k_out=K_EVAL)
+    union_run = fuse_union(bm25_df, dense_df, k_bm25_head=k_bm25, k_dense_head=k_dense, k_out=K_EVAL)
     out.append({"method": f"Hybrid-Union(kb={k_bm25},kd={k_dense})", "split": split, **evaluate_run(gold_map, union_run)})
 
     # RRF
-    rrf_run = fuse_rrf(bm25_df, dense_df, k_bm25=k_bm25, k_dense=k_dense, k_rrf=k_rrf, k_out=K_EVAL)
-    out.append({"method": f"Hybrid-RRF(kb={k_bm25},kd={k_dense},krrf={k_rrf})", "split": split, **evaluate_run(gold_map, rrf_run)})
+    rrf_run = fuse_rrf(
+        bm25_df,
+        dense_df,
+        k_bm25=k_bm25,
+        k_dense=k_dense,
+        k_rrf=k_rrf,
+        w_bm25=w_bm25,
+        w_dense=w_dense,
+        k_out=K_EVAL,
+    )
+    out.append({
+        "method": f"Hybrid-RRF(kb={k_bm25},kd={k_dense},krrf={k_rrf},wb={w_bm25},wd={w_dense})",
+        "split": split,
+        **evaluate_run(gold_map, rrf_run),
+    })
 
     return out
 
@@ -404,7 +436,7 @@ bm25_run = df_to_run_map(cut_topk(bm25_df, K_EVAL))
 print(split, evaluate_run(gold_maps[split], bm25_run))
 
 # %%
-# BM25_RM3 recall sanity-check across all splits
+# BM25_RM3 recall sanity-check across all splits (focus on deeper recall)
 rows = []
 for split in splits:
     bm25_df = load_bm25_tsv_run(bm25_run_path(split))
@@ -412,7 +444,7 @@ for split in splits:
     m = evaluate_run(gold_maps[split], bm25_run)
     rows.append({"split": split, **m})
 
-pd.DataFrame(rows)[["split","MAP@10","MeanR@50","MeanR@100","MeanR@200","MeanR@500","MeanR@2000","MeanR@5000"]]
+pd.DataFrame(rows)[["split","MAP@10","MeanR@200","MeanR@500","MeanR@1000","MeanR@2000","MeanR@5000"]]
 
 # %%
 
@@ -428,34 +460,41 @@ for split in splits:
 print("Loaded splits:", splits)
 
 # %%
-# Tuning grid
-K_BM25_LIST = [500, 1000, 2000, 5000]
-K_DENSE_LIST = [100, 200, 500, 1000]
-K_RRF_LIST = [60]  # expand later if you want: [10, 30, 60, 100]
+# Tuning grid (candidate cutoffs sized for deeper eval up to R@5000)
+K_BM25_LIST  = [500, 1000, 2000, 5000]
+K_DENSE_LIST = [200, 500, 1000, 2000, 5000]
+K_RRF_LIST   = [30, 60, 100, 150]
+WEIGHTS      = [(1.0, 1.0), (1.0, 2.0)]
+
 
 all_rows = []
 
-for krrf in K_RRF_LIST:
-    for kb in K_BM25_LIST:
-        for kd in K_DENSE_LIST:
-            # Evaluate all splits for this config
-            for split in splits:
-                rows = evaluate_split(
-                    split=split,
-                    bm25_df=bm25_runs[split],
-                    dense_df=dense_runs[split],
-                    gold_map=gold_maps[split],
-                    k_bm25=kb,
-                    k_dense=kd,
-                    k_rrf=krrf,
-                )
-                for r in rows:
-                    # attach config fields
-                    r = dict(r)
-                    r["k_bm25"] = kb
-                    r["k_dense"] = kd
-                    r["k_rrf"] = krrf
-                    all_rows.append(r)
+for w_bm25, w_dense in WEIGHTS:           
+    for krrf in K_RRF_LIST:
+        for kb in K_BM25_LIST:
+            for kd in K_DENSE_LIST:
+                # Evaluate all splits for this config
+                for split in splits:
+                    rows = evaluate_split(
+                        split=split,
+                        bm25_df=bm25_runs[split],
+                        dense_df=dense_runs[split],
+                        gold_map=gold_maps[split],
+                        k_bm25=kb,
+                        k_dense=kd,
+                        k_rrf=krrf,
+                        w_bm25=w_bm25,
+                        w_dense=w_dense,
+                    )
+                    for r in rows:
+                        # attach config fields
+                        r = dict(r)
+                        r["k_bm25"] = kb
+                        r["k_dense"] = kd
+                        r["k_rrf"] = krrf
+                        r["w_bm25"] = float(w_bm25)
+                        r["w_dense"] = float(w_dense)
+                        all_rows.append(r)
 
 results_df = pd.DataFrame(all_rows)
 results_df.head()
@@ -465,7 +504,7 @@ results_df.head()
 results_df
 
 # %% [markdown]
-# # 8) Pick best config by MeanR@200/500 on test batches only
+# # 8) Pick best config by deeper recall on test batches only
 
 # %%
 test_splits = [fp.stem for fp in TEST_BATCHES]
@@ -475,26 +514,121 @@ def agg_score(df: pd.DataFrame) -> pd.DataFrame:
     d = df[df["split"].isin(test_splits)].copy()
     d = d[d["method"].str.startswith("Hybrid-")].copy()
 
-    grp = d.groupby(["method", "k_bm25", "k_dense", "k_rrf"], as_index=False).agg({
+    grp = d.groupby(["method", "k_bm25", "k_dense", "k_rrf", "w_bm25", "w_dense"], as_index=False).agg({
         "MeanR@200": "mean",
         "MeanR@500": "mean",
-        "MeanR@50": "mean",
-        "MeanR@100": "mean",
+        "MeanR@1000": "mean",
+        "MeanR@2000": "mean",
         "MeanR@5000": "mean",
         "MAP@10": "mean",
         "MRR@10": "mean",
     })
-    grp["score_R200_R500"] = 0.5 * grp["MeanR@200"] + 0.5 * grp["MeanR@500"]
-    return grp.sort_values("score_R200_R500", ascending=False)
+    # prioritize deeper recall (esp. R@5000), while keeping some signal at mid-depth
+    grp["score_R5000"] = grp["MeanR@5000"]
+    grp["score_deep"] = 0.2 * grp["MeanR@1000"] + 0.3 * grp["MeanR@2000"] + 0.5 * grp["MeanR@5000"]
+    grp["score_mix"] = (
+        0.1 * grp["MeanR@200"]
+        + 0.1 * grp["MeanR@500"]
+        + 0.2 * grp["MeanR@1000"]
+        + 0.25 * grp["MeanR@2000"]
+        + 0.35 * grp["MeanR@5000"]
+    )
+    return grp.sort_values("score_mix", ascending=False)
 
 hybrid_ranked = agg_score(results_df)
-hybrid_ranked.head(20)
-
-
+hybrid_ranked.head(200)
 
 # %%
 best = hybrid_ranked.iloc[0].to_dict()
 best
+
+
+# %%
+
+# %%
+
+def plot_recall_curve(results_df, split, methods):
+    ks = [200, 500, 1000, 2000, 5000]
+    d = results_df[results_df["split"] == split].copy()
+
+    plt.figure()
+    for m in methods:
+        row = d[d["method"] == m].iloc[0]
+        y = [row[f"MeanR@{k}"] for k in ks]
+        plt.plot(ks, y, marker="o", label=m)
+
+    plt.xlabel("K")
+    plt.ylabel("Mean Recall@K")
+    plt.title(f"Recall curves ({split})")
+    plt.legend()
+    plt.show()
+
+
+# %%
+def heatmap_metric(results_df, test_splits, method_prefix, metric="MeanR@500"):
+    """
+    Heatmap of avg metric across test_splits for methods whose name starts with method_prefix.
+    Requires columns k_bm25 and k_dense in results_df.
+    """
+    d = results_df[results_df["split"].isin(test_splits)].copy()
+    d = d[d["method"].str.startswith(method_prefix)].copy()
+
+    if d.empty:
+        raise ValueError(f"No rows match method_prefix={method_prefix}")
+
+    agg = d.groupby(["k_bm25", "k_dense"], as_index=False)[metric].mean()
+    piv = agg.pivot(index="k_dense", columns="k_bm25", values=metric)
+
+    plt.figure()
+    plt.imshow(piv.values, aspect="auto")
+    plt.xticks(range(piv.shape[1]), piv.columns.astype(str), rotation=45)
+    plt.yticks(range(piv.shape[0]), piv.index.astype(str))
+    plt.xlabel("k_bm25")
+    plt.ylabel("k_dense")
+    plt.title(f"Avg {metric} across test splits ({method_prefix}*)")
+    plt.colorbar()
+    plt.show()
+
+
+# %%
+split = "train_subset"
+
+methods = [
+    "BM25_RM3",
+    "Dense",
+    "Hybrid-Union(kb=500,kd=200)",          # <-- replace with one that exists in your results_df
+    "Hybrid-RRF(kb=700,kd=500,krrf=100)",    # <-- replace with one that exists in your results_df
+]
+
+plot_recall_curve(results_df, split=split, methods=methods)
+
+
+# %%
+test_splits = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
+heatmap_metric(
+    results_df,
+    test_splits=test_splits,
+    method_prefix="Hybrid-RRF",   # or "Hybrid-Union" / "Hybrid-UnionFill"
+    metric="MeanR@500"
+)
+
+
+# %%
+test_splits = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
+heatmap_metric(
+    results_df,
+    test_splits=test_splits,
+    method_prefix="Hybrid-Union",   # or "Hybrid-Union" / "Hybrid-UnionFill"
+    metric="MeanR@500"
+)
+
+# %%
+d = results_df[results_df["split"].isin(test_splits)].copy()
+d = d[d["method"].str.startswith("Hybrid-Union")].copy()
+
+agg = d.groupby(["k_bm25","k_dense"], as_index=False)["MeanR@500"].mean()
+pivot = agg.pivot(index="k_dense", columns="k_bm25", values="MeanR@500")
+pivot
 
 
 # %%
