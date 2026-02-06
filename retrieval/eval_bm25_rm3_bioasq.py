@@ -148,10 +148,20 @@ def ensure_pt(java_mem: str | None = None):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Evaluate BM25 and BM25+RM3 on BioASQ train subset + 13B test batches.")
+    ap = argparse.ArgumentParser(description="Evaluate BM25+RM3 on BioASQ train subset + test batches.")
     ap.add_argument("--index_path", required=True, help="Path to Terrier index directory")
     ap.add_argument("--train_json", required=True, help="Path to training subset json (e.g. training14b_10pct_sample.json)")
-    ap.add_argument("--test_dir", required=True, help="Directory containing 13B1_golden.json .. 13B4_golden.json")
+    ap.add_argument(
+        "--test_batch_jsons",
+        nargs="*",
+        default=[],
+        help="List of test batch JSON files (e.g. Task13BGoldenEnriched/13B1_golden.json ...).",
+    )
+    ap.add_argument(
+        "--test_dir",
+        default=None,
+        help="Backward-compatible: directory containing 13B1_golden.json .. 13B4_golden.json (used only if --test_batch_jsons not provided)",
+    )
     ap.add_argument("--out_dir", required=True, help="Output directory")
     ap.add_argument("--threads", type=int, default=4, help="Terrier retrieval threads")
     ap.add_argument("--java_mem", default=None, help='Optional JVM heap, e.g. "8g"')
@@ -161,6 +171,12 @@ def main():
     ap.add_argument("--rm3_fb_docs", type=int, default=20)
     ap.add_argument("--rm3_fb_terms", type=int, default=30)
     ap.add_argument("--rm3_lambda", type=float, default=0.6)
+
+    ap.add_argument(
+        "--include_bm25",
+        action="store_true",
+        help="Also evaluate BM25 baseline (default: only BM25_RM3).",
+    )
 
     ap.add_argument("--no_exclude_test_qids", action="store_true", help="Do not remove test qids from train set")
     ap.add_argument("--save_runs", action="store_true", help="Save run TSVs (qid docno rank score)")
@@ -209,13 +225,21 @@ def main():
     )
 
     # Load datasets
-    test_dir = Path(args.test_dir).resolve()
-    test_files = [
-        test_dir / "13B1_golden.json",
-        test_dir / "13B2_golden.json",
-        test_dir / "13B3_golden.json",
-        test_dir / "13B4_golden.json",
-    ]
+    test_files: List[Path] = []
+    if args.test_batch_jsons:
+        test_files = [Path(fp).resolve() for fp in args.test_batch_jsons]
+    elif args.test_dir:
+        # Backward-compatible default behavior
+        test_dir = Path(args.test_dir).resolve()
+        test_files = [
+            test_dir / "13B1_golden.json",
+            test_dir / "13B2_golden.json",
+            test_dir / "13B3_golden.json",
+            test_dir / "13B4_golden.json",
+        ]
+    else:
+        raise ValueError("Provide --test_batch_jsons (preferred) or --test_dir (legacy).")
+
     for fp in test_files:
         if not fp.exists():
             raise FileNotFoundError(f"Missing test batch: {fp}")
@@ -269,8 +293,12 @@ def main():
                 for qid in zr:
                     f.write(qid + "\n")
 
+    methods_to_run = [("BM25_RM3", pipe_bm25_rm3)]
+    if args.include_bm25:
+        methods_to_run = [("BM25", pipe_bm25)] + methods_to_run
+
     # Train subset
-    for method, pipe in [("BM25", pipe_bm25), ("BM25_RM3", pipe_bm25_rm3)]:
+    for method, pipe in methods_to_run:
         br, perq, run_map = eval_one(method, "train_subset", train_topics, train_gold, pipe, args.k_eval)
         all_rows.append(br.to_row())
 
@@ -282,7 +310,7 @@ def main():
     # Test batches
     for batch_name, questions in test_batches:
         topics, gold = build_topics_and_gold(questions)
-        for method, pipe in [("BM25", pipe_bm25), ("BM25_RM3", pipe_bm25_rm3)]:
+        for method, pipe in methods_to_run:
             br, perq, run_map = eval_one(method, batch_name, topics, gold, pipe, args.k_eval)
             all_rows.append(br.to_row())
 
