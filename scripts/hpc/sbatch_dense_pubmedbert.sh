@@ -84,7 +84,7 @@ srun \
 
     # Copy results to shared storage
     mkdir -p '${OUT_FINAL}'
-    rsync -avh \"\$OUT_LOCAL/\" '${OUT_FINAL}/'
+    cp -a \"\$OUT_LOCAL/\" '${OUT_FINAL}/'
 
     echo \"[done] Copied outputs to ${OUT_FINAL}\"
     ls -lh '${OUT_FINAL}' || true
