@@ -7,9 +7,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: .venv (3.14.2)
+#     display_name: dicty (Python 3.14 venv)
 #     language: python
-#     name: python3
+#     name: dicty-py314
 # ---
 
 # %%
@@ -800,6 +800,78 @@ plt.show()
 plot_scatter_krec(ranked, cap=cap_eff, k_max_eval=k_max_eval_eff, title="Configs: K_rec vs MeanR@CAP (test avg)", save_path=OUTPUT_FIG_DIR / "krec_vs_recall.png")
 plot_shortfall(ranked, cap=cap_eff, topn=10, save_path=OUTPUT_FIG_DIR / "shortfall_top10.png")
 plot_keff(ranked, cap=cap_eff, topn=10, save_path=OUTPUT_FIG_DIR / "keff_top10.png")
+
+# %%
+# 10) Param-sensitivity plots (no save)
+df_test = results_df[results_df["split"].isin(test_splits)].copy()
+recall_cols = [c for c in df_test.columns if c.startswith("MeanR@")]
+recall_cols = sorted(recall_cols, key=lambda c: int(c.split("@")[1]))
+
+agg = df_test.groupby(["k_rrf", "w_bm25", "w_dense"], as_index=False).agg(
+    {**{c: "mean" for c in recall_cols}, "K_rec": "mean"}
+)
+agg["weight_ratio"] = agg["w_dense"] / agg["w_bm25"]
+agg = agg.sort_values(["weight_ratio", "k_rrf"]).reset_index(drop=True)
+
+# 10.1) Small-multiples heatmaps: metric x (weight_ratio, k_rrf)
+heat_metrics = ["MeanR@200", "MeanR@500", f"MeanR@{cap_eff}", f"MeanR@{k_max_eval_eff}"]
+heat_metrics = [m for m in heat_metrics if m in agg.columns]
+for metric in heat_metrics:
+    piv = agg.pivot_table(index="weight_ratio", columns="k_rrf", values=metric, aggfunc="mean")
+    plt.figure()
+    plt.imshow(piv.values, aspect="auto", origin="lower")
+    plt.colorbar(label=metric)
+    plt.xticks(range(len(piv.columns)), piv.columns.astype(str))
+    plt.yticks(range(len(piv.index)), [str(x) for x in piv.index])
+    plt.xlabel("k_rrf")
+    plt.ylabel("w_dense / w_bm25")
+    plt.title(f"{metric}: weight_ratio x k_rrf")
+    plt.show()
+
+# 10.2) Delta-from-baseline curves per config
+baseline = agg[(agg["w_bm25"] == 1.0) & (agg["w_dense"] == 1.0) & (agg["k_rrf"] == 30)]
+if len(baseline) == 0:
+    baseline = agg.iloc[[0]]
+baseline = baseline.iloc[0]
+top_configs = agg.sort_values(["K_rec", f"MeanR@{cap_eff}"], ascending=[True, False]).head(6)
+ks = [int(c.split("@")[1]) for c in recall_cols]
+plt.figure()
+for _, row in top_configs.iterrows():
+    deltas = [row[f"MeanR@{k}"] - baseline[f"MeanR@{k}"] for k in ks]
+    label = f"krrf={int(row.k_rrf)} wb={row.w_bm25} wd={row.w_dense}"
+    plt.plot(ks, deltas, marker="o", label=label)
+plt.axhline(0.0, linestyle="--", color="gray")
+plt.xlabel("K")
+plt.ylabel("Delta Recall vs baseline")
+plt.title("Delta-from-baseline recall curves (top configs)")
+plt.legend(fontsize="small")
+plt.show()
+
+# 10.3) Pareto scatter: shallow vs deep + robustness
+k_shallow = 200 if "MeanR@200" in agg.columns else int(recall_cols[0].split("@")[1])
+k_deep = 2000 if "MeanR@2000" in agg.columns else int(recall_cols[-1].split("@")[1])
+size = 40 + 30 * agg["weight_ratio"].clip(0.5, 3.0)
+plt.figure()
+sc = plt.scatter(agg[f"MeanR@{k_shallow}"], agg[f"MeanR@{k_deep}"], c=agg["k_rrf"], s=size)
+plt.xlabel(f"MeanR@{k_shallow}")
+plt.ylabel(f"MeanR@{k_deep}")
+plt.title("Pareto view: shallow vs deep")
+plt.colorbar(sc, label="k_rrf")
+plt.show()
+
+rob = df_test.groupby(["k_rrf", "w_bm25", "w_dense"], as_index=False).agg(
+    mean_deep=(f"MeanR@{k_deep}", "mean"),
+    min_deep=(f"MeanR@{k_deep}", "min"),
+)
+rob["weight_ratio"] = rob["w_dense"] / rob["w_bm25"]
+size = 40 + 30 * rob["weight_ratio"].clip(0.5, 3.0)
+plt.figure()
+sc = plt.scatter(rob["mean_deep"], rob["min_deep"], c=rob["k_rrf"], s=size)
+plt.xlabel(f"Avg MeanR@{k_deep}")
+plt.ylabel(f"Worst-split MeanR@{k_deep}")
+plt.title("Robustness: avg vs worst split")
+plt.colorbar(sc, label="k_rrf")
+plt.show()
 
 # %%
 
