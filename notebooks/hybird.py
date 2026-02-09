@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 BM25_ROOT = Path("../output/eval_bm25_rm3")
 BM25_RUNS_DIR = BM25_ROOT / "runs"
 
-DENSE_ROOT = Path("../output/eval_dense_MedEmbed")
+DENSE_ROOT = Path("../output/eval_dense_medembed_small")
 
 SUBSET_PATH = Path("../example/training14b_10pct_sample.json")
 
@@ -46,9 +46,34 @@ TEST_BATCHES = [
 # We'll use BM25_RM3 as the BM25 side
 BM25_METHOD_NAME = "BM25_RM3"
 
-# -------- evaluation cutoffs --------
-K_EVAL = 5000
+# -------- evaluation knobs --------
+CAP = 2000
+K_MAX_EVAL = 5000
+P = 0.95
+
+# Candidate budgets (keep aligned with K_MAX_EVAL unless you want to cap)
+KB = K_MAX_EVAL
+KD = K_MAX_EVAL
+
+# For backward compatibility in other cells
+K_EVAL = K_MAX_EVAL
 KS_RECALL = (200, 500, 1000, 2000, 5000)
+
+# RRF grid
+# K_RRF_LIST = [ 30, 60, 100, 150, 200]
+# WEIGHTS = [
+#     (1.0, 1.0),
+#     (2.0, 1.0),
+#     (1.0, 2.0),
+#     (3.0, 1.0),
+#     (1.0, 3.0),
+# ]
+K_RRF_LIST = [  60, 100, 150]
+WEIGHTS = [
+    (1.0, 1.0),
+    (2.0, 1.0),
+    (1.0, 2.0),
+]
 
 
 # %% [markdown]
@@ -102,6 +127,12 @@ def recall_at_k(gold: set[str], ranked: list[str], k: int) -> float:
         return 0.0
     return len(gold.intersection(ranked[:k])) / len(gold)
 
+def recall_at_k_eff(gold: set[str], ranked: list[str], k: int) -> tuple[float, int]:
+    k_eff = min(k, len(ranked))
+    if not gold or k_eff <= 0:
+        return 0.0, k_eff
+    return len(gold.intersection(ranked[:k_eff])) / len(gold), k_eff
+
 def evaluate_run(gold_map: dict[str, list[str]], run_map: dict[str, list[str]],
                  ks_recall=KS_RECALL, eps: float = 1e-5) -> dict:
     qids = list(gold_map.keys())
@@ -130,6 +161,58 @@ def evaluate_run(gold_map: dict[str, list[str]], run_map: dict[str, list[str]],
     for k in ks_recall:
         summary[f"MeanR@{k}"] = float(np.mean(recalls[k])) if recalls[k] else 0.0
     return summary
+
+def make_ks(k_max: int, k0: int = 200, n: int = 4) -> tuple[int, ...]:
+    if k_max <= 0:
+        return tuple()
+    if k_max <= k0:
+        return (k_max,)
+    ratio = (k_max / k0) ** (1.0 / max(1, n - 1))
+    ks = [k0]
+    for i in range(1, n - 1):
+        ks.append(int(round(k0 * (ratio**i))))
+    ks.append(k_max)
+    ks = sorted(set(int(k) for k in ks if k > 0))
+    if ks[0] != k0:
+        ks = [k0] + ks
+    if ks[-1] != k_max:
+        ks.append(k_max)
+    return tuple(sorted(set(ks)))
+
+def evaluate_recall_points(
+    gold_map: dict[str, list[str]],
+    run_map: dict[str, list[str]],
+    ks: tuple[int, ...],
+) -> dict:
+    out = {}
+    qids = list(gold_map.keys())
+
+    for k in ks:
+        recalls = []
+        shortfalls = []
+        keffs = []
+        for qid in qids:
+            gold = set(map(str, gold_map.get(qid, [])))
+            ranked = list(map(str, run_map.get(qid, [])))
+            r, k_eff = recall_at_k_eff(gold, ranked, k)
+            recalls.append(r)
+            keffs.append(k_eff)
+            shortfalls.append(1.0 if len(ranked) < k else 0.0)
+        out[f"MeanR@{k}"] = float(np.mean(recalls)) if recalls else 0.0
+        out[f"ShortfallRate@{k}"] = float(np.mean(shortfalls)) if shortfalls else 0.0
+        out[f"MeanKeff@{k}"] = float(np.mean(keffs)) if keffs else 0.0
+
+    return out
+
+def find_k_relative_to_best(metrics: dict, ks_cap: tuple[int, ...], k_best: int, p: float) -> int:
+    r_best = metrics.get(f"MeanR@{k_best}", None)
+    if r_best is None:
+        return max(ks_cap) + 1
+    target = p * float(r_best)
+    for k in ks_cap:
+        if metrics.get(f"MeanR@{k}", -1.0) >= target:
+            return int(k)
+    return max(ks_cap) + 1
 
 
 
@@ -213,7 +296,7 @@ def load_dense_parquet_run(path: Path) -> pd.DataFrame:
 
 
 # %% [markdown]
-# # 4) Fusion methods: Union + RRF
+# # 4) Fusion methods: RRF
 # ## 4.1 Helpers to cut top-K and to build run_map
 
 # %%
@@ -229,62 +312,7 @@ def df_to_run_map(df: pd.DataFrame) -> dict[str, list[str]]:
 
 
 # %% [markdown]
-# # 4.2 Union (BM25-first ordering)
-
-# %%
-def fuse_union(
-    bm25_df: pd.DataFrame,
-    dense_df: pd.DataFrame,
-    k_bm25_head: int,
-    k_dense_head: int,
-    k_out: int = K_EVAL,
-) -> dict[str, list[str]]:
-    b_all  = cut_topk(bm25_df, k_out)          # bm25 tail for filling
-    b_head = cut_topk(bm25_df, k_bm25_head)
-    d_head = cut_topk(dense_df, k_dense_head)
-
-    b_all_grp  = {qid: grp for qid, grp in b_all.groupby("qid", sort=False)}
-    b_head_grp = {qid: grp for qid, grp in b_head.groupby("qid", sort=False)}
-    d_head_grp = {qid: grp for qid, grp in d_head.groupby("qid", sort=False)}
-
-    all_qids = list(dict.fromkeys(list(b_all_grp.keys()) + list(d_head_grp.keys())))
-    run = {}
-
-    for qid in all_qids:
-        out, seen = [], set()
-
-        # 1) bm25 head
-        if qid in b_head_grp:
-            for doc in b_head_grp[qid].sort_values("rank")["docno"].astype(str):
-                if doc not in seen:
-                    out.append(doc); seen.add(doc)
-                if len(out) >= k_out:
-                    break
-
-        # 2) dense head
-        if len(out) < k_out and qid in d_head_grp:
-            for doc in d_head_grp[qid].sort_values("rank")["docno"].astype(str):
-                if doc not in seen:
-                    out.append(doc); seen.add(doc)
-                if len(out) >= k_out:
-                    break
-
-        # 3) fill with bm25 tail
-        if len(out) < k_out and qid in b_all_grp:
-            for doc in b_all_grp[qid].sort_values("rank")["docno"].astype(str):
-                if doc not in seen:
-                    out.append(doc); seen.add(doc)
-                if len(out) >= k_out:
-                    break
-
-        run[str(qid)] = out[:k_out]
-
-    return run
-
-
-
-# %% [markdown]
-# ## 4.3 RRF (optionally weighted)
+# ## 4.2 RRF (optionally weighted)
 
 # %%
 def fuse_rrf(bm25_df: pd.DataFrame, dense_df: pd.DataFrame,
@@ -366,11 +394,7 @@ def evaluate_split(split: str, bm25_df: pd.DataFrame, dense_df: pd.DataFrame, go
     out.append({"method": BM25_METHOD_NAME, "split": split, **evaluate_run(gold_map, bm25_run)})
     out.append({"method": "Dense", "split": split, **evaluate_run(gold_map, dense_run)})
 
-    # Union
-    union_run = fuse_union(bm25_df, dense_df, k_bm25_head=k_bm25, k_dense_head=k_dense, k_out=K_EVAL)
-    out.append({"method": f"Hybrid-Union(kb={k_bm25},kd={k_dense})", "split": split, **evaluate_run(gold_map, union_run)})
-
-    # RRF
+    # RRF only (Union removed)
     rrf_run = fuse_rrf(
         bm25_df,
         dense_df,
@@ -460,43 +484,63 @@ for split in splits:
 print("Loaded splits:", splits)
 
 # %%
-# Tuning grid (candidate cutoffs sized for deeper eval up to R@5000)
-K_BM25_LIST  = [500, 1000, 2000, 5000]
-K_DENSE_LIST = [200, 500, 1000, 2000]
-K_RRF_LIST   = [60, 100, 150]
-WEIGHTS      = [(1.0, 1.0)]
+# Option-1 tuning grid (RRF-only, K_p based on relative-to-best)
+max_union_upper = KB + KD
+k_max_eval_eff = int(min(K_MAX_EVAL, max_union_upper))
+cap_eff = int(min(CAP, k_max_eval_eff))
 
+ks_cap = make_ks(cap_eff, k0=200, n=4)
+ks_eval = tuple(sorted(set(ks_cap + (k_max_eval_eff,))))
 
-all_rows = []
+print(f"KB={KB} KD={KD} CAP={CAP} K_MAX_EVAL={K_MAX_EVAL} => cap_eff={cap_eff} k_max_eval_eff={k_max_eval_eff}")
+print("ks_cap:", ks_cap)
+print("ks_eval:", ks_eval)
 
-for w_bm25, w_dense in WEIGHTS:           
-    for krrf in K_RRF_LIST:
-        for kb in K_BM25_LIST:
-            for kd in K_DENSE_LIST:
-                # Evaluate all splits for this config
-                for split in splits:
-                    rows = evaluate_split(
-                        split=split,
-                        bm25_df=bm25_runs[split],
-                        dense_df=dense_runs[split],
-                        gold_map=gold_maps[split],
-                        k_bm25=kb,
-                        k_dense=kd,
-                        k_rrf=krrf,
-                        w_bm25=w_bm25,
-                        w_dense=w_dense,
-                    )
-                    for r in rows:
-                        # attach config fields
-                        r = dict(r)
-                        r["k_bm25"] = kb
-                        r["k_dense"] = kd
-                        r["k_rrf"] = krrf
-                        r["w_bm25"] = float(w_bm25)
-                        r["w_dense"] = float(w_dense)
-                        all_rows.append(r)
+rows = []
+test_splits = [fp.stem for fp in TEST_BATCHES]
 
-results_df = pd.DataFrame(all_rows)
+for (w_bm25, w_dense) in WEIGHTS:
+    for k_rrf in K_RRF_LIST:
+        for split in splits:
+            gold_map = gold_maps[split]
+
+            fused = fuse_rrf(
+                bm25_df=bm25_runs[split],
+                dense_df=dense_runs[split],
+                k_bm25=KB,
+                k_dense=KD,
+                k_rrf=k_rrf,
+                w_bm25=w_bm25,
+                w_dense=w_dense,
+                k_out=k_max_eval_eff,
+            )
+
+            metrics = evaluate_recall_points(gold_map, fused, ks=ks_eval)
+            k_rec = find_k_relative_to_best(metrics, ks_cap=ks_cap, k_best=k_max_eval_eff, p=P)
+
+            row = {
+                "split": split,
+                "k_rrf": int(k_rrf),
+                "w_bm25": float(w_bm25),
+                "w_dense": float(w_dense),
+                "KB": int(KB),
+                "KD": int(KD),
+                "CAP": int(CAP),
+                "CAP_eff": int(cap_eff),
+                "K_MAX_EVAL": int(K_MAX_EVAL),
+                "K_MAX_EVAL_eff": int(k_max_eval_eff),
+                "P": float(P),
+                "K_rec": int(k_rec),
+                f"ShortfallRate@{cap_eff}": metrics.get(f"ShortfallRate@{cap_eff}", np.nan),
+                f"MeanKeff@{cap_eff}": metrics.get(f"MeanKeff@{cap_eff}", np.nan),
+                f"MeanR@{cap_eff}": metrics.get(f"MeanR@{cap_eff}", np.nan),
+                f"MeanR@{k_max_eval_eff}": metrics.get(f"MeanR@{k_max_eval_eff}", np.nan),
+            }
+            for k in ks_eval:
+                row[f"MeanR@{k}"] = metrics.get(f"MeanR@{k}", np.nan)
+            rows.append(row)
+
+results_df = pd.DataFrame(rows)
 results_df.head()
 
 
@@ -504,134 +548,163 @@ results_df.head()
 results_df
 
 # %% [markdown]
-# # 8) Pick best config by deeper recall on test batches only
+# # 8) Pick best config (relative-to-best recall)
 
 # %%
 test_splits = [fp.stem for fp in TEST_BATCHES]
 
-def agg_score(df: pd.DataFrame) -> pd.DataFrame:
-    # Only hybrid rows, only test splits
+def rank_option1(df: pd.DataFrame) -> pd.DataFrame:
     d = df[df["split"].isin(test_splits)].copy()
-    d = d[d["method"].str.startswith("Hybrid-")].copy()
 
-    grp = d.groupby(["method", "k_bm25", "k_dense", "k_rrf", "w_bm25", "w_dense"], as_index=False).agg({
-        "MeanR@200": "mean",
-        "MeanR@500": "mean",
-        "MeanR@1000": "mean",
-        "MeanR@2000": "mean",
-        "MeanR@5000": "mean",
-        "MAP@10": "mean",
-        "MRR@10": "mean",
-    })
-    # prioritize deeper recall (esp. R@5000), while keeping some signal at mid-depth
-    grp["score_R5000"] = grp["MeanR@5000"]
-    grp["score_deep"] = 0.2 * grp["MeanR@1000"] + 0.3 * grp["MeanR@2000"] + 0.5 * grp["MeanR@5000"]
-    grp["score_mix"] = (
-        0.1 * grp["MeanR@200"]
-        + 0.1 * grp["MeanR@500"]
-        + 0.2 * grp["MeanR@1000"]
-        + 0.25 * grp["MeanR@2000"]
-        + 0.35 * grp["MeanR@5000"]
-    )
-    return grp.sort_values("score_mix", ascending=False)
+    agg_cols = {
+        "K_rec": "mean",
+        f"MeanR@{cap_eff}": "mean",
+        f"MeanR@{k_max_eval_eff}": "mean",
+        f"ShortfallRate@{cap_eff}": "mean",
+        f"MeanKeff@{cap_eff}": "mean",
+    }
 
-hybrid_ranked = agg_score(results_df)
-hybrid_ranked.head(200)
+    grp = d.groupby(["k_rrf", "w_bm25", "w_dense"], as_index=False).agg(agg_cols)
+
+    grp = grp.sort_values(
+        by=["K_rec", f"MeanR@{cap_eff}", f"ShortfallRate@{cap_eff}"],
+        ascending=[True, False, True],
+    ).reset_index(drop=True)
+    return grp
+
+ranked = rank_option1(results_df)
+ranked
 
 # %%
-best = hybrid_ranked.iloc[0].to_dict()
+best = ranked.iloc[0].to_dict() if len(ranked) else {}
 best
 
 
 # %%
 
 # %%
+def plot_option1_curve(row, ks_cap, cap, k_max_eval, p=0.95, title=""):
+    """
+    row: one aggregated row for a config+split (has MeanR@{k} columns)
+    ks_cap: list of K values up to cap, e.g. [200, 300, 500, 800, 1000, 1500, 2000]
+    """
+    ks = list(ks_cap) + [k_max_eval]
+    ys = [row.get(f"MeanR@{k}", np.nan) for k in ks]
 
-def plot_recall_curve(results_df, split, methods):
-    ks = [200, 500, 1000, 2000, 5000]
-    d = results_df[results_df["split"] == split].copy()
+    rmax = row.get(f"MeanR@{k_max_eval}", np.nan)
+    target = p * rmax if np.isfinite(rmax) else np.nan
+    k_rec = row.get("K_rec", np.nan)  # computed by your script
 
     plt.figure()
-    for m in methods:
-        row = d[d["method"] == m].iloc[0]
-        y = [row[f"MeanR@{k}"] for k in ks]
-        plt.plot(ks, y, marker="o", label=m)
-
+    plt.plot(ks, ys, marker="o")
     plt.xlabel("K")
     plt.ylabel("Mean Recall@K")
-    plt.title(f"Recall curves ({split})")
-    plt.legend()
+    plt.title(title or "Option-1 recall curve")
+
+    if np.isfinite(target):
+        plt.axhline(target, linestyle="--", label=f"p·Rmax (p={p})")
+    if np.isfinite(k_rec) and k_rec <= cap:
+        plt.axvline(k_rec, linestyle=":", label=f"K_rec={int(k_rec)}")
+
+    plt.legend(fontsize="small")
     plt.show()
 
 
 # %%
-def heatmap_metric(results_df, test_splits, method_prefix, metric="MeanR@500"):
-    """
-    Heatmap of avg metric across test_splits for methods whose name starts with method_prefix.
-    Requires columns k_bm25 and k_dense in results_df.
-    """
-    d = results_df[results_df["split"].isin(test_splits)].copy()
-    d = d[d["method"].str.startswith(method_prefix)].copy()
-
-    if d.empty:
-        raise ValueError(f"No rows match method_prefix={method_prefix}")
-
-    agg = d.groupby(["k_bm25", "k_dense"], as_index=False)[metric].mean()
-    piv = agg.pivot(index="k_dense", columns="k_bm25", values=metric)
+def plot_scatter_krec(df_cfg, cap, k_max_eval, title=""):
+    d = df_cfg.copy()
+    # configs that never reach p*Rmax within cap have K_rec = cap+1 in the script
+    d["K_rec_plot"] = d["K_rec"].clip(upper=cap+50)
 
     plt.figure()
-    plt.imshow(piv.values, aspect="auto")
-    plt.xticks(range(piv.shape[1]), piv.columns.astype(str), rotation=45)
-    plt.yticks(range(piv.shape[0]), piv.index.astype(str))
-    plt.xlabel("k_bm25")
-    plt.ylabel("k_dense")
-    plt.title(f"Avg {metric} across test splits ({method_prefix}*)")
-    plt.colorbar()
+    plt.scatter(d["K_rec_plot"], d[f"MeanR@{cap}"], s=40)
+    plt.xlabel("K_rec (clipped)")
+    plt.ylabel(f"MeanR@{cap}")
+    plt.title(title or "Configs: K_rec vs MeanR@CAP")
     plt.show()
 
 
 # %%
-sorted(results_df["method"].unique())
+def plot_shortfall(df_cfg, cap, topn=10):
+    d = df_cfg.sort_values(["K_rec", f"MeanR@{cap}"], ascending=[True, False]).head(topn)
+    plt.figure()
+    plt.bar(range(len(d)), d[f"ShortfallRate@{cap}"])
+    plt.xticks(range(len(d)), [f"{int(r.k_rrf)},{r.w_bm25}/{r.w_dense}" for r in d.itertuples()],
+               rotation=45, ha="right")
+    plt.ylabel(f"ShortfallRate@{cap}")
+    plt.title("Top configs: shortfall rate")
+    plt.tight_layout()
+    plt.show()
 
-# %%
-split = "train_subset"
-
-methods = [
-    "BM25_RM3",
-    "Dense",
-    "Hybrid-Union(kb=5000,kd=2000)",          # <-- replace with one that exists in your results_df
-    "Hybrid-RRF(kb=5000,kd=2000,krrf=150,wb=1.0,wd=1.0)",    # <-- replace with one that exists in your results_df
-]
-
-plot_recall_curve(results_df, split=split, methods=methods)
-
-
-# %%
-test_splits = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
-heatmap_metric(
-    results_df,
-    test_splits=test_splits,
-    method_prefix="Hybrid-RRF",   # or "Hybrid-Union" / "Hybrid-UnionFill"
-    metric="MeanR@500"
-)
 
 
 # %%
-test_splits = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
-heatmap_metric(
-    results_df,
-    test_splits=test_splits,
-    method_prefix="Hybrid-Union",   # or "Hybrid-Union" / "Hybrid-UnionFill"
-    metric="MeanR@500"
-)
+def plot_keff(df_cfg, cap, topn=10):
+    d = df_cfg.sort_values(["K_rec", f"MeanR@{cap}"], ascending=[True, False]).head(topn)
+    plt.figure()
+    plt.bar(range(len(d)), d[f"MeanKeff@{cap}"])
+    plt.xticks(range(len(d)), [f"{int(r.k_rrf)},{r.w_bm25}/{r.w_dense}" for r in d.itertuples()],
+               rotation=45, ha="right")
+    plt.ylabel(f"MeanKeff@{cap}")
+    plt.title("Top configs: mean effective depth")
+    plt.tight_layout()
+    plt.show()
+
+
 
 # %%
-d = results_df[results_df["split"].isin(test_splits)].copy()
-d = d[d["method"].str.startswith("Hybrid-Union")].copy()
+# ---- Meaningful plots for Option-1 ----
+if len(ranked) == 0:
+    raise ValueError("No ranked configs; run the grid cell first.")
 
-agg = d.groupby(["k_bm25","k_dense"], as_index=False)["MeanR@500"].mean()
-pivot = agg.pivot(index="k_dense", columns="k_bm25", values="MeanR@500")
-pivot
+best_cfg = ranked.iloc[0]
+best_krrf = int(best_cfg["k_rrf"])
+best_wb = float(best_cfg["w_bm25"])
+best_wd = float(best_cfg["w_dense"])
 
+# 1) Per-split recall curves for the best config
+for split in test_splits:
+    row = results_df[
+        (results_df["split"] == split)
+        & (results_df["k_rrf"] == best_krrf)
+        & (results_df["w_bm25"] == best_wb)
+        & (results_df["w_dense"] == best_wd)
+    ].iloc[0]
+    plot_option1_curve(
+        row=row,
+        ks_cap=ks_cap,
+        cap=cap_eff,
+        k_max_eval=k_max_eval_eff,
+        p=P,
+        title=f"Best config recall curve ({split})",
+    )
+
+# 2) Average recall curve across test splits (best config)
+mean_row = {"K_rec": best_cfg["K_rec"]}
+for k in ks_eval:
+    mean_row[f"MeanR@{k}"] = (
+        results_df[
+            (results_df["split"].isin(test_splits))
+            & (results_df["k_rrf"] == best_krrf)
+            & (results_df["w_bm25"] == best_wb)
+            & (results_df["w_dense"] == best_wd)
+        ][f"MeanR@{k}"]
+        .mean()
+    )
+plot_option1_curve(
+    row=mean_row,
+    ks_cap=ks_cap,
+    cap=cap_eff,
+    k_max_eval=k_max_eval_eff,
+    p=P,
+    title="Best config (avg over test splits)",
+ )
+
+# 3) Config-level scatter + diagnostics on test splits
+plot_scatter_krec(ranked, cap=cap_eff, k_max_eval=k_max_eval_eff, title="Configs: K_rec vs MeanR@CAP (test avg)")
+plot_shortfall(ranked, cap=cap_eff, topn=10)
+plot_keff(ranked, cap=cap_eff, topn=10)
+
+# %%
 
 # %%
