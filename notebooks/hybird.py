@@ -60,19 +60,13 @@ K_EVAL = K_MAX_EVAL
 KS_RECALL = (200, 500, 1000, 2000, 5000)
 
 # RRF grid
-# K_RRF_LIST = [ 30, 60, 100, 150, 200]
-# WEIGHTS = [
-#     (1.0, 1.0),
-#     (2.0, 1.0),
-#     (1.0, 2.0),
-#     (3.0, 1.0),
-#     (1.0, 3.0),
-# ]
-K_RRF_LIST = [  60, 100, 150]
+K_RRF_LIST = [ 30, 60, 100, 150, 200]
 WEIGHTS = [
     (1.0, 1.0),
     (2.0, 1.0),
     (1.0, 2.0),
+    (3.0, 1.0),
+    (1.0, 3.0),
 ]
 
 
@@ -653,7 +647,7 @@ def plot_keff(df_cfg, cap, topn=10):
 
 
 # %%
-# ---- Meaningful plots for Option-1 ----
+# ---- Meaningful plots for Option-1 (with BM25/Dense) ----
 if len(ranked) == 0:
     raise ValueError("No ranked configs; run the grid cell first.")
 
@@ -662,27 +656,53 @@ best_krrf = int(best_cfg["k_rrf"])
 best_wb = float(best_cfg["w_bm25"])
 best_wd = float(best_cfg["w_dense"])
 
-# 1) Per-split recall curves for the best config
+def baseline_metrics_for_split(split: str, method: str) -> dict:
+    if method == "BM25":
+        run = df_to_run_map(cut_topk(bm25_runs[split], k_max_eval_eff))
+    elif method == "Dense":
+        run = df_to_run_map(cut_topk(dense_runs[split], k_max_eval_eff))
+    else:
+        raise ValueError("method must be BM25 or Dense")
+    return evaluate_recall_points(gold_maps[split], run, ks=ks_eval)
+
+# 1) Per-split recall curves: best config vs BM25 vs Dense
 for split in test_splits:
-    row = results_df[
+    best_row = results_df[
         (results_df["split"] == split)
         & (results_df["k_rrf"] == best_krrf)
         & (results_df["w_bm25"] == best_wb)
         & (results_df["w_dense"] == best_wd)
     ].iloc[0]
-    plot_option1_curve(
-        row=row,
-        ks_cap=ks_cap,
-        cap=cap_eff,
-        k_max_eval=k_max_eval_eff,
-        p=P,
-        title=f"Best config recall curve ({split})",
-    )
 
-# 2) Average recall curve across test splits (best config)
-mean_row = {"K_rec": best_cfg["K_rec"]}
+    bm25_metrics = baseline_metrics_for_split(split, "BM25")
+    dense_metrics = baseline_metrics_for_split(split, "Dense")
+
+    ks = list(ks_cap) + [k_max_eval_eff]
+    plt.figure()
+    plt.plot(ks, [best_row.get(f"MeanR@{k}", np.nan) for k in ks], marker="o", label="Best RRF")
+    plt.plot(ks, [bm25_metrics.get(f"MeanR@{k}", np.nan) for k in ks], marker="o", label="BM25")
+    plt.plot(ks, [dense_metrics.get(f"MeanR@{k}", np.nan) for k in ks], marker="o", label="Dense")
+
+    rmax = best_row.get(f"MeanR@{k_max_eval_eff}", np.nan)
+    target = P * rmax if np.isfinite(rmax) else np.nan
+    k_rec = best_row.get("K_rec", np.nan)
+    if np.isfinite(target):
+        plt.axhline(target, linestyle="--", label=f"p·Rmax (p={P})")
+    if np.isfinite(k_rec) and k_rec <= cap_eff:
+        plt.axvline(k_rec, linestyle=":", label=f"K_rec={int(k_rec)}")
+
+    plt.xlabel("K")
+    plt.ylabel("Mean Recall@K (k_eff per query)")
+    plt.title(f"Recall curves ({split})")
+    plt.legend(fontsize="small")
+    plt.show()
+
+# 2) Average recall curve across test splits (best config vs BM25 vs Dense)
+mean_best = {"K_rec": best_cfg["K_rec"]}
+mean_bm25 = {}
+mean_dense = {}
 for k in ks_eval:
-    mean_row[f"MeanR@{k}"] = (
+    mean_best[f"MeanR@{k}"] = (
         results_df[
             (results_df["split"].isin(test_splits))
             & (results_df["k_rrf"] == best_krrf)
@@ -691,14 +711,28 @@ for k in ks_eval:
         ][f"MeanR@{k}"]
         .mean()
     )
-plot_option1_curve(
-    row=mean_row,
-    ks_cap=ks_cap,
-    cap=cap_eff,
-    k_max_eval=k_max_eval_eff,
-    p=P,
-    title="Best config (avg over test splits)",
- )
+    mean_bm25[f"MeanR@{k}"] = np.mean([baseline_metrics_for_split(s, "BM25").get(f"MeanR@{k}", np.nan) for s in test_splits])
+    mean_dense[f"MeanR@{k}"] = np.mean([baseline_metrics_for_split(s, "Dense").get(f"MeanR@{k}", np.nan) for s in test_splits])
+
+ks = list(ks_cap) + [k_max_eval_eff]
+plt.figure()
+plt.plot(ks, [mean_best.get(f"MeanR@{k}", np.nan) for k in ks], marker="o", label="Best RRF")
+plt.plot(ks, [mean_bm25.get(f"MeanR@{k}", np.nan) for k in ks], marker="o", label="BM25")
+plt.plot(ks, [mean_dense.get(f"MeanR@{k}", np.nan) for k in ks], marker="o", label="Dense")
+
+rmax = mean_best.get(f"MeanR@{k_max_eval_eff}", np.nan)
+target = P * rmax if np.isfinite(rmax) else np.nan
+k_rec = mean_best.get("K_rec", np.nan)
+if np.isfinite(target):
+    plt.axhline(target, linestyle="--", label=f"p·Rmax (p={P})")
+if np.isfinite(k_rec) and k_rec <= cap_eff:
+    plt.axvline(k_rec, linestyle=":", label=f"K_rec={int(k_rec)}")
+
+plt.xlabel("K")
+plt.ylabel("Mean Recall@K (k_eff per query)")
+plt.title("Recall curves (avg over test splits)")
+plt.legend(fontsize="small")
+plt.show()
 
 # 3) Config-level scatter + diagnostics on test splits
 plot_scatter_krec(ranked, cap=cap_eff, k_max_eval=k_max_eval_eff, title="Configs: K_rec vs MeanR@CAP (test avg)")
