@@ -1,4 +1,6 @@
-example/
+example/*
+!example/
+!example/training14b_10pct_sample.json
 tmp/
 .DS_Store
 **/.ipynb_checkpoints
