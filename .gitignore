@@ -7,7 +7,6 @@ tmp/
 output/
 .env
 logs/
-bioasq_data/
 indexes/
 runs_dense/
 .jupyter/
