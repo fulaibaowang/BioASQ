@@ -230,7 +230,7 @@ print("emb ok:", emb.shape)
 
 
 # %% [markdown]
-# # run data/build_dense_hnsw_index_from_jsonl_shards.py to build vector database (10% data first)
+# # run scripts/public/data/build_dense_hnsw_index_from_jsonl_shards.py to build vector database (10% data first)
 #
 # we first use abhinand/MedEmbed-small-v0.1
 
@@ -252,7 +252,7 @@ else:
 # ---------- Paths ----------
 SUBSET_PATH = Path("../example/training14b_10pct_sample.json")
 
-TEST_DIR = Path("../Task13BGoldenEnriched")
+TEST_DIR = Path("../bioasq_data/Task13BGoldenEnriched")
 TEST_BATCHES = [
     TEST_DIR / "13B1_golden.json",
     TEST_DIR / "13B2_golden.json",

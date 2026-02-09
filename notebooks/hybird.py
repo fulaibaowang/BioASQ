@@ -35,7 +35,7 @@ DENSE_ROOT = Path("../output/eval_dense_medembed_small")
 
 SUBSET_PATH = Path("../example/training14b_10pct_sample.json")
 
-TEST_DIR = Path("../Task13BGoldenEnriched")
+TEST_DIR = Path("../bioasq_data/Task13BGoldenEnriched")
 TEST_BATCHES = [
     TEST_DIR / "13B1_golden.json",
     TEST_DIR / "13B2_golden.json",

@@ -2,6 +2,11 @@ example/
 tmp/
 .DS_Store
 **/.ipynb_checkpoints
+**/__pycache__
+*.pyc
 output/
 .env
 logs/
+bioasq_data/
+indexes/
+runs_dense/

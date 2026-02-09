@@ -52,8 +52,8 @@ https://github.com/lasigeBioTM/BioASQ13_2025
 # question types
 
 ```
-yun@Air BioASQ % cd BioASQ-training14b 
-yun@Air BioASQ-training14b % FILE="trainining14b.json" 
+yun@Air BioASQ % cd bioasq_data/BioASQ-training14b
+yun@Air BioASQ-training14b % FILE="trainining14b.json"
 yun@Air BioASQ-training14b % total=$(jq '.questions | length' "$FILE")
 
 yun@Air BioASQ-training14b % echo $total

@@ -204,7 +204,7 @@ print("Avg doc length:", coll.getAverageDocumentLength())
 
 # %%
 # Load BioASQ training14b data
-TRAIN_PATH = "../BioASQ-training14b/trainining14b.json"
+TRAIN_PATH = "../bioasq_data/BioASQ-training14b/trainining14b.json"
 
 with open(TRAIN_PATH, "r", encoding="utf-8") as f:
     train_data = json.load(f)
@@ -449,7 +449,7 @@ print(f"Sampled questions (10%): {len(sampled_qids)}")
 # Step 3: add zero recall qids and test batch qids
 
 # Load test batch qids
-test_batch_qids_path = "../Task13BGoldenEnriched/test_batch_qids.txt"
+test_batch_qids_path = "../bioasq_data/Task13BGoldenEnriched/test_batch_qids.txt"
 test_batch_qids = set()
 with open(test_batch_qids_path, "r", encoding="utf-8") as f:
     for line in f:
@@ -511,9 +511,9 @@ print(f"\nSaved subset PMIDs to: {subset_pmids_path}")
 # # rebuild bm25 index
 
 # %% [markdown]
-# python3 data/extract_jsonl_subset_by_pmids.py  --jsonl_glob "../biolab/pubmed/jsonl_2026/*.jsonl" --pmid_list "example/subset_pmids.txt" --output_jsonl "output/subset_pubmed.jsonl" --dedup --stop_when_complete 
+# python3 scripts/public/data/extract_jsonl_subset_by_pmids.py  --jsonl_glob "../biolab/pubmed/jsonl_2026/*.jsonl" --pmid_list "example/subset_pmids.txt" --output_jsonl "output/subset_pubmed.jsonl" --dedup --stop_when_complete
 #
-# python data/build_bm25_index_from_jsonl_shards.py   --jsonl_glob "/work/output/subset_pubmed.jsonl"   --index_path "/work/output/pubmed_bm25_2026_subset_index"   --threads 4   --overwrite
+# python scripts/public/data/build_bm25_index_from_jsonl_shards.py   --jsonl_glob "/work/output/subset_pubmed.jsonl"   --index_path "/work/output/pubmed_bm25_2026_subset_index"   --threads 4   --overwrite
 #
 # in this step, build_bm25_index_from_jsonl_shards.py was changed slightly for handle digitals longer than 4 (cases like crt0066101)
 
@@ -531,7 +531,7 @@ print("Avg doc length:", coll.getAverageDocumentLength())
 
 # %%
 # Re-Load test batch qids
-test_batch_qids_path = "../Task13BGoldenEnriched/test_batch_qids.txt"
+test_batch_qids_path = "../bioasq_data/Task13BGoldenEnriched/test_batch_qids.txt"
 test_batch_qids = set()
 with open(test_batch_qids_path, "r", encoding="utf-8") as f:
     for line in f:
@@ -766,7 +766,7 @@ metrics
 # Evaluate BM25 (with query augmentation) on test batches + merge metrics
 from pathlib import Path
 
-TEST_DIR = Path("../Task13BGoldenEnriched")
+TEST_DIR = Path("../bioasq_data/Task13BGoldenEnriched")
 TEST_BATCHES = [
     TEST_DIR / "13B1_golden.json",
     TEST_DIR / "13B2_golden.json",
@@ -1037,7 +1037,7 @@ all_rm3_summaries.append({"batch": "train_subset", **subset_summary_rm3})
 # Test batches with RM3
 from pathlib import Path
 
-TEST_DIR = Path("../Task13BGoldenEnriched")
+TEST_DIR = Path("../bioasq_data/Task13BGoldenEnriched")
 TEST_BATCHES = [
     TEST_DIR / "13B1_golden.json",
     TEST_DIR / "13B2_golden.json",
