@@ -4,8 +4,12 @@ This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A 
 
 ## Methods (current)
 
-- BM25 + RM3 expansion for baseline retrieval
-- Dense retrieval via sentence-transformers + HNSW
+- First retrieval
+  - BM25 + RM3 expansion for keyword retrieval
+  - Dense retrieval via sentence-transformers + HNSW
+  - hybird reranking on BM25 and dense
+- Second retrieval
+- Third retrieval
 - Evaluation using official BioASQ measures
 
 ## Quickstart (minimal)

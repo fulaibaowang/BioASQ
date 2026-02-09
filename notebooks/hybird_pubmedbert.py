@@ -1,15 +1,16 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: .venv (3.14.2)
+#     display_name: dicty (Python 3.14 venv)
 #     language: python
-#     name: python3
+#     name: dicty-py314
 # ---
 
 # %%
@@ -31,22 +32,17 @@ import matplotlib.pyplot as plt
 BM25_ROOT = Path("../output/eval_bm25_rm3")
 BM25_RUNS_DIR = BM25_ROOT / "runs"
 
-DENSE_ROOT = Path("../output/eval_dense_medembed_small")
+DENSE_ROOT = Path("../output/eval_dense_pubmedbert_small")
 
 SUBSET_PATH = Path("../example/training14b_10pct_sample.json")
 
 TEST_DIR = Path("../bioasq_data/Task13BGoldenEnriched")
 TEST_BATCHES = [
     TEST_DIR / "13B1_golden.json",
-    TEST_DIR / "13B2_golden.json",
-    TEST_DIR / "13B3_golden.json",
-    TEST_DIR / "13B4_golden.json",
+    # TEST_DIR / "13B2_golden.json",
+    # TEST_DIR / "13B3_golden.json",
+    # TEST_DIR / "13B4_golden.json",
 ]
-
-# Output folders
-OUTPUT_DIR = Path("../output/eval_hybird")
-OUTPUT_RUNS_DIR = OUTPUT_DIR / "runs"
-OUTPUT_FIG_DIR = OUTPUT_DIR / "figures"
 
 # We'll use BM25_RM3 as the BM25 side
 BM25_METHOD_NAME = "BM25_RM3"
@@ -65,13 +61,13 @@ K_EVAL = K_MAX_EVAL
 KS_RECALL = (200, 500, 1000, 2000, 5000)
 
 # RRF grid
-K_RRF_LIST = [ 30, 60, 100, 150, 200]
+K_RRF_LIST = [ 60, 100, 150, 200]
 WEIGHTS = [
     (1.0, 1.0),
     (2.0, 1.0),
     (1.0, 2.0),
-    (3.0, 1.0),
-    (1.0, 3.0),
+    # (3.0, 1.0),
+    # (1.0, 3.0),
 ]
 
 
@@ -99,20 +95,6 @@ def build_gold_map_from_questions(questions: list[dict]) -> dict[str, list[str]]
         pmids = [p for p in pmids if p]
         gold[qid] = pmids
     return gold
-
-def runmap_to_tsv(
-    run_map: dict[str, list[str]],
-    out_path: Path,
-    scores: dict[str, dict[str, float]] | None = None,
- ) -> None:
-    rows = []
-    for qid, docs in run_map.items():
-        for i, doc in enumerate(docs, start=1):
-            sc = None
-            if scores is not None and qid in scores:
-                sc = scores[qid].get(doc, None)
-            rows.append({"qid": qid, "rank": i, "docno": doc, "score": sc})
-    pd.DataFrame(rows).to_csv(out_path, sep="\t", index=False)
 
 def ap_bioasq(gold: set[str], ranked: list[str], k: int = 10) -> float:
     if not gold:
@@ -557,6 +539,9 @@ results_df = pd.DataFrame(rows)
 results_df.head()
 
 
+# %%
+results_df
+
 # %% [markdown]
 # # 8) Pick best config (relative-to-best recall)
 
@@ -589,46 +574,11 @@ ranked
 best = ranked.iloc[0].to_dict() if len(ranked) else {}
 best
 
-# %%
-# 8.1) Save results + best runs
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_RUNS_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_FIG_DIR.mkdir(parents=True, exist_ok=True)
-
-results_df.to_csv(OUTPUT_DIR / "results_all.csv", index=False)
-ranked.to_csv(OUTPUT_DIR / "ranked_test_avg.csv", index=False)
-
-best_cfg = ranked.iloc[0].to_dict() if len(ranked) else {}
-if best_cfg:
-    (OUTPUT_DIR / "best_config.json").write_text(json.dumps(best_cfg, indent=2), encoding="utf-8")
-
-for split in splits:
-    best_row = results_df[
-        (results_df["split"] == split)
-        & (results_df["k_rrf"] == int(best_cfg["k_rrf"]))
-        & (results_df["w_bm25"] == float(best_cfg["w_bm25"]))
-        & (results_df["w_dense"] == float(best_cfg["w_dense"]))
-    ].iloc[0]
-
-    k_out = int(best_row["K_rec"]) if int(best_row["K_rec"]) <= CAP else CAP
-    best_run = fuse_rrf(
-        bm25_df=bm25_runs[split],
-        dense_df=dense_runs[split],
-        k_bm25=k_out,
-        k_dense=k_out,
-        k_rrf=int(best_row["k_rrf"]),
-        w_bm25=float(best_row["w_bm25"]),
-        w_dense=float(best_row["w_dense"]),
-        k_out=k_out,
-    )
-    runmap_to_tsv(best_run, OUTPUT_RUNS_DIR / f"best_rrf_{split}_top{k_out}.tsv")
-
-
-# %% [markdown]
-# # 9) plots
 
 # %%
-def plot_option1_curve(row, ks_cap, cap, k_max_eval, p=0.95, title="", save_path: Path | None = None):
+
+# %%
+def plot_option1_curve(row, ks_cap, cap, k_max_eval, p=0.95, title=""):
     """
     row: one aggregated row for a config+split (has MeanR@{k} columns)
     ks_cap: list of K values up to cap, e.g. [200, 300, 500, 800, 1000, 1500, 2000]
@@ -652,13 +602,11 @@ def plot_option1_curve(row, ks_cap, cap, k_max_eval, p=0.95, title="", save_path
         plt.axvline(k_rec, linestyle=":", label=f"K_rec={int(k_rec)}")
 
     plt.legend(fontsize="small")
-    if save_path is not None:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.show()
 
 
 # %%
-def plot_scatter_krec(df_cfg, cap, k_max_eval, title="", save_path: Path | None = None):
+def plot_scatter_krec(df_cfg, cap, k_max_eval, title=""):
     d = df_cfg.copy()
     # configs that never reach p*Rmax within cap have K_rec = cap+1 in the script
     d["K_rec_plot"] = d["K_rec"].clip(upper=cap+50)
@@ -668,14 +616,11 @@ def plot_scatter_krec(df_cfg, cap, k_max_eval, title="", save_path: Path | None 
     plt.xlabel("K_rec (clipped)")
     plt.ylabel(f"MeanR@{cap}")
     plt.title(title or "Configs: K_rec vs MeanR@CAP")
-    plt.ticklabel_format(axis="x", style="plain", useOffset=False)
-    if save_path is not None:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.show()
 
 
 # %%
-def plot_shortfall(df_cfg, cap, topn=10, save_path: Path | None = None):
+def plot_shortfall(df_cfg, cap, topn=10):
     d = df_cfg.sort_values(["K_rec", f"MeanR@{cap}"], ascending=[True, False]).head(topn)
     plt.figure()
     plt.bar(range(len(d)), d[f"ShortfallRate@{cap}"])
@@ -684,14 +629,12 @@ def plot_shortfall(df_cfg, cap, topn=10, save_path: Path | None = None):
     plt.ylabel(f"ShortfallRate@{cap}")
     plt.title("Top configs: shortfall rate")
     plt.tight_layout()
-    if save_path is not None:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.show()
 
 
 
 # %%
-def plot_keff(df_cfg, cap, topn=10, save_path: Path | None = None):
+def plot_keff(df_cfg, cap, topn=10):
     d = df_cfg.sort_values(["K_rec", f"MeanR@{cap}"], ascending=[True, False]).head(topn)
     plt.figure()
     plt.bar(range(len(d)), d[f"MeanKeff@{cap}"])
@@ -700,8 +643,6 @@ def plot_keff(df_cfg, cap, topn=10, save_path: Path | None = None):
     plt.ylabel(f"MeanKeff@{cap}")
     plt.title("Top configs: mean effective depth")
     plt.tight_layout()
-    if save_path is not None:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.show()
 
 
@@ -755,7 +696,6 @@ for split in test_splits:
     plt.ylabel("Mean Recall@K (k_eff per query)")
     plt.title(f"Recall curves ({split})")
     plt.legend(fontsize="small")
-    plt.savefig(OUTPUT_FIG_DIR / f"recall_curve_{split}.png", dpi=150, bbox_inches="tight")
     plt.show()
 
 # 2) Average recall curve across test splits (best config vs BM25 vs Dense)
@@ -793,15 +733,12 @@ plt.xlabel("K")
 plt.ylabel("Mean Recall@K (k_eff per query)")
 plt.title("Recall curves (avg over test splits)")
 plt.legend(fontsize="small")
-plt.savefig(OUTPUT_FIG_DIR / "recall_curve_test_avg.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # 3) Config-level scatter + diagnostics on test splits
-plot_scatter_krec(ranked, cap=cap_eff, k_max_eval=k_max_eval_eff, title="Configs: K_rec vs MeanR@CAP (test avg)", save_path=OUTPUT_FIG_DIR / "krec_vs_recall.png")
-plot_shortfall(ranked, cap=cap_eff, topn=10, save_path=OUTPUT_FIG_DIR / "shortfall_top10.png")
-plot_keff(ranked, cap=cap_eff, topn=10, save_path=OUTPUT_FIG_DIR / "keff_top10.png")
-
-# %%
+plot_scatter_krec(ranked, cap=cap_eff, k_max_eval=k_max_eval_eff, title="Configs: K_rec vs MeanR@CAP (test avg)")
+plot_shortfall(ranked, cap=cap_eff, topn=10)
+plot_keff(ranked, cap=cap_eff, topn=10)
 
 # %%
 

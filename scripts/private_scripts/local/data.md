@@ -1,3 +1,4 @@
+# prepare 
 docker run -it \
   -v $(pwd):/BioASQ/ \
   --platform=linux/amd64 fulaibaowang/bioasq:28.01.26 \
@@ -8,6 +9,7 @@ python /BioASQ/scripts/public/data/parse_pubmed_local.py \
     --output_dir /BioASQ/example/jsonl/ \
     --skip_existing
 
+# build index
 python /BioASQ/scripts/public/data/build_bm25_index_from_jsonl_shards.py \
   --jsonl_glob "/BioASQ/example/jsonl/*.jsonl" \
   --index_path "/BioASQ/example/index/pubmed_bm25_example" \
@@ -22,6 +24,7 @@ python scripts/public/data/build_dense_hnsw_index_from_jsonl_shards.py \
   --dedup_pmids \
   --max_elements 150000
 
+# eval
 /usr/bin/time -l \
 python scripts/public/retrieval/eval_bm25_rm3_bioasq.py \
   --index_path "output/pubmed_bm25_2026_subset_index" \
@@ -34,8 +37,7 @@ python scripts/public/retrieval/eval_bm25_rm3_bioasq.py \
   --rm3_fb_docs 20 --rm3_fb_terms 30 --rm3_lambda 0.6 \
   --save_runs --save_per_query --save_zero_recall
 
-# Add this if you also want BM25 baseline numbers:
-#   --include_bm25
+#<--- add this  --include_bm25 if you also want BM25 baseline numbers  
 
 /usr/bin/time -l \
 python scripts/public/retrieval/eval_dense.py \
