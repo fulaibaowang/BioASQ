@@ -1,40 +1,6 @@
 # BioASQ: retrieval + reranking experiments
 
 This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A style document retrieval.
-The focus is on BM25/RM3 baselines, dense retrieval, and evaluation utilities.
-
-## Repository layout
-
-```
-BioASQ/
-  scripts/
-    public/              # reusable CLI scripts
-      data/              # data parsing + index builders
-      retrieval/         # BM25/RM3 + dense eval
-      retrieval_eval/    # shared eval helpers
-    private_scripts/     # host-specific or hardcoded notes
-      hpc/
-      local/
-  notebooks/             # exploration (paired .ipynb/.py)
-  bioasq_data/            # official datasets (not tracked)
-  output/                # generated outputs (gitignored)
-  indexes/               # BM25/HNSW indexes (gitignored)
-  runs_dense/            # dense runs (gitignored)
-  example/               # small samples
-```
-
-## Data placement
-
-Put official datasets under `bioasq_data/`:
-
-```
-bioasq_data/
-  BioASQ-training13b/
-  BioASQ-training14b/
-  Task13BGoldenEnriched/
-```
-
-Large PubMed baselines and indexes are not tracked; store them in `output/` or external disks and point scripts via paths.
 
 ## Methods (current)
 
@@ -79,7 +45,3 @@ python scripts/public/retrieval/eval_bm25_rm3_bioasq.py \
   --save_runs --save_per_query --save_zero_recall
 ```
 
-## Notes
-
-- `scripts/private_scripts/` contains host-specific commands; keep it for your records but do not publish.
-- Notebooks are exploratory; scripts under `scripts/public/` are the reproducible entry points.
