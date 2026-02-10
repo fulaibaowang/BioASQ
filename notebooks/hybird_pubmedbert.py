@@ -39,9 +39,9 @@ SUBSET_PATH = Path("../example/training14b_10pct_sample.json")
 TEST_DIR = Path("../bioasq_data/Task13BGoldenEnriched")
 TEST_BATCHES = [
     TEST_DIR / "13B1_golden.json",
-    # TEST_DIR / "13B2_golden.json",
-    # TEST_DIR / "13B3_golden.json",
-    # TEST_DIR / "13B4_golden.json",
+    TEST_DIR / "13B2_golden.json",
+    TEST_DIR / "13B3_golden.json",
+    TEST_DIR / "13B4_golden.json",
 ]
 
 # We'll use BM25_RM3 as the BM25 side
@@ -66,9 +66,15 @@ WEIGHTS = [
     (1.0, 1.0),
     (2.0, 1.0),
     (1.0, 2.0),
-    # (3.0, 1.0),
-    # (1.0, 3.0),
+    (3.0, 1.0),
+    (1.0, 3.0),
 ]
+
+# %%
+# Output folders
+OUTPUT_DIR = Path("../output/eval_hybird_pubmedbert")
+OUTPUT_RUNS_DIR = OUTPUT_DIR / "runs"
+OUTPUT_FIG_DIR = OUTPUT_DIR / "figures"
 
 
 # %% [markdown]
@@ -95,6 +101,20 @@ def build_gold_map_from_questions(questions: list[dict]) -> dict[str, list[str]]
         pmids = [p for p in pmids if p]
         gold[qid] = pmids
     return gold
+
+def runmap_to_tsv(
+    run_map: dict[str, list[str]],
+    out_path: Path,
+    scores: dict[str, dict[str, float]] | None = None,
+ ) -> None:
+    rows = []
+    for qid, docs in run_map.items():
+        for i, doc in enumerate(docs, start=1):
+            sc = None
+            if scores is not None and qid in scores:
+                sc = scores[qid].get(doc, None)
+            rows.append({"qid": qid, "rank": i, "docno": doc, "score": sc})
+    pd.DataFrame(rows).to_csv(out_path, sep="\t", index=False)
 
 def ap_bioasq(gold: set[str], ranked: list[str], k: int = 10) -> float:
     if not gold:
@@ -550,9 +570,11 @@ test_splits = [fp.stem for fp in TEST_BATCHES]
 
 def rank_option1(df: pd.DataFrame) -> pd.DataFrame:
     d = df[df["split"].isin(test_splits)].copy()
+    # Treat CAP+1 as CAP for aggregation to avoid fractional K_rec from averaging.
+    d["K_rec_clipped"] = d["K_rec"].clip(upper=cap_eff)
 
     agg_cols = {
-        "K_rec": "mean",
+        "K_rec_clipped": "mean",
         f"MeanR@{cap_eff}": "mean",
         f"MeanR@{k_max_eval_eff}": "mean",
         f"ShortfallRate@{cap_eff}": "mean",
@@ -560,6 +582,7 @@ def rank_option1(df: pd.DataFrame) -> pd.DataFrame:
     }
 
     grp = d.groupby(["k_rrf", "w_bm25", "w_dense"], as_index=False).agg(agg_cols)
+    grp = grp.rename(columns={"K_rec_clipped": "K_rec"})
 
     grp = grp.sort_values(
         by=["K_rec", f"MeanR@{cap_eff}", f"ShortfallRate@{cap_eff}"],
@@ -574,11 +597,46 @@ ranked
 best = ranked.iloc[0].to_dict() if len(ranked) else {}
 best
 
+# %%
+# 8.1) Save results + best runs
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_RUNS_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_FIG_DIR.mkdir(parents=True, exist_ok=True)
+
+results_df.to_csv(OUTPUT_DIR / "results_all.csv", index=False)
+ranked.to_csv(OUTPUT_DIR / "ranked_test_avg.csv", index=False)
+
+best_cfg = ranked.iloc[0].to_dict() if len(ranked) else {}
+if best_cfg:
+    (OUTPUT_DIR / "best_config.json").write_text(json.dumps(best_cfg, indent=2), encoding="utf-8")
+
+for split in splits:
+    best_row = results_df[
+        (results_df["split"] == split)
+        & (results_df["k_rrf"] == int(best_cfg["k_rrf"]))
+        & (results_df["w_bm25"] == float(best_cfg["w_bm25"]))
+        & (results_df["w_dense"] == float(best_cfg["w_dense"]))
+    ].iloc[0]
+
+    k_out = int(best_row["K_rec"]) if int(best_row["K_rec"]) <= CAP else CAP
+    best_run = fuse_rrf(
+        bm25_df=bm25_runs[split],
+        dense_df=dense_runs[split],
+        k_bm25=k_out,
+        k_dense=k_out,
+        k_rrf=int(best_row["k_rrf"]),
+        w_bm25=float(best_row["w_bm25"]),
+        w_dense=float(best_row["w_dense"]),
+        k_out=k_out,
+    )
+    runmap_to_tsv(best_run, OUTPUT_RUNS_DIR / f"best_rrf_{split}_top{k_out}.tsv")
+
+
+# %% [markdown]
+# # 9) plots
 
 # %%
-
-# %%
-def plot_option1_curve(row, ks_cap, cap, k_max_eval, p=0.95, title=""):
+def plot_option1_curve(row, ks_cap, cap, k_max_eval, p=0.95, title="", save_path: Path | None = None):
     """
     row: one aggregated row for a config+split (has MeanR@{k} columns)
     ks_cap: list of K values up to cap, e.g. [200, 300, 500, 800, 1000, 1500, 2000]
@@ -602,11 +660,13 @@ def plot_option1_curve(row, ks_cap, cap, k_max_eval, p=0.95, title=""):
         plt.axvline(k_rec, linestyle=":", label=f"K_rec={int(k_rec)}")
 
     plt.legend(fontsize="small")
+    if save_path is not None:
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.show()
 
 
 # %%
-def plot_scatter_krec(df_cfg, cap, k_max_eval, title=""):
+def plot_scatter_krec(df_cfg, cap, k_max_eval, title="", save_path: Path | None = None):
     d = df_cfg.copy()
     # configs that never reach p*Rmax within cap have K_rec = cap+1 in the script
     d["K_rec_plot"] = d["K_rec"].clip(upper=cap+50)
@@ -616,11 +676,14 @@ def plot_scatter_krec(df_cfg, cap, k_max_eval, title=""):
     plt.xlabel("K_rec (clipped)")
     plt.ylabel(f"MeanR@{cap}")
     plt.title(title or "Configs: K_rec vs MeanR@CAP")
+    plt.ticklabel_format(axis="x", style="plain", useOffset=False)
+    if save_path is not None:
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.show()
 
 
 # %%
-def plot_shortfall(df_cfg, cap, topn=10):
+def plot_shortfall(df_cfg, cap, topn=10, save_path: Path | None = None):
     d = df_cfg.sort_values(["K_rec", f"MeanR@{cap}"], ascending=[True, False]).head(topn)
     plt.figure()
     plt.bar(range(len(d)), d[f"ShortfallRate@{cap}"])
@@ -629,12 +692,14 @@ def plot_shortfall(df_cfg, cap, topn=10):
     plt.ylabel(f"ShortfallRate@{cap}")
     plt.title("Top configs: shortfall rate")
     plt.tight_layout()
+    if save_path is not None:
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.show()
 
 
 
 # %%
-def plot_keff(df_cfg, cap, topn=10):
+def plot_keff(df_cfg, cap, topn=10, save_path: Path | None = None):
     d = df_cfg.sort_values(["K_rec", f"MeanR@{cap}"], ascending=[True, False]).head(topn)
     plt.figure()
     plt.bar(range(len(d)), d[f"MeanKeff@{cap}"])
@@ -643,6 +708,8 @@ def plot_keff(df_cfg, cap, topn=10):
     plt.ylabel(f"MeanKeff@{cap}")
     plt.title("Top configs: mean effective depth")
     plt.tight_layout()
+    if save_path is not None:
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.show()
 
 
@@ -696,6 +763,7 @@ for split in test_splits:
     plt.ylabel("Mean Recall@K (k_eff per query)")
     plt.title(f"Recall curves ({split})")
     plt.legend(fontsize="small")
+    plt.savefig(OUTPUT_FIG_DIR / f"recall_curve_{split}.png", dpi=150, bbox_inches="tight")
     plt.show()
 
 # 2) Average recall curve across test splits (best config vs BM25 vs Dense)
@@ -733,13 +801,59 @@ plt.xlabel("K")
 plt.ylabel("Mean Recall@K (k_eff per query)")
 plt.title("Recall curves (avg over test splits)")
 plt.legend(fontsize="small")
+plt.savefig(OUTPUT_FIG_DIR / "recall_curve_test_avg.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # 3) Config-level scatter + diagnostics on test splits
-plot_scatter_krec(ranked, cap=cap_eff, k_max_eval=k_max_eval_eff, title="Configs: K_rec vs MeanR@CAP (test avg)")
-plot_shortfall(ranked, cap=cap_eff, topn=10)
-plot_keff(ranked, cap=cap_eff, topn=10)
+plot_scatter_krec(ranked, cap=cap_eff, k_max_eval=k_max_eval_eff, title="Configs: K_rec vs MeanR@CAP (test avg)", save_path=OUTPUT_FIG_DIR / "krec_vs_recall.png")
+plot_shortfall(ranked, cap=cap_eff, topn=10, save_path=OUTPUT_FIG_DIR / "shortfall_top10.png")
+plot_keff(ranked, cap=cap_eff, topn=10, save_path=OUTPUT_FIG_DIR / "keff_top10.png")
 
 # %%
+# 10) Param-sensitivity plots (no save)
+df_test = results_df[results_df["split"].isin(test_splits)].copy()
+recall_cols = [c for c in df_test.columns if c.startswith("MeanR@")]
+recall_cols = sorted(recall_cols, key=lambda c: int(c.split("@")[1]))
+
+agg = df_test.groupby(["k_rrf", "w_bm25", "w_dense"], as_index=False).agg(
+    {**{c: "mean" for c in recall_cols}, "K_rec": "mean"}
+)
+agg["weight_ratio"] = agg["w_dense"] / agg["w_bm25"]
+agg = agg.sort_values(["weight_ratio", "k_rrf"]).reset_index(drop=True)
+
+# 10.1) Small-multiples heatmaps: metric x (weight_ratio, k_rrf)
+heat_metrics = ["MeanR@200", f"MeanR@{cap_eff}"]
+heat_metrics = [m for m in heat_metrics if m in agg.columns]
+for metric in heat_metrics:
+    piv = agg.pivot_table(index="weight_ratio", columns="k_rrf", values=metric, aggfunc="mean")
+    plt.figure()
+    plt.imshow(piv.values, aspect="auto", origin="lower")
+    plt.colorbar(label=metric)
+    plt.xticks(range(len(piv.columns)), piv.columns.astype(str))
+    plt.yticks(range(len(piv.index)), [str(x) for x in piv.index])
+    plt.xlabel("k_rrf")
+    plt.ylabel("w_dense / w_bm25")
+    plt.title(f"{metric}: weight_ratio x k_rrf")
+    plt.show()
+
+# 10.2) Delta-from-baseline curves per config
+baseline = agg[(agg["w_bm25"] == 1.0) & (agg["w_dense"] == 1.0) & (agg["k_rrf"] == 30)]
+if len(baseline) == 0:
+    baseline = agg.iloc[[0]]
+baseline = baseline.iloc[0]
+top_configs = agg.sort_values(["K_rec", f"MeanR@{cap_eff}"], ascending=[True, False]).head(6)
+ks = [int(c.split("@")[1]) for c in recall_cols]
+plt.figure()
+for _, row in top_configs.iterrows():
+    deltas = [row[f"MeanR@{k}"] - baseline[f"MeanR@{k}"] for k in ks]
+    label = f"krrf={int(row.k_rrf)} wb={row.w_bm25} wd={row.w_dense}"
+    plt.plot(ks, deltas, marker="o", label=label)
+plt.axhline(0.0, linestyle="--", color="gray")
+plt.xlabel("K")
+plt.ylabel("Delta Recall vs baseline")
+plt.title("Delta-from-baseline recall curves (top configs)")
+plt.legend(fontsize="small")
+plt.show()
+
 
 # %%

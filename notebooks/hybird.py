@@ -1,6 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
@@ -565,9 +566,11 @@ test_splits = [fp.stem for fp in TEST_BATCHES]
 
 def rank_option1(df: pd.DataFrame) -> pd.DataFrame:
     d = df[df["split"].isin(test_splits)].copy()
+    # Treat CAP+1 as CAP for aggregation to avoid fractional K_rec from averaging.
+    d["K_rec_clipped"] = d["K_rec"].clip(upper=cap_eff)
 
     agg_cols = {
-        "K_rec": "mean",
+        "K_rec_clipped": "mean",
         f"MeanR@{cap_eff}": "mean",
         f"MeanR@{k_max_eval_eff}": "mean",
         f"ShortfallRate@{cap_eff}": "mean",
@@ -575,6 +578,7 @@ def rank_option1(df: pd.DataFrame) -> pd.DataFrame:
     }
 
     grp = d.groupby(["k_rrf", "w_bm25", "w_dense"], as_index=False).agg(agg_cols)
+    grp = grp.rename(columns={"K_rec_clipped": "K_rec"})
 
     grp = grp.sort_values(
         by=["K_rec", f"MeanR@{cap_eff}", f"ShortfallRate@{cap_eff}"],
@@ -814,7 +818,7 @@ agg["weight_ratio"] = agg["w_dense"] / agg["w_bm25"]
 agg = agg.sort_values(["weight_ratio", "k_rrf"]).reset_index(drop=True)
 
 # 10.1) Small-multiples heatmaps: metric x (weight_ratio, k_rrf)
-heat_metrics = ["MeanR@200", "MeanR@500", f"MeanR@{cap_eff}", f"MeanR@{k_max_eval_eff}"]
+heat_metrics = ["MeanR@200", f"MeanR@{cap_eff}"]
 heat_metrics = [m for m in heat_metrics if m in agg.columns]
 for metric in heat_metrics:
     piv = agg.pivot_table(index="weight_ratio", columns="k_rrf", values=metric, aggfunc="mean")
@@ -847,31 +851,6 @@ plt.title("Delta-from-baseline recall curves (top configs)")
 plt.legend(fontsize="small")
 plt.show()
 
-# 10.3) Pareto scatter: shallow vs deep + robustness
-k_shallow = 200 if "MeanR@200" in agg.columns else int(recall_cols[0].split("@")[1])
-k_deep = 2000 if "MeanR@2000" in agg.columns else int(recall_cols[-1].split("@")[1])
-size = 40 + 30 * agg["weight_ratio"].clip(0.5, 3.0)
-plt.figure()
-sc = plt.scatter(agg[f"MeanR@{k_shallow}"], agg[f"MeanR@{k_deep}"], c=agg["k_rrf"], s=size)
-plt.xlabel(f"MeanR@{k_shallow}")
-plt.ylabel(f"MeanR@{k_deep}")
-plt.title("Pareto view: shallow vs deep")
-plt.colorbar(sc, label="k_rrf")
-plt.show()
-
-rob = df_test.groupby(["k_rrf", "w_bm25", "w_dense"], as_index=False).agg(
-    mean_deep=(f"MeanR@{k_deep}", "mean"),
-    min_deep=(f"MeanR@{k_deep}", "min"),
-)
-rob["weight_ratio"] = rob["w_dense"] / rob["w_bm25"]
-size = 40 + 30 * rob["weight_ratio"].clip(0.5, 3.0)
-plt.figure()
-sc = plt.scatter(rob["mean_deep"], rob["min_deep"], c=rob["k_rrf"], s=size)
-plt.xlabel(f"Avg MeanR@{k_deep}")
-plt.ylabel(f"Worst-split MeanR@{k_deep}")
-plt.title("Robustness: avg vs worst split")
-plt.colorbar(sc, label="k_rrf")
-plt.show()
 
 # %%
 
