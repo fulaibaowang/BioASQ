@@ -74,7 +74,7 @@ srun \
     export CUDA_VISIBLE_DEVICES=0,1,2,3
     export OMP_NUM_THREADS=8
     export PYTHONUNBUFFERED=1
-
+    python -m pip install --user jupytext
     # Generate Python script from notebook
     echo '[setup] Syncing notebook to Python script...'
     jupytext --to py notebooks/rerank_stage2-hpc.ipynb --output notebooks/rerank_stage2_hpc.py
