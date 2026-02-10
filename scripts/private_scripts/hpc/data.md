@@ -55,6 +55,13 @@ python scripts/public/retrieval/eval_dense.py \
   --topk 5000 \
   --ef_cap 5000
 
+# reranker
+stunnel -c8 --time=12:00:00 --mem=48G --gres=gpu:1 \
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs \
+  --job-name reranker \
+  --container-mount-home \
+  --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
+  --container-workdir /work 
 
 
 

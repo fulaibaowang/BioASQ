@@ -36,6 +36,11 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+try:
+    import torch
+except ImportError:
+    torch = None
+
 # %%
 # Allow importing from scripts/public
 import sys
@@ -82,9 +87,11 @@ MAX_QUERIES_PER_SPLIT = None  # e.g., 50 for a quick test
 CANDIDATE_LIMIT = 2000  # stage-1 top K
 
 # ---- reranker ----
-MODEL_NAME = "BAAI/bge-reranker-v2-m3"
-DEVICE = "cpu"  # "cuda", "mps", or "cpu"
+MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+DEVICE = "cuda"  # "cuda", "mps", or "cpu"
 BATCH_SIZE = 16
+USE_MULTI_GPU = False
+NUM_GPUS = 0  # 0 = all available
 
 # ---- adaptive cutoff ----
 P_TARGET = 0.95
@@ -235,23 +242,93 @@ try:
 except ImportError as e:
     raise ImportError("Missing sentence-transformers. Run: pip install sentence-transformers") from e
 
-reranker = CrossEncoder(MODEL_NAME, device=DEVICE)
-
+if USE_MULTI_GPU:
+    reranker = None
+else:
+    reranker = CrossEncoder(MODEL_NAME, device=DEVICE)
 
 # %% [markdown]
 # ## 7) Rerank candidates
 
 # %%
+from multiprocessing import get_context
+
+def _chunk_items(items: List[Tuple[str, List[str]]], n: int) -> List[List[Tuple[str, List[str]]]]:
+    if n <= 1:
+        return [items]
+    chunk_size = max(1, math.ceil(len(items) / n))
+    return [items[i * chunk_size : (i + 1) * chunk_size] for i in range(n) if items[i * chunk_size : (i + 1) * chunk_size]]
+
+def _rerank_worker(
+    gpu_id: int,
+    items: List[Tuple[str, List[str]]],
+    topics: Dict[str, str],
+    doc_texts: Dict[str, str],
+    model_name: str,
+    batch_size: int,
+    return_dict,
+    ) -> None:
+    device = f"cuda:{gpu_id}" if torch and torch.cuda.is_available() else "cpu"
+    model = CrossEncoder(model_name, device=device)
+    local_out: Dict[str, List[str]] = {}
+    total = len(items)
+    start = time()
+    for idx, (qid, docs) in enumerate(items, start=1):
+        query = topics.get(qid, "").strip()
+        if not query:
+            local_out[qid] = docs
+            continue
+        pairs = [(query, doc_texts.get(d, "")) for d in docs]
+        scores = model.predict(pairs, batch_size=batch_size, show_progress_bar=False)
+        scored = list(zip(docs, scores))
+        scored.sort(key=lambda x: x[1], reverse=True)
+        local_out[qid] = [d for d, _ in scored]
+        if idx == 1 or idx % 10 == 0 or idx == total:
+            elapsed = max(1e-9, time() - start)
+            rate = idx / elapsed
+            print(f"[gpu {gpu_id}] {idx}/{total} queries | {rate:.2f} q/s")
+    return_dict[gpu_id] = local_out
+
 def rerank_run(
     run_map: Dict[str, List[str]],
     topics: Dict[str, str],
     doc_texts: Dict[str, str],
-    model: CrossEncoder,
+    model: CrossEncoder | None,
+    model_name: str,
     batch_size: int = 32,
     log_every: int = 10,
+    use_multi_gpu: bool = False,
+    num_gpus: int = 0,
     ) -> Dict[str, List[str]]:
-    out: Dict[str, List[str]] = {}
     items = list(run_map.items())
+    if use_multi_gpu:
+        if not torch or not torch.cuda.is_available():
+            raise RuntimeError("Multi-GPU requested but CUDA is not available.")
+        available = torch.cuda.device_count()
+        if available < 2:
+            raise RuntimeError("Multi-GPU requested but fewer than 2 CUDA devices found.")
+        use_n = available if not num_gpus or num_gpus < 1 else min(num_gpus, available)
+        chunks = _chunk_items(items, use_n)
+        ctx = get_context("spawn")
+        manager = ctx.Manager()
+        return_dict = manager.dict()
+        procs = []
+        for gpu_id, chunk in enumerate(chunks):
+            p = ctx.Process(
+                target=_rerank_worker,
+                args=(gpu_id, chunk, topics, doc_texts, model_name, batch_size, return_dict),
+            )
+            p.start()
+            procs.append(p)
+        for p in procs:
+            p.join()
+        merged: Dict[str, List[str]] = {}
+        for part in return_dict.values():
+            merged.update(part)
+        return {qid: merged.get(qid, docs) for qid, docs in items}
+    if model is None:
+        raise RuntimeError("Single-GPU path requires a loaded model instance.")
+    out: Dict[str, List[str]] = {}
     total = len(items)
     start = time()
     for idx, (qid, docs) in enumerate(items, start=1):
@@ -280,7 +357,10 @@ for name in run_names:
         topics=topics_map,
         doc_texts=doc_texts,
         model=reranker,
+        model_name=MODEL_NAME,
         batch_size=BATCH_SIZE,
+        use_multi_gpu=USE_MULTI_GPU,
+        num_gpus=NUM_GPUS,
     )
     print("reranked", name, "queries:", len(reranked_runs[name]))
 
