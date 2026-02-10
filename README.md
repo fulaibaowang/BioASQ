@@ -2,50 +2,48 @@
 
 This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A style document retrieval.
 
-## Methods (current)
+## Methods
 
-- First retrieval
-  - BM25 + RM3 expansion for keyword retrieval
-  - Dense retrieval via sentence-transformers + HNSW
-  - hybird reranking on BM25 and dense
-- Second retrieval
-- Third retrieval
-- Evaluation using official BioASQ measures
+### First Stage Retrieval
 
-## Quickstart (minimal)
+- **BM25 + RM3** ([script](scripts/public/retrieval/eval_bm25_rm3_bioasq.py), [notebook](notebooks/bm25_test.ipynb))
+  - Keyword retrieval with RM3 query expansion
+  - Tunable: `--rm3_fb_docs`, `--rm3_fb_terms`, `--rm3_lambda`
+  - See [docs/PARAMETERS.md](docs/PARAMETERS.md) for ranges
 
-1) Parse PubMed XML to JSONL
-```
-python scripts/public/data/parse_pubmed_local.py \
-  --input_dir /path/to/pubmed/baseline2026 \
-  --output_dir /path/to/pubmed/jsonl_2026 \
-  --skip_existing
-```
+- **Dense Retrieval** ([script](scripts/public/retrieval/eval_dense.py), [notebook](notebooks/dense_test.ipynb))
+  - SentenceTransformer embeddings + HNSW index
+  - Models: MedEmbed-small-v0.1 (default), PubMedBERT
+  - Tunable: `--ef_search`, `--ef_cap`, embedding model
+  - See [docs/PARAMETERS.md](docs/PARAMETERS.md)
 
-2) Build a BM25 index
-```
-python scripts/public/data/build_bm25_index_from_jsonl_shards.py \
-  --jsonl_glob "/path/to/pubmed/jsonl_2026/*.jsonl" \
-  --index_path "/path/to/indexes/pubmed_bm25_2026" \
-  --threads 4 \
-  --overwrite
-```
+### Hybrid / Reranking
+- **Hybrid RRF** ([notebook](notebooks/hybird.ipynb))
+  - Reciprocal Rank Fusion combining BM25 and dense
+  - Tuning knobs: `K_RRF`, BM25/dense weight ratio
+  - See [docs/PARAMETERS.md](docs/PARAMETERS.md)
 
-3) Evaluate BM25/RM3 on a sample + test batches
-```
-python scripts/public/retrieval/eval_bm25_rm3_bioasq.py \
-  --index_path "/path/to/indexes/pubmed_bm25_2026" \
-  --train_json "example/training14b_10pct_sample.json" \
-  --test_batch_jsons \
-    bioasq_data/Task13BGoldenEnriched/13B1_golden.json \
-    bioasq_data/Task13BGoldenEnriched/13B2_golden.json \
-    bioasq_data/Task13BGoldenEnriched/13B3_golden.json \
-    bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
-  --out_dir "output/eval_bm25_rm3" \
-  --threads 4 \
-  --k_eval 5000 \
-  --k_feedback 50 \
-  --rm3_fb_docs 20 --rm3_fb_terms 30 --rm3_lambda 0.6 \
-  --save_runs --save_per_query --save_zero_recall
-```
+## Results (sample, BioASQ 13B)
 
+| Method | MAP@10 | MRR@10 | Success@10 | MeanR@5000 |
+|--------|--------|--------|------------|-----------|
+| BM25_RM3 | 0.285 | 0.524 | 0.824 | 0.891 |
+| Dense    | 0.218 | 0.410 | 0.710 | 0.848 |
+| Hybrid* | TBD | TBD | TBD | TBD |
+
+*See [notebooks/hybird.ipynb](notebooks/hybird.ipynb) for hybrid grid search results and analysis.  
+Full results with per-batch breakdown: [docs/RESULTS.md](docs/RESULTS.md)
+
+## Quick Start
+
+See [docs/USAGE.md](docs/USAGE.md) for detailed setup and evaluation commands.
+
+## Environment
+
+- Python 3.10+
+- PyTerrier (BM25 indexing & retrieval)
+- SentenceTransformers + HNSW (dense retrieval)
+- PyArrow (outputs)
+
+Install: `pip install -r requirements.txt`  
+Or: `pip install pyterrier sentence-transformers hnswlib pyarrow pandas numpy scipy`
