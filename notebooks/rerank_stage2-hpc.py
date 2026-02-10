@@ -82,7 +82,7 @@ RUN_FILES = {
 DOCS_JSONL = Path("../output/subset_pubmed.jsonl")
 
 # ---- selection ----
-SELECTED_RUNS = ["13B1_golden"]  # or ["train_subset"]
+SELECTED_RUNS = ["train_subset", '13B1_golden', '13B2_golden', '13B3_golden', '13B4_golden']  # or ["train_subset"]
 MAX_QUERIES_PER_SPLIT = None  # e.g., 50 for a quick test
 CANDIDATE_LIMIT = 2000  # stage-1 top K
 
