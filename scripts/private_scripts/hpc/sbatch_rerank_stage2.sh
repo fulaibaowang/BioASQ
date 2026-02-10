@@ -74,10 +74,6 @@ srun \
     export CUDA_VISIBLE_DEVICES=0,1,2,3
     export OMP_NUM_THREADS=8
     export PYTHONUNBUFFERED=1
-    python -m pip install --user jupytext
-    # Generate Python script from notebook
-    echo '[setup] Syncing notebook to Python script...'
-    jupytext --to py notebooks/rerank_stage2-hpc.ipynb --output notebooks/rerank_stage2_hpc.py
 
     # --- Run reranker script with multi-GPU support ---
     echo '[run] Starting reranker with multi-GPU...'
@@ -87,7 +83,7 @@ srun \
     echo '  - BATCH_SIZE = 48'
     echo '  - MODEL_NAME = "BAAI/bge-reranker-v2-m3"'
     echo '  - SELECTED_RUNS includes all splits'
-    python -u notebooks/rerank_stage2_hpc.py
+    python -u scripts/private_scripts/hpc/rerank_stage2_hpc.py
 
     echo '[done] Reranking complete'
     ls -lh '${OUT_DIR}' || true
