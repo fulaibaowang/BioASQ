@@ -61,9 +61,11 @@ from retrieval_eval.common import (
 # ## 2) Paths and Config
 
 # %%
+ROOT = Path(__file__).resolve().parents[3]
+
 # ---- data inputs ----
-SUBSET_PATH = Path("../example/training14b_10pct_sample.json")
-GOLD_DIR = Path("../bioasq_data/Task13BGoldenEnriched")
+SUBSET_PATH = ROOT / "example" / "training14b_10pct_sample.json"
+GOLD_DIR = ROOT / "bioasq_data" / "Task13BGoldenEnriched"
 GOLD_FILES = [
     GOLD_DIR / "13B1_golden.json",
     GOLD_DIR / "13B2_golden.json",
@@ -71,7 +73,7 @@ GOLD_FILES = [
     GOLD_DIR / "13B4_golden.json",
 ]
 
-RUNS_DIR = Path("../output/eval_hybird_production_test/runs")
+RUNS_DIR = ROOT / "output" / "eval_hybird_production_test" / "runs"
 RUN_FILES = {
     "train_subset": RUNS_DIR / "best_rrf_train_subset_top2000.tsv",
     "13B1_golden": RUNS_DIR / "best_rrf_13B1_golden_top2000.tsv",
@@ -80,7 +82,7 @@ RUN_FILES = {
     "13B4_golden": RUNS_DIR / "best_rrf_13B4_golden_top2000.tsv",
 }
 
-DOCS_JSONL = Path("../output/subset_pubmed.jsonl")
+DOCS_JSONL = ROOT / "output" / "subset_pubmed.jsonl"
 
 # ---- selection ----
 SELECTED_RUNS = ["train_subset", '13B1_golden', '13B2_golden', '13B3_golden', '13B4_golden']  # or ["train_subset"]
@@ -100,7 +102,7 @@ K_CAP = 300
 
 # ---- evaluation ----
 KS_RECALL = (50, 100, 200, 300, 500, 1000, 2000)
-OUTPUT_DIR = Path("../output/eval_stage2_rerank_bge_reranker_v2_m3")
+OUTPUT_DIR = ROOT / "output" / "eval_stage2_rerank_bge_reranker_v2_m3"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
