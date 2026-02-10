@@ -44,7 +44,8 @@ except ImportError:
 # %%
 # Allow importing from scripts/public
 import sys
-sys.path.insert(0, str(Path("..") / "scripts" / "public"))
+_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(_ROOT / "scripts" / "public"))
 
 from retrieval_eval.common import (
     build_topics_and_gold,
