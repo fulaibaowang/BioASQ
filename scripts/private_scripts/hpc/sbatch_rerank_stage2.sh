@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J stage2_rerank
 #SBATCH -p frida
-#SBATCH --time=1:00:30:00
+#SBATCH --time=24:00:00
 #SBATCH --gres=gpu:A100_80GB:4
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=512G
