@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J stage2_rerank
 #SBATCH -p frida
-#SBATCH --time=1:00:00:00
+#SBATCH --time=1:00:30:00
 #SBATCH --gres=gpu:A100_80GB:4
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=512G
@@ -28,7 +28,7 @@ RUNS_DIR="output/eval_hybird_production_test/runs"
 DOCS_JSONL="output/subset_pubmed.jsonl"
 
 # Output location (inside container)
-OUT_DIR="output/eval_stage2_rerank"
+OUT_DIR="output/eval_stage2_rerank_bge_reranker_v2_m3"
 
 MODEL_NAME="BAAI/bge-reranker-v2-m3"
 
@@ -84,8 +84,8 @@ srun \
     echo '[note] Make sure notebook is configured with:'
     echo '  - USE_MULTI_GPU = True'
     echo '  - NUM_GPUS = 4'
-    echo '  - BATCH_SIZE = 64'
-    echo '  - MODEL_NAME = \"cross-encoder/ms-marco-MiniLM-L-12-v2\"'
+    echo '  - BATCH_SIZE = 48'
+    echo '  - MODEL_NAME = "BAAI/bge-reranker-v2-m3"'
     echo '  - SELECTED_RUNS includes all splits'
     python -u notebooks/rerank_stage2_hpc.py
 
