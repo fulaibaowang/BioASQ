@@ -18,6 +18,14 @@ python scripts/public/data/parse_pubmed_local.py \
 - `--output_dir`: Output directory for JSONL shards
 - `--skip_existing`: Skip files that already exist in output
 
+### Build 10% Training Subset (BioASQ QAs)
+
+We generate a smaller training set at [example/training14b_10pct_sample.json](../example/training14b_10pct_sample.json).
+This subset is built from gold QAs plus zero-recall IDs and top-5000 retrieved PMIDs.
+
+See the notebook section **Build 10% Subset with Gold + zero recall ids + Retrieved PMIDs top 5000** in
+[notebooks/bm25_test.ipynb](../notebooks/bm25_test.ipynb) for the exact steps.
+
 ## Indexing & Retrieval
 
 ### BM25 Index
@@ -138,7 +146,7 @@ Both BM25 and dense evaluations produce:
 
 ## Tuning
 
-See [docs/PARAMETERS.md](PARAMETERS.md) for recommended ranges and rationale for RM3, HNSW, and dense model choices.
+See [docs/PARAMETERS.md](PARAMETERS.md) for parameter ranges and short notes.
 
 ## Hybrid Reranking
 

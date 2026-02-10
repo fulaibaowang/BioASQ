@@ -450,16 +450,15 @@ def plot_param_sensitivity(
 
 def main() -> None:
     ap = argparse.ArgumentParser("Evaluate hybrid (BM25+Dense) RRF fusion for BioASQ.")
-    ap.add_argument("--bm25_runs_dir", default="../output/eval_bm25_rm3/runs")
+    ap.add_argument("--bm25_runs_dir", required=True, help="Path to BM25 run TSV folder")
     ap.add_argument("--bm25_method", default="BM25_RM3")
     ap.add_argument("--bm25_topk", type=int, default=5000)
-    ap.add_argument("--dense_root", default="../output/eval_dense_medembed_small")
+    ap.add_argument("--dense_root", required=True, help="Path to dense output folder (dense_*.parquet)")
 
-    ap.add_argument("--train_subset_json", default="../example/training14b_10pct_sample.json")
-    ap.add_argument("--test_batch_jsons", nargs="*", default=[])
-    ap.add_argument("--test_dir", default="../bioasq_data/Task13BGoldenEnriched")
+    ap.add_argument("--train_subset_json", required=True)
+    ap.add_argument("--test_batch_jsons", nargs="+", required=True, help="List of 13B*_golden.json files")
 
-    ap.add_argument("--out_dir", default="../output/eval_hybird")
+    ap.add_argument("--out_dir", required=True)
 
     ap.add_argument("--mode", choices=["sweep", "default"], default="sweep")
     ap.add_argument("--k_rrf_list", default="60,100")
@@ -488,16 +487,7 @@ def main() -> None:
     figs_dir.mkdir(exist_ok=True)
 
     test_files: List[Path]
-    if args.test_batch_jsons:
-        test_files = [Path(p).resolve() for p in args.test_batch_jsons]
-    else:
-        test_dir = Path(args.test_dir).resolve()
-        test_files = [
-            test_dir / "13B1_golden.json",
-            test_dir / "13B2_golden.json",
-            test_dir / "13B3_golden.json",
-            test_dir / "13B4_golden.json",
-        ]
+    test_files = [Path(p).resolve() for p in args.test_batch_jsons]
 
     for fp in test_files:
         if not fp.exists():

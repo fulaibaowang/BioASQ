@@ -2,6 +2,13 @@
 
 This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A style document retrieval.
 
+## Plan and Goals
+
+- Stage 1 retrieval: high recall, fetch ~500-2000 docs per query.
+- Stage 2 retrieval: combine retrievers (BM25+RM3, dense, hybrid) to keep recall while narrowing candidates.
+- Stage 3 reranking: focus on precision at top ranks (MAP@10, MRR@10).
+- Metrics: use MeanR@K for stages 1-2 and MAP@10/MRR@10 for stage 3 (BioASQ official metrics).
+
 ## Methods
 
 ### First Stage Retrieval
@@ -9,30 +16,30 @@ This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A 
 - **BM25 + RM3** ([script](scripts/public/retrieval/eval_bm25_rm3_bioasq.py), [notebook](notebooks/bm25_test.ipynb))
   - Keyword retrieval with RM3 query expansion
   - Tunable: `--rm3_fb_docs`, `--rm3_fb_terms`, `--rm3_lambda`
-  - See [docs/PARAMETERS.md](docs/PARAMETERS.md) for ranges
 
 - **Dense Retrieval** ([script](scripts/public/retrieval/eval_dense.py), [notebook](notebooks/dense_test.ipynb))
   - SentenceTransformer embeddings + HNSW index
   - Models: MedEmbed-small-v0.1 (default), PubMedBERT
   - Tunable: `--ef_search`, `--ef_cap`, embedding model
-  - See [docs/PARAMETERS.md](docs/PARAMETERS.md)
 
 ### Hybrid / Reranking
 - **Hybrid RRF** ([notebook](notebooks/hybird.ipynb))
   - Reciprocal Rank Fusion combining BM25 and dense
   - Tuning knobs: `K_RRF`, BM25/dense weight ratio
-  - See [docs/PARAMETERS.md](docs/PARAMETERS.md)
 
-## Results (sample, BioASQ 13B)
+Tunable parameter ranges: [docs/PARAMETERS.md](docs/PARAMETERS.md)
 
-| Method | MAP@10 | MRR@10 | Success@10 | MeanR@5000 |
-|--------|--------|--------|------------|-----------|
-| BM25_RM3 | 0.285 | 0.524 | 0.824 | 0.891 |
-| Dense    | 0.218 | 0.410 | 0.710 | 0.848 |
-| Hybrid* | TBD | TBD | TBD | TBD |
+## Results (minimal, recall-focused)
 
-*See [notebooks/hybird.ipynb](notebooks/hybird.ipynb) for hybrid grid search results and analysis.  
-Full results with per-batch breakdown: [docs/RESULTS.md](docs/RESULTS.md)
+Recall metrics for stages 1-2. Full tables are in [docs/RESULTS.md](docs/RESULTS.md).
+
+| Method | MeanR@5000 (13B test avg) |
+|--------|---------------------------|
+| BM25_RM3 | 0.914 |
+| Dense    | 0.891 |
+| Hybrid | TBD |
+
+Hybrid details: [notebooks/hybird.ipynb](notebooks/hybird.ipynb)
 
 ## Quick Start
 
