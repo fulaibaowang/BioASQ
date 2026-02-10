@@ -56,7 +56,7 @@ python scripts/public/retrieval/eval_dense.py \
   --ef_cap 5000
 
 # reranker
-stunnel -c32 --time=12:00:00 --mem=256G --gres=gpu:A100_80GB:4 \
+stunnel -c16 --time=12:00:00 --mem=64G --gres=gpu:A100_80GB:1 \
   --container-image=/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs \
   --job-name reranker \
   --container-mount-home \
