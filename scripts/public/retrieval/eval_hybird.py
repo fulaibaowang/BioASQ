@@ -387,6 +387,67 @@ def plot_scatter_krec(df_cfg: pd.DataFrame, cap: int, save_path: Path) -> None:
     plt.close()
 
 
+def plot_param_sensitivity(
+    results_df: pd.DataFrame,
+    test_splits: List[str],
+    cap_eff: int,
+    figs_dir: Path,
+    baseline_cfg: Tuple[int, float, float],
+) -> None:
+    df_test = results_df[results_df["split"].isin(test_splits)].copy()
+    recall_cols = [c for c in df_test.columns if c.startswith("MeanR@")] 
+    recall_cols = sorted(recall_cols, key=lambda c: int(c.split("@")[1]))
+
+    agg = df_test.groupby(["k_rrf", "w_bm25", "w_dense"], as_index=False).agg(
+        {**{c: "mean" for c in recall_cols}, "K_rec": "mean"}
+    )
+    agg["weight_ratio"] = agg["w_dense"] / agg["w_bm25"]
+    agg = agg.sort_values(["weight_ratio", "k_rrf"]).reset_index(drop=True)
+
+    heat_metrics = ["MeanR@200", f"MeanR@{cap_eff}"]
+    heat_metrics = [m for m in heat_metrics if m in agg.columns]
+    for metric in heat_metrics:
+        piv = agg.pivot_table(index="weight_ratio", columns="k_rrf", values=metric, aggfunc="mean")
+        plt.figure()
+        plt.imshow(piv.values, aspect="auto", origin="lower")
+        plt.colorbar(label=metric)
+        plt.xticks(range(len(piv.columns)), piv.columns.astype(str))
+        plt.yticks(range(len(piv.index)), [str(x) for x in piv.index])
+        plt.xlabel("k_rrf")
+        plt.ylabel("w_dense / w_bm25")
+        plt.title(f"{metric}: weight_ratio x k_rrf")
+        plt.savefig(figs_dir / f"heatmap_{metric.replace('@', '_')}.png", dpi=150, bbox_inches="tight")
+        plt.close()
+
+    if not recall_cols:
+        return
+
+    base_krrf, base_wb, base_wd = baseline_cfg
+    baseline = agg[
+        (agg["k_rrf"] == int(base_krrf))
+        & (agg["w_bm25"] == float(base_wb))
+        & (agg["w_dense"] == float(base_wd))
+    ]
+    if len(baseline) == 0:
+        baseline = agg.iloc[[0]]
+    baseline = baseline.iloc[0]
+
+    top_configs = agg.sort_values(["K_rec", f"MeanR@{cap_eff}"], ascending=[True, False]).head(6)
+    ks = [int(c.split("@")[1]) for c in recall_cols]
+    plt.figure()
+    for _, row in top_configs.iterrows():
+        deltas = [row[f"MeanR@{k}"] - baseline[f"MeanR@{k}"] for k in ks]
+        label = f"krrf={int(row.k_rrf)} wb={row.w_bm25} wd={row.w_dense}"
+        plt.plot(ks, deltas, marker="o", label=label)
+    plt.axhline(0.0, linestyle="--", color="gray")
+    plt.xlabel("K")
+    plt.ylabel("Delta Recall vs baseline")
+    plt.title("Delta-from-baseline recall curves (top configs)")
+    plt.legend(fontsize="small")
+    plt.savefig(figs_dir / "delta_recall_top_configs.png", dpi=150, bbox_inches="tight")
+    plt.close()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser("Evaluate hybrid (BM25+Dense) RRF fusion for BioASQ.")
     ap.add_argument("--bm25_runs_dir", default="../output/eval_bm25_rm3/runs")
@@ -588,7 +649,7 @@ def main() -> None:
         )
         runmap_to_tsv(best_run, runs_dir / f"best_rrf_{split}_top{k_out}.tsv")
 
-    save_plots = bool(args.save_plots or (args.mode == "sweep" and not args.no_plots))
+    save_plots = bool((not args.no_plots) or args.save_plots)
     if save_plots:
         best_cfg = ranked.iloc[0]
         plot_recall_curves(
@@ -611,6 +672,19 @@ def main() -> None:
         plot_scatter_krec(ranked, cap=cap_eff, save_path=figs_dir / "krec_vs_recall.png")
         plot_shortfall(ranked, cap=cap_eff, topn=10, save_path=figs_dir / "shortfall_top10.png")
         plot_keff(ranked, cap=cap_eff, topn=10, save_path=figs_dir / "keff_top10.png")
+
+        if args.mode == "sweep":
+            plot_param_sensitivity(
+                results_df=results_df,
+                test_splits=test_splits,
+                cap_eff=cap_eff,
+                figs_dir=figs_dir,
+                baseline_cfg=(
+                    int(best_cfg["k_rrf"]),
+                    float(best_cfg["w_bm25"]),
+                    float(best_cfg["w_dense"]),
+                ),
+            )
 
     config = vars(args)
     config.update({"ks_cap": list(ks_cap), "ks_eval": list(ks_eval)})
