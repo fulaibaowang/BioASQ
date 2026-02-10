@@ -4,8 +4,8 @@ This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A 
 
 ## Plan and Goals
 
-- Stage 1 retrieval: high recall, fetch ~500-2000 docs per query.
-- Stage 2 retrieval: combine retrievers (BM25+RM3, dense, hybrid) to keep recall while narrowing candidates.
+- Stage 1 retrieval: combine retrievers (BM25+RM3, dense, hybrid) , fetch ~500-2000 docs per query, .
+- Stage 2 retrieval: cross-encoder model, fetch ~50-200 to keep recall while narrowing candidates.
 - Stage 3 reranking: focus on precision at top ranks (MAP@10, MRR@10).
 - Metrics: use MeanR@K for stages 1-2 and MAP@10/MRR@10 for stage 3 (BioASQ official metrics).
 
@@ -29,28 +29,22 @@ This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A 
 
 Tunable parameter ranges: [docs/PARAMETERS.md](docs/PARAMETERS.md)
 
-## Results (minimal, recall-focused)
+## Results
 
 Recall metrics for stages 1-2. Full tables are in [docs/RESULTS.md](docs/RESULTS.md).
 
-| Method | MeanR@5000 (13B test avg) |
+| Method | MeanR@2000 (13B test avg) |
 |--------|---------------------------|
-| BM25_RM3 | 0.914 |
-| Dense    | 0.891 |
-| Hybrid | TBD |
+| BM25_RM3 | 0.856 |
+| Dense (MedEmbed)    | 0.787 |
+| Hybrid | 0.907 |
 
 Hybrid details: [notebooks/hybird.ipynb](notebooks/hybird.ipynb)
 
-## Quick Start
+## Detailed commands
 
 See [docs/USAGE.md](docs/USAGE.md) for detailed setup and evaluation commands.
 
 ## Environment
 
-- Python 3.10+
-- PyTerrier (BM25 indexing & retrieval)
-- SentenceTransformers + HNSW (dense retrieval)
-- PyArrow (outputs)
-
-Install: `pip install -r requirements.txt`  
-Or: `pip install pyterrier sentence-transformers hnswlib pyarrow pandas numpy scipy`
+ `pip install pyterrier sentence-transformers hnswlib pyarrow pandas numpy scipy`

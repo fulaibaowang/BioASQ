@@ -9,6 +9,8 @@
 | `--rm3_fb_terms` | 20 – 50 | Expanded terms to add |
 | `--rm3_lambda` | 0.4 – 0.8 | Interpolation weight (0 = pure RM3, 1 = pure original) |
 
+See [notebooks/bm25_test.ipynb](../notebooks/bm25_test.ipynb) for detailed notes.
+
 ## Dense Retrieval (HNSW)
 
 | Parameter | Range | Notes |
@@ -24,7 +26,7 @@
 - [abhinand/MedEmbed-small-v0.1](https://huggingface.co/abhinand/MedEmbed-small-v0.1)
 - [sentence-transformers/pubmedbert](https://huggingface.co/sentence-transformers/pubmedbert)
 
-See [notebooks/dense_test.ipynb](../notebooks/dense_test.ipynb) for model comparison notes.
+See [notebooks/dense_test.ipynb](../notebooks/dense_test.ipynb) for detailed notes.
 
 ## Hybrid Reranking (RRF)
 
