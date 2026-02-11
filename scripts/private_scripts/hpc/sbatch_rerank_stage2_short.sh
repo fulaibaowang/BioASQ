@@ -2,7 +2,7 @@
 #SBATCH -J stage2_rerank_public
 #SBATCH -p frida
 #SBATCH --time=24:00:00
-#SBATCH --gres=gpu:A100_80GB:2
+#SBATCH --gres=gpu:A100:3
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=300G
 #SBATCH -o logs/%x_%j.out
@@ -43,8 +43,8 @@ OUT_DIR="output/eval_stage2_rerank_bge_reranker_v2_m3"
 # Reranker parameters
 MODEL_NAME="BAAI/bge-reranker-v2-m3"
 USE_MULTI_GPU=true
-NUM_GPUS=2
-BATCH_SIZE=312
+NUM_GPUS=3
+BATCH_SIZE=180
 MODEL_MAX_LENGTH=200
 CANDIDATE_LIMIT=2000
 ADAPTIVE_P=0.95
@@ -74,7 +74,6 @@ srun \
     echo \"[cache] HF_HOME=\$HF_HOME\"
 
     # --- Set up environment for multi-GPU ---
-    export CUDA_VISIBLE_DEVICES=0,1
     export OMP_NUM_THREADS=8
     export PYTHONUNBUFFERED=1
 
