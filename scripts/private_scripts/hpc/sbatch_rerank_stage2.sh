@@ -2,7 +2,7 @@
 #SBATCH -J stage2_rerank
 #SBATCH -p dev
 #SBATCH --time=12:00:00
-#SBATCH --gres=gpu:A100_80GB:4
+#SBATCH --gres=gpu:A100_80GB:2
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=312G
 #SBATCH -o logs/%x_%j.out
@@ -34,7 +34,7 @@ MODEL_NAME="BAAI/bge-reranker-v2-m3"
 
 # Reranker parameters
 USE_MULTI_GPU=true
-NUM_GPUS=4
+NUM_GPUS=2
 BATCH_SIZE=48
 
 # Selected runs to rerank (all splits)
