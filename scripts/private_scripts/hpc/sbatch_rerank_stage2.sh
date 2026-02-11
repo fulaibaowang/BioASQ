@@ -79,7 +79,7 @@ srun \
     echo '[run] Starting reranker with multi-GPU...'
     echo '[note] Make sure notebook is configured with:'
     echo '  - USE_MULTI_GPU = True'
-    echo '  - NUM_GPUS = 4'
+    echo '  - NUM_GPUS = 2'
     echo '  - BATCH_SIZE = 48'
     echo '  - MODEL_NAME = "BAAI/bge-reranker-v2-m3"'
     echo '  - SELECTED_RUNS includes all splits'
