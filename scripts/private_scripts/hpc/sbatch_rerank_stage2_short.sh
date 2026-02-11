@@ -77,7 +77,7 @@ srun \
     export OMP_NUM_THREADS=8
     export PYTHONUNBUFFERED=1
 
-    echo "[debug] CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-<unset>}"
+    echo "[debug] CUDA_VISIBLE_DEVICES=\${CUDA_VISIBLE_DEVICES:-<unset>}"
     nvidia-smi -L || true
 
     # --- Run reranker script with CLI flags ---
