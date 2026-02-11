@@ -7,9 +7,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: dicty (Python 3.14 venv)
+#     display_name: Python 3
 #     language: python
-#     name: dicty-py314
+#     name: python3
 # ---
 
 # %% [markdown]
@@ -36,16 +36,10 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-try:
-    import torch
-except ImportError:
-    torch = None
-
 # %%
 # Allow importing from scripts/public
 import sys
-_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(_ROOT / "scripts" / "public"))
+sys.path.insert(0, str(Path("..") / "scripts" / "public"))
 
 from retrieval_eval.common import (
     build_topics_and_gold,
@@ -61,11 +55,9 @@ from retrieval_eval.common import (
 # ## 2) Paths and Config
 
 # %%
-ROOT = Path(__file__).resolve().parents[3]
-
 # ---- data inputs ----
-SUBSET_PATH = ROOT / "example" / "training14b_10pct_sample.json"
-GOLD_DIR = ROOT / "bioasq_data" / "Task13BGoldenEnriched"
+SUBSET_PATH = Path("../example/training14b_10pct_sample.json")
+GOLD_DIR = Path("../bioasq_data/Task13BGoldenEnriched")
 GOLD_FILES = [
     GOLD_DIR / "13B1_golden.json",
     GOLD_DIR / "13B2_golden.json",
@@ -73,7 +65,7 @@ GOLD_FILES = [
     GOLD_DIR / "13B4_golden.json",
 ]
 
-RUNS_DIR = ROOT / "output" / "eval_hybird_production_test" / "runs"
+RUNS_DIR = Path("../output/eval_hybird_production_test/runs")
 RUN_FILES = {
     "train_subset": RUNS_DIR / "best_rrf_train_subset_top2000.tsv",
     "13B1_golden": RUNS_DIR / "best_rrf_13B1_golden_top2000.tsv",
@@ -82,19 +74,17 @@ RUN_FILES = {
     "13B4_golden": RUNS_DIR / "best_rrf_13B4_golden_top2000.tsv",
 }
 
-DOCS_JSONL = ROOT / "output" / "subset_pubmed.jsonl"
+DOCS_JSONL = Path("../output/subset_pubmed.jsonl")
 
 # ---- selection ----
-SELECTED_RUNS = ["train_subset", '13B1_golden', '13B2_golden', '13B3_golden', '13B4_golden']  # or ["train_subset"]
+SELECTED_RUNS = ["train_subset","13B1_golden","13B2_golden","13B3_golden","13B4_golden"]  # or ["train_subset"]
 MAX_QUERIES_PER_SPLIT = None  # e.g., 50 for a quick test
 CANDIDATE_LIMIT = 2000  # stage-1 top K
 
 # ---- reranker ----
-MODEL_NAME = "BAAI/bge-reranker-v2-m3"  # Larger cross-encoder model
+MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-12-v2"
 DEVICE = "cuda"  # "cuda", "mps", or "cpu"
-BATCH_SIZE = 48  # Safer batch size for larger model
-USE_MULTI_GPU = True  # Enable multi-GPU on HPC
-NUM_GPUS = 4  # Request 4 A100 80GB on Frida
+BATCH_SIZE = 64
 
 # ---- adaptive cutoff ----
 P_TARGET = 0.95
@@ -102,7 +92,7 @@ K_CAP = 300
 
 # ---- evaluation ----
 KS_RECALL = (50, 100, 200, 300, 500, 1000, 2000)
-OUTPUT_DIR = ROOT / "output" / "eval_stage2_rerank_bge_reranker_v2_m3"
+OUTPUT_DIR = Path("../output/eval_stage2_rerank")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -245,93 +235,23 @@ try:
 except ImportError as e:
     raise ImportError("Missing sentence-transformers. Run: pip install sentence-transformers") from e
 
-if USE_MULTI_GPU:
-    reranker = None
-else:
-    reranker = CrossEncoder(MODEL_NAME, device=DEVICE)
+reranker = CrossEncoder(MODEL_NAME, device=DEVICE)
+
 
 # %% [markdown]
 # ## 7) Rerank candidates
 
 # %%
-from multiprocessing import get_context
-
-def _chunk_items(items: List[Tuple[str, List[str]]], n: int) -> List[List[Tuple[str, List[str]]]]:
-    if n <= 1:
-        return [items]
-    chunk_size = max(1, math.ceil(len(items) / n))
-    return [items[i * chunk_size : (i + 1) * chunk_size] for i in range(n) if items[i * chunk_size : (i + 1) * chunk_size]]
-
-def _rerank_worker(
-    gpu_id: int,
-    items: List[Tuple[str, List[str]]],
-    topics: Dict[str, str],
-    doc_texts: Dict[str, str],
-    model_name: str,
-    batch_size: int,
-    return_dict,
-    ) -> None:
-    device = f"cuda:{gpu_id}" if torch and torch.cuda.is_available() else "cpu"
-    model = CrossEncoder(model_name, device=device)
-    local_out: Dict[str, List[str]] = {}
-    total = len(items)
-    start = time()
-    for idx, (qid, docs) in enumerate(items, start=1):
-        query = topics.get(qid, "").strip()
-        if not query:
-            local_out[qid] = docs
-            continue
-        pairs = [(query, doc_texts.get(d, "")) for d in docs]
-        scores = model.predict(pairs, batch_size=batch_size, show_progress_bar=False)
-        scored = list(zip(docs, scores))
-        scored.sort(key=lambda x: x[1], reverse=True)
-        local_out[qid] = [d for d, _ in scored]
-        if idx == 1 or idx % 10 == 0 or idx == total:
-            elapsed = max(1e-9, time() - start)
-            rate = idx / elapsed
-            print(f"[gpu {gpu_id}] {idx}/{total} queries | {rate:.2f} q/s")
-    return_dict[gpu_id] = local_out
-
 def rerank_run(
     run_map: Dict[str, List[str]],
     topics: Dict[str, str],
     doc_texts: Dict[str, str],
-    model: CrossEncoder | None,
-    model_name: str,
+    model: CrossEncoder,
     batch_size: int = 32,
     log_every: int = 10,
-    use_multi_gpu: bool = False,
-    num_gpus: int = 0,
     ) -> Dict[str, List[str]]:
-    items = list(run_map.items())
-    if use_multi_gpu:
-        if not torch or not torch.cuda.is_available():
-            raise RuntimeError("Multi-GPU requested but CUDA is not available.")
-        available = torch.cuda.device_count()
-        if available < 2:
-            raise RuntimeError("Multi-GPU requested but fewer than 2 CUDA devices found.")
-        use_n = available if not num_gpus or num_gpus < 1 else min(num_gpus, available)
-        chunks = _chunk_items(items, use_n)
-        ctx = get_context("spawn")
-        manager = ctx.Manager()
-        return_dict = manager.dict()
-        procs = []
-        for gpu_id, chunk in enumerate(chunks):
-            p = ctx.Process(
-                target=_rerank_worker,
-                args=(gpu_id, chunk, topics, doc_texts, model_name, batch_size, return_dict),
-            )
-            p.start()
-            procs.append(p)
-        for p in procs:
-            p.join()
-        merged: Dict[str, List[str]] = {}
-        for part in return_dict.values():
-            merged.update(part)
-        return {qid: merged.get(qid, docs) for qid, docs in items}
-    if model is None:
-        raise RuntimeError("Single-GPU path requires a loaded model instance.")
     out: Dict[str, List[str]] = {}
+    items = list(run_map.items())
     total = len(items)
     start = time()
     for idx, (qid, docs) in enumerate(items, start=1):
@@ -360,10 +280,7 @@ for name in run_names:
         topics=topics_map,
         doc_texts=doc_texts,
         model=reranker,
-        model_name=MODEL_NAME,
         batch_size=BATCH_SIZE,
-        use_multi_gpu=USE_MULTI_GPU,
-        num_gpus=NUM_GPUS,
     )
     print("reranked", name, "queries:", len(reranked_runs[name]))
 
@@ -450,3 +367,7 @@ for name in adaptive_perq.keys():
     adaptive_perq[name].to_csv(OUTPUT_DIR / f"adaptive_{name}.csv", index=False)
 
 print("saved to", OUTPUT_DIR)
+
+# %%
+
+# %%

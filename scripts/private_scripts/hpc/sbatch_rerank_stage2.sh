@@ -83,7 +83,7 @@ srun \
     echo '  - BATCH_SIZE = 48'
     echo '  - MODEL_NAME = "BAAI/bge-reranker-v2-m3"'
     echo '  - SELECTED_RUNS includes all splits'
-    python -u scripts/private_scripts/hpc/rerank_stage2_hpc.py
+    python -u scripts/private_scripts/hpc/rerank_stage2_bge.py
 
     echo '[done] Reranking complete'
     ls -lh '${OUT_DIR}' || true
