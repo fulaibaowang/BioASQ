@@ -52,3 +52,5 @@ See [docs/USAGE.md](docs/USAGE.md) for detailed setup and evaluation commands.
 ## TODO
 
 - in production we don't know the recall so adaptive eval method needs to be changed in hybird and reranker
+- look at zero or low recall quries manaully after 1.st retrieval
+- snippet extraction
