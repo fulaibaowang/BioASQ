@@ -2,7 +2,7 @@
 #SBATCH -J stage2_rerank
 #SBATCH -p dev
 #SBATCH --time=12:00:00
-#SBATCH --gres=gpu:A100_80GB:2
+#SBATCH --gres=gpu:A100_80GB:3
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=312G
 #SBATCH -o logs/%x_%j.out
