@@ -37,3 +37,17 @@ See [notebooks/dense_test.ipynb](../notebooks/dense_test.ipynb) for detailed not
 | Dense weight | 0.5 – 3.0 | Weight multiplier for dense scores |
 
 See [notebooks/hybird.ipynb](../notebooks/hybird.ipynb) for the RRF grid search.
+
+## Stage 2 Rerank (Cross-Encoder)
+
+| Parameter | Range | Notes |
+|-----------|-------|-------|
+| `--candidate-limit` | 200 – 2000 | Stage-1 candidates per query to rerank |
+| `--model` | Cross-encoder HF model | Default: `cross-encoder/ms-marco-MiniLM-L-12-v2` |
+| `--model-device` | cpu / cuda / mps / auto | Device selection (auto picks best available) |
+| `--model-batch` | 8 – 64 | Cross-encoder batch size |
+| `--adaptive-p` | 0.90 – 0.99 | Target recall ratio for adaptive K |
+| `--adaptive-cap` | 100 – 500 | Max adaptive cutoff K |
+| `--ks-recall` | 50 – 2000 | Recall K values (comma-separated) |
+
+See [scripts/public/rerank/rerank_stage2.py](../scripts/public/rerank/rerank_stage2.py) for full arguments.

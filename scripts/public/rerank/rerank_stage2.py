@@ -100,7 +100,7 @@ def parse_args() -> argparse.Namespace:
     evaluation.add_argument(
         "--ks-recall",
         type=str,
-        default="50,100,200,300,500,1000,2000",
+        default="50,100,200,300,400,500,1000,2000",
         help="Recall K values as a comma-separated list.",
     )
 

@@ -22,10 +22,14 @@ This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A 
   - Models: MedEmbed-small-v0.1 (default), PubMedBERT
   - Tunable: `--ef_search`, `--ef_cap`, embedding model
 
-### Hybrid / Reranking
-- **Hybrid RRF** ([notebook](notebooks/hybird.ipynb))
-  - Reciprocal Rank Fusion combining BM25 and dense
+- **Hybrid** reciprocal Rank Fusion combining BM25 and dense
+  - ([notebook](notebooks/hybird.ipynb))
   - Tuning knobs: `K_RRF`, BM25/dense weight ratio
+
+### Second Stage Reranking
+
+- Cross-encoder reranker that re-scores stage-1 candidates using (query, title+abstract) pairs.
+- Typical flow: take top ~200-2000 per query, re-rank.
 
 Tunable parameter ranges: [docs/PARAMETERS.md](docs/PARAMETERS.md)
 

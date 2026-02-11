@@ -63,6 +63,7 @@ python scripts/public/retrieval/eval_hybird.py \
 
 # rerank
 python scripts/public/rerank/rerank_stage2.py \
+  --output-dir output/eval_stage2_rerank_minitest \
   --runs-dir output/eval_hybird_production_test/runs \
   --docs-jsonl output/subset_pubmed.jsonl \
   --train_subset_json example/training14b_10pct_sample.json \
