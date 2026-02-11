@@ -376,6 +376,17 @@ def main() -> None:
     args = parse_args()
     root = _resolve_repo_root()
 
+    print("[debug] use_multi_gpu:", args.use_multi_gpu, "num_gpus:", args.num_gpus)
+    if torch is None:
+        print("[debug] torch: not available")
+    else:
+        print(
+            "[debug] torch.cuda.is_available():",
+            torch.cuda.is_available(),
+            "device_count:",
+            torch.cuda.device_count(),
+        )
+
     runs_dir = args.runs_dir or root / "output" / "eval_hybird_production_test" / "runs"
     docs_jsonl = args.docs_jsonl or root / "output" / "subset_pubmed.jsonl"
     train_subset_json = args.train_subset_json
