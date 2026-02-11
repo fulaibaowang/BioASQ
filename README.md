@@ -48,3 +48,7 @@ See [docs/USAGE.md](docs/USAGE.md) for detailed setup and evaluation commands.
 ## Environment
 
  `pip install pyterrier sentence-transformers hnswlib pyarrow pandas numpy scipy`
+
+## TODO
+
+- in production we don't know the recall so adaptive eval method needs to be changed in hybird and reranker

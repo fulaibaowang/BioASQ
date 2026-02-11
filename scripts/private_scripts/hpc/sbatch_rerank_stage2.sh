@@ -34,8 +34,8 @@ MODEL_NAME="BAAI/bge-reranker-v2-m3"
 
 # Reranker parameters
 USE_MULTI_GPU=true
-NUM_GPUS=2
-BATCH_SIZE=48
+NUM_GPUS=3
+BATCH_SIZE=56
 
 # Selected runs to rerank (all splits)
 SELECTED_RUNS="13B1_golden 13B2_golden 13B3_golden 13B4_golden train_subset"
@@ -79,8 +79,8 @@ srun \
     echo '[run] Starting reranker with multi-GPU...'
     echo '[note] Make sure notebook is configured with:'
     echo '  - USE_MULTI_GPU = True'
-    echo '  - NUM_GPUS = 2'
-    echo '  - BATCH_SIZE = 48'
+    echo '  - NUM_GPUS = 3'
+    echo '  - BATCH_SIZE = 56'
     echo '  - MODEL_NAME = "BAAI/bge-reranker-v2-m3"'
     echo '  - SELECTED_RUNS includes all splits'
     python -u scripts/private_scripts/hpc/rerank_stage2_bge.py
