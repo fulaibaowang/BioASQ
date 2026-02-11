@@ -22,7 +22,7 @@ WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
 
 # Input: hybrid Stage 1 runs (top 2000 candidates)
-RUNS_DIR="output/eval_hybird_production_test"
+RUNS_DIR="output/eval_hybird_production_test/runs"
 RUN_GLOB="best_rrf_*_top2000.tsv"
 
 # Input: PubMed subset texts
