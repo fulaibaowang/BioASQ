@@ -22,7 +22,7 @@ WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
 
 # Input: hybrid Stage 1 runs (top 2000 candidates)
-RUNS_DIR="output/eval_hybird_production_test_len200"
+RUNS_DIR="output/eval_hybird_production_test"
 RUN_GLOB="best_rrf_*_top2000.tsv"
 
 # Input: PubMed subset texts
@@ -38,7 +38,7 @@ TEST_BATCH_JSONS=(
 )
 
 # Output location (inside container)
-OUT_DIR="output/eval_stage2_rerank_bge_reranker_v2_m3"
+OUT_DIR="output/eval_stage2_rerank_bge_reranker_v2_m3_len200"
 
 # Reranker parameters
 MODEL_NAME="BAAI/bge-reranker-v2-m3"
