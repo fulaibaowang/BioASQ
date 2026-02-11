@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from retrieval_eval.common import (  # noqa: E402
     build_topics_and_gold,
     collect_qids_from_questions,
+    evaluate_run,
     load_questions,
     normalize_pmid,
 )
@@ -541,7 +542,8 @@ def main() -> None:
     cap_eff = int(min(int(args.cap), k_max_eval_eff))
 
     ks_cap = make_ks(cap_eff, k0=200, n=4)
-    ks_eval = tuple(sorted(set(ks_cap + (k_max_eval_eff,))))
+    fixed_ks = tuple(k for k in (50, 100, 200, 300, 400) if k <= k_max_eval_eff)
+    ks_eval = tuple(sorted(set(ks_cap + (k_max_eval_eff,) + fixed_ks)))
 
     if not ks_eval:
         raise ValueError("No evaluation K values. Check --cap and --k_max_eval.")
@@ -577,6 +579,7 @@ def main() -> None:
                 )
 
                 metrics = evaluate_recall_points(gold_map, fused, ks=ks_eval)
+                eval_summary, _ = evaluate_run(gold_map, fused, ks_recall=fixed_ks)
                 k_rec = find_k_relative_to_best(metrics, ks_cap=ks_cap, k_best=k_max_eval_eff, p=float(args.p))
 
                 row: Dict[str, Any] = {
@@ -596,6 +599,10 @@ def main() -> None:
                     f"MeanKeff@{cap_eff}": metrics.get(f"MeanKeff@{cap_eff}", np.nan),
                     f"MeanR@{cap_eff}": metrics.get(f"MeanR@{cap_eff}", np.nan),
                     f"MeanR@{k_max_eval_eff}": metrics.get(f"MeanR@{k_max_eval_eff}", np.nan),
+                    "MAP@10": eval_summary.get("MAP@10", np.nan),
+                    "MRR@10": eval_summary.get("MRR@10", np.nan),
+                    "GMAP@10": eval_summary.get("GMAP@10", np.nan),
+                    "Success@10": eval_summary.get("Success@10", np.nan),
                 }
                 for k in ks_eval:
                     row[f"MeanR@{k}"] = metrics.get(f"MeanR@{k}", np.nan)
