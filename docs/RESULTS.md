@@ -35,24 +35,6 @@
 
 ---
 
-**About BioASQ Snippets:**
-
-BioASQ Phase A evaluates **document retrieval** (returning ranked PMIDs). Your current pipeline (BM25 + Dense + Reranker) produces document rankings, which is what the metrics above measure.
-
-**Snippets** are for Phase B (question answering):
-- Participants extract relevant text passages from retrieved documents
-- Typically done after Phase A using the top-ranked documents
-- Can use extractive QA models, sliding windows, or sentence ranking on document text
-- Your reranker outputs (top 200-300 docs) would feed into a snippet extraction step
-
-To generate snippets, you'd need an additional pipeline stage that:
-1. Takes your reranked top-K documents
-2. Retrieves full text for each PMID
-3. Extracts/ranks sentences or passages relevant to the query
-4. Returns formatted snippets with offsets
-
-Your current scripts evaluate Phase A only (document retrieval metrics).
-
 ## Stage 2 Rerank (cross-encoder/ms-marco-MiniLM-L-12-v2)
 
 | Split | MAP@10 | GMAP@10 | MRR@10 | Success@10 | MeanR@50 | MeanR@100 | MeanR@200 | MeanR@300 | MeanR@500 | MeanR@1000 | MeanR@2000 | MeanR@Krec | MeanKeff@Krec |
