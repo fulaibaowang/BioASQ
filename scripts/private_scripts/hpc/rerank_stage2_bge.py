@@ -92,7 +92,7 @@ CANDIDATE_LIMIT = 2000  # stage-1 top K
 # ---- reranker ----
 MODEL_NAME = "BAAI/bge-reranker-v2-m3"  # Larger cross-encoder model
 DEVICE = "cuda"  # "cuda", "mps", or "cpu"
-BATCH_SIZE = 56  # Safer batch size for larger model
+BATCH_SIZE = 128  # Safer batch size for larger model
 USE_MULTI_GPU = True  # Enable multi-GPU on HPC
 NUM_GPUS = 3  # Request 3    A100 80GB on Frida
 
