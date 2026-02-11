@@ -77,12 +77,12 @@ srun \
     export OMP_NUM_THREADS=8
     export PYTHONUNBUFFERED=1
 
-    echo "[debug] CUDA_VISIBLE_DEVICES=\${CUDA_VISIBLE_DEVICES:-<unset>}"
+    printf '[debug] CUDA_VISIBLE_DEVICES=%s\n' "${CUDA_VISIBLE_DEVICES:-<unset>}"
     nvidia-smi -L || true
 
     # --- Run reranker script with CLI flags ---
     echo '[run] Starting reranker (CLI config)'
-    echo "[debug] use_multi_gpu flag: --use-multi-gpu --num-gpus ${NUM_GPUS}"
+    echo '[debug] use_multi_gpu flag: --use-multi-gpu --num-gpus ${NUM_GPUS}'
     python -u scripts/public/rerank/rerank_stage2.py \
       --runs-dir '${RUNS_DIR}' \
       --run-glob '${RUN_GLOB}' \
