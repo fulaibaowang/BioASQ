@@ -606,7 +606,7 @@ def main() -> None:
     cap_eff = int(min(int(args.cap), k_max_eval_eff))
 
     ks_cap = make_ks(cap_eff, k0=200, n=4)
-    fixed_ks = tuple(k for k in (50, 100, 200, 300, 400) if k <= k_max_eval_eff)
+    fixed_ks = tuple(k for k in (50, 100, 200, 300, 400, 500) if k <= k_max_eval_eff)
     ks_eval = tuple(sorted(set(ks_cap + (k_max_eval_eff,) + fixed_ks)))
 
     if not ks_eval:
