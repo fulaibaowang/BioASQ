@@ -60,3 +60,18 @@ python scripts/public/retrieval/eval_hybird.py \
   --out_dir output/eval_hybird_production_test \
   --mode default \
   --jobs 4
+
+# rerank
+python scripts/public/rerank/rerank_stage2.py \
+  --runs-dir output/eval_hybird_production_test/runs \
+  --docs-jsonl output/subset_pubmed.jsonl \
+  --train_subset_json example/training14b_10pct_sample.json \
+  --test_batch_jsons \
+    bioasq_data/Task13BGoldenEnriched/13B1_golden.json \
+    bioasq_data/Task13BGoldenEnriched/13B2_golden.json \
+    bioasq_data/Task13BGoldenEnriched/13B3_golden.json \
+    bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
+  --model cross-encoder/ms-marco-MiniLM-L-12-v2 \
+  --model-device cpu \
+  --model-batch 16 \
+  --max-queries 5 

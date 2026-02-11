@@ -11,6 +11,11 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 import numpy as np
 import pandas as pd
 
+# Allow importing from scripts/public when running as a module or script.
+import sys
+_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(_ROOT / "scripts" / "public"))
+
 try:
     import torch
 except ImportError:
@@ -56,26 +61,20 @@ def parse_args() -> argparse.Namespace:
     inputs.add_argument("--run-files", type=Path, nargs="*", default=None, help="Explicit run TSV files.")
     inputs.add_argument("--run-glob", type=str, default="*.tsv", help="Glob for run files under --runs-dir.")
     inputs.add_argument("--docs-jsonl", type=Path, default=None, help="JSONL corpus with PubMed texts.")
-    inputs.add_argument("--gold-dir", type=Path, default=None, help="Directory with BioASQ golden JSON files.")
     inputs.add_argument(
-        "--gold-files",
-        type=str,
-        nargs="*",
-        default=["13B1_golden.json", "13B2_golden.json", "13B3_golden.json", "13B4_golden.json"],
-        help="Golden JSON filenames under --gold-dir.",
-    )
-    inputs.add_argument(
-        "--subset-json",
+        "--train-subset-json",
+        "--train_subset_json",
         type=Path,
         default=None,
-        help="Training subset JSON (used when a run name is train_subset).",
+        help="Training subset JSON (BioASQ format).",
     )
     inputs.add_argument(
-        "--queries-json",
+        "--test-batch-jsons",
+        "--test_batch_jsons",
         type=Path,
         nargs="*",
         default=None,
-        help="Extra BioASQ-style JSON files for queries (no gold needed).",
+        help="BioASQ test batch JSONs (queries + gold).",
     )
     inputs.add_argument("--candidate-limit", type=int, default=2000, help="Stage-1 candidate cutoff per query.")
     inputs.add_argument("--max-queries", type=int, default=None, help="Max queries per split.")
@@ -107,12 +106,6 @@ def parse_args() -> argparse.Namespace:
 
     output = parser.add_argument_group("output")
     output.add_argument("--output-dir", type=Path, default=None, help="Base output directory.")
-    output.add_argument(
-        "--category-name",
-        type=str,
-        default=None,
-        help="Optional category name for output subdir and filename prefix.",
-    )
 
     return parser.parse_args()
 
@@ -346,10 +339,8 @@ def evaluate_adaptive(
     return metrics, pd.DataFrame(rows)
 
 
-def _build_output_config(base_dir: Path, category_name: str | None) -> OutputConfig:
+def _build_output_config(base_dir: Path) -> OutputConfig:
     output_dir = base_dir
-    if category_name:
-        output_dir = output_dir / category_name
     runs_dir = output_dir / "runs"
     per_query_dir = output_dir / "per_query"
     adaptive_dir = output_dir / "adaptive"
@@ -369,22 +360,17 @@ def _build_output_config(base_dir: Path, category_name: str | None) -> OutputCon
     )
 
 
-def _category_prefix(category_name: str | None) -> str:
-    return f"{category_name}__" if category_name else ""
-
-
 def main() -> None:
     args = parse_args()
     root = _resolve_repo_root()
 
     runs_dir = args.runs_dir or root / "output" / "eval_hybird_production_test" / "runs"
     docs_jsonl = args.docs_jsonl or root / "output" / "subset_pubmed.jsonl"
-    gold_dir = args.gold_dir or root / "bioasq_data" / "Task13BGoldenEnriched"
-    subset_json = args.subset_json or root / "example" / "training14b_10pct_sample.json"
+    train_subset_json = args.train_subset_json
+    test_batch_jsons = args.test_batch_jsons or []
     output_dir = args.output_dir or root / "output" / "eval_stage2_rerank"
 
-    output_cfg = _build_output_config(output_dir, args.category_name)
-    prefix = _category_prefix(args.category_name)
+    output_cfg = _build_output_config(output_dir)
 
     if args.run_files:
         run_files = [Path(p) for p in args.run_files]
@@ -420,32 +406,25 @@ def main() -> None:
     print("loaded texts:", len(doc_texts))
 
     topics_map: Dict[str, str] = {}
-    gold_maps: Dict[str, Dict[str, List[str]]] = {}
+    gold_map_all: Dict[str, List[str]] = {}
 
-    if gold_dir.exists():
-        for filename in args.gold_files:
-            gold_path = gold_dir / filename
-            if not gold_path.exists():
-                continue
-            questions = load_questions(gold_path)
-            topics_df, gold_map = build_topics_and_gold(questions)
-            topics_map.update(dict(zip(topics_df["qid"], topics_df["query"])))
-            gold_maps[str(gold_path.stem)] = gold_map
-
-    if subset_json.exists() and "train_subset" in run_names:
-        questions = load_questions(subset_json)
+    def _add_questions(json_path: Path) -> None:
+        if not json_path.exists():
+            return
+        questions = load_questions(json_path)
         topics_df, gold_map = build_topics_and_gold(questions)
         topics_map.update(dict(zip(topics_df["qid"], topics_df["query"])))
-        gold_maps["train_subset"] = gold_map
+        for qid, docs in gold_map.items():
+            gold_map_all[qid] = docs
 
-    if args.queries_json:
-        for qpath in args.queries_json:
-            qpath = Path(qpath)
-            if not qpath.exists():
-                continue
-            questions = load_questions(qpath)
-            topics_df, _ = build_topics_and_gold(questions)
-            topics_map.update(dict(zip(topics_df["qid"], topics_df["query"])))
+    if train_subset_json:
+        _add_questions(train_subset_json)
+
+    for path in test_batch_jsons:
+        _add_questions(Path(path))
+
+    if not topics_map:
+        print("warning: no query text loaded; reranking will preserve original order.")
 
     model_device = _resolve_device(args.model_device)
 
@@ -474,25 +453,27 @@ def main() -> None:
             for rank, (docno, score) in enumerate(docs, start=1):
                 rows.append({"qid": qid, "docno": docno, "rank": rank, "score": score})
         run_df = pd.DataFrame(rows)
-        out_path = output_cfg.runs_dir / f"{prefix}{name}.tsv"
+        out_path = output_cfg.runs_dir / f"{name}.tsv"
         run_df.to_csv(out_path, sep="\t", index=False)
 
     adaptive_stats = {}
     summary_rows = []
 
-    if not args.disable_metrics:
+    if not args.disable_metrics and gold_map_all:
         for name, reranked in reranked_runs.items():
-            if name not in gold_maps:
-                print("skip metrics, no gold for", name)
-                continue
             reranked_map = {qid: [doc for doc, _ in docs] for qid, docs in reranked.items()}
-            metrics, perq = evaluate_run(gold_maps[name], reranked_map, ks_recall=ks_recall)
-            perq.to_csv(output_cfg.per_query_dir / f"{prefix}{name}.csv", index=False)
+            gold_for_run = {qid: gold_map_all[qid] for qid in reranked_map if qid in gold_map_all}
+            if not gold_for_run:
+                print("skip metrics, no gold overlap for", name)
+                continue
+
+            metrics, perq = evaluate_run(gold_for_run, reranked_map, ks_recall=ks_recall)
+            perq.to_csv(output_cfg.per_query_dir / f"{name}.csv", index=False)
 
             adaptive_metrics, adaptive_perq = evaluate_adaptive(
-                gold_maps[name], reranked_map, p=args.adaptive_p, cap=args.adaptive_cap
+                gold_for_run, reranked_map, p=args.adaptive_p, cap=args.adaptive_cap
             )
-            adaptive_perq.to_csv(output_cfg.adaptive_dir / f"{prefix}{name}.csv", index=False)
+            adaptive_perq.to_csv(output_cfg.adaptive_dir / f"{name}.csv", index=False)
             adaptive_stats[name] = adaptive_metrics
 
             row = {"split": name}
@@ -503,6 +484,10 @@ def main() -> None:
         if summary_rows:
             summary_df = pd.DataFrame(summary_rows)
             summary_df.to_csv(output_cfg.metrics_path, index=False)
+    elif args.disable_metrics:
+        print("metrics disabled")
+    else:
+        print("no gold provided; skipping metrics")
 
     config = {
         "model": args.model,
@@ -515,14 +500,11 @@ def main() -> None:
         "runs_dir": str(runs_dir),
         "run_files": [str(p) for p in run_files],
         "docs_jsonl": str(docs_jsonl),
-        "gold_dir": str(gold_dir),
-        "gold_files": args.gold_files,
-        "subset_json": str(subset_json),
-        "queries_json": [str(p) for p in args.queries_json or []],
+        "train_subset_json": str(train_subset_json) if train_subset_json else "",
+        "test_batch_jsons": [str(p) for p in test_batch_jsons],
         "ks_recall": list(ks_recall),
         "adaptive_p": args.adaptive_p,
         "adaptive_cap": args.adaptive_cap,
-        "category_name": args.category_name,
     }
     output_cfg.config_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
 
