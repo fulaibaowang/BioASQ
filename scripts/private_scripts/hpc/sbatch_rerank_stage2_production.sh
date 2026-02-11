@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH -J stage2_rerank
-#SBATCH -p dev
-#SBATCH --time=12:00:00
-#SBATCH --gres=gpu:A100_80GB:3
+#SBATCH -J stage2_rerank_public
+#SBATCH -p frida
+#SBATCH --time=24:00:00
+#SBATCH --gres=gpu:A100_80GB:2
 #SBATCH --cpus-per-task=32
-#SBATCH --mem=312G
+#SBATCH --mem=300G
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
 
@@ -22,34 +22,37 @@ WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
 
 # Input: hybrid Stage 1 runs (top 2000 candidates)
-RUNS_DIR="output/eval_hybird_production_test/runs"
+RUNS_DIR="output/eval_hybird_production_test_len200"
+RUN_GLOB="best_rrf_*_top2000.tsv"
 
 # Input: PubMed subset texts
 DOCS_JSONL="output/subset_pubmed.jsonl"
 
+# Gold: training subset + test batches
+TRAIN_SUBSET_JSON="example/training14b_10pct_sample.json"
+TEST_BATCH_JSONS=(
+  "bioasq_data/Task13BGoldenEnriched/13B1_golden.json"
+  "bioasq_data/Task13BGoldenEnriched/13B2_golden.json"
+  "bioasq_data/Task13BGoldenEnriched/13B3_golden.json"
+  "bioasq_data/Task13BGoldenEnriched/13B4_golden.json"
+)
+
 # Output location (inside container)
 OUT_DIR="output/eval_stage2_rerank_bge_reranker_v2_m3"
 
-MODEL_NAME="BAAI/bge-reranker-v2-m3"
-
 # Reranker parameters
+MODEL_NAME="BAAI/bge-reranker-v2-m3"
 USE_MULTI_GPU=true
-NUM_GPUS=3
-BATCH_SIZE=128
-
-# Selected runs to rerank (all splits)
-SELECTED_RUNS="13B1_golden 13B2_golden 13B3_golden 13B4_golden train_subset"
+NUM_GPUS=2
+BATCH_SIZE=312
+MODEL_MAX_LENGTH=200
+CANDIDATE_LIMIT=2000
+ADAPTIVE_P=0.95
+ADAPTIVE_CAP=300
+KS_RECALL="50,100,200,300,400,500,1000,2000"
 
 echo "Starting job ${SLURM_JOB_ID} on $(hostname) at $(date)"
-echo "USE_MULTI_GPU=${USE_MULTI_GPU}"
-echo "NUM_GPUS=${NUM_GPUS}"
-echo "BATCH_SIZE=${BATCH_SIZE}"
-echo "MODEL_NAME=${MODEL_NAME}"
-echo "SELECTED_RUNS=${SELECTED_RUNS}"
-
-# Generate Python script from notebook (if not using interactive)
-# Uncomment if you need to sync notebook to .py first:
-# jupytext --to py notebooks/rerank_stage2-hpc.ipynb --output notebooks/rerank_stage2_hpc.py
+echo "Running: scripts/public/rerank/rerank_stage2.py"
 
 # -----------------------------
 # Run inside container
@@ -71,19 +74,28 @@ srun \
     echo \"[cache] HF_HOME=\$HF_HOME\"
 
     # --- Set up environment for multi-GPU ---
-    export CUDA_VISIBLE_DEVICES=0,1,2,3
+    export CUDA_VISIBLE_DEVICES=0,1
     export OMP_NUM_THREADS=8
     export PYTHONUNBUFFERED=1
 
-    # --- Run reranker script with multi-GPU support ---
-    echo '[run] Starting reranker with multi-GPU...'
-    echo '[note] Make sure notebook is configured with:'
-    echo '  - USE_MULTI_GPU = True'
-    echo '  - NUM_GPUS = 3'
-    echo '  - BATCH_SIZE = 128'
-    echo '  - MODEL_NAME = "BAAI/bge-reranker-v2-m3"'
-    echo '  - SELECTED_RUNS includes all splits'
-    python -u scripts/private_scripts/hpc/rerank_stage2_bge.py
+    # --- Run reranker script with CLI flags ---
+    echo '[run] Starting reranker (CLI config)'
+    python -u scripts/public/rerank/rerank_stage2.py \
+      --runs-dir '${RUNS_DIR}' \
+      --run-glob '${RUN_GLOB}' \
+      --docs-jsonl '${DOCS_JSONL}' \
+      --train-subset-json '${TRAIN_SUBSET_JSON}' \
+      --test-batch-jsons ${TEST_BATCH_JSONS[@]} \
+      --candidate-limit ${CANDIDATE_LIMIT} \
+      --model '${MODEL_NAME}' \
+      --model-batch ${BATCH_SIZE} \
+      --model-max-length ${MODEL_MAX_LENGTH} \
+      --use-multi-gpu \
+      --num-gpus ${NUM_GPUS} \
+      --adaptive-p ${ADAPTIVE_P} \
+      --adaptive-cap ${ADAPTIVE_CAP} \
+      --ks-recall '${KS_RECALL}' \
+      --output-dir '${OUT_DIR}'
 
     echo '[done] Reranking complete'
     ls -lh '${OUT_DIR}' || true

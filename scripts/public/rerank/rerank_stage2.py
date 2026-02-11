@@ -88,6 +88,12 @@ def parse_args() -> argparse.Namespace:
         help="Model device: auto, cuda, mps, or cpu.",
     )
     model.add_argument("--model-batch", type=int, default=16, help="Batch size for cross-encoder scoring.")
+    model.add_argument(
+        "--model-max-length",
+        type=int,
+        default=512,
+        help="Max token length for the cross-encoder (set to 0 to use model default).",
+    )
 
     runtime = parser.add_argument_group("runtime")
     runtime.add_argument("--use-multi-gpu", action="store_true", help="Enable multi-GPU reranking.")
@@ -209,10 +215,15 @@ def _rerank_worker(
     doc_texts: Dict[str, str],
     model_name: str,
     batch_size: int,
+    max_length: int,
     return_dict,
 ) -> None:
     device = f"cuda:{gpu_id}" if torch and torch.cuda.is_available() else "cpu"
-    model = CrossEncoder(model_name, device=device)
+    model = CrossEncoder(
+        model_name,
+        device=device,
+        max_length=None if max_length <= 0 else max_length,
+    )
     local_out: Dict[str, List[Tuple[str, float]]] = {}
     total = len(items)
     start = time()
@@ -240,6 +251,7 @@ def rerank_run(
     model: CrossEncoder | None,
     model_name: str,
     batch_size: int,
+    max_length: int,
     use_multi_gpu: bool,
     num_gpus: int,
 ) -> Dict[str, List[Tuple[str, float]]]:
@@ -259,7 +271,7 @@ def rerank_run(
         for gpu_id, chunk in enumerate(chunks):
             p = ctx.Process(
                 target=_rerank_worker,
-                args=(gpu_id, chunk, topics, doc_texts, model_name, batch_size, return_dict),
+                args=(gpu_id, chunk, topics, doc_texts, model_name, batch_size, max_length, return_dict),
             )
             p.start()
             procs.append(p)
@@ -430,7 +442,11 @@ def main() -> None:
 
     reranker = None
     if not args.use_multi_gpu:
-        reranker = CrossEncoder(args.model, device=model_device)
+        reranker = CrossEncoder(
+            args.model,
+            device=model_device,
+            max_length=None if args.model_max_length <= 0 else args.model_max_length,
+        )
 
     reranked_runs: Dict[str, List[Tuple[str, float]]] = {}
     for name in run_names:
@@ -441,6 +457,7 @@ def main() -> None:
             model=reranker,
             model_name=args.model,
             batch_size=args.model_batch,
+            max_length=args.model_max_length,
             use_multi_gpu=args.use_multi_gpu,
             num_gpus=args.num_gpus,
         )
@@ -493,6 +510,7 @@ def main() -> None:
         "model": args.model,
         "model_device": model_device,
         "model_batch": args.model_batch,
+        "model_max_length": args.model_max_length,
         "use_multi_gpu": args.use_multi_gpu,
         "num_gpus": args.num_gpus,
         "candidate_limit": args.candidate_limit,

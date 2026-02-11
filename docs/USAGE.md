@@ -182,7 +182,8 @@ python scripts/public/rerank/rerank_stage2.py \
   --candidate-limit 2000 \
   --model "cross-encoder/ms-marco-MiniLM-L-12-v2" \
   --model-device "cpu" \
-  --model-batch 16
+  --model-batch 16 \
+  --model-max-length 512
 ```
 
 **Key Arguments:**
@@ -192,6 +193,7 @@ python scripts/public/rerank/rerank_stage2.py \
 - `--model`: Cross-encoder model name
 - `--model-device`: `auto`, `cuda`, `mps`, or `cpu`
 - `--adaptive-p`, `--adaptive-cap`: Adaptive cutoff parameters
+- `--model-max-length`: Token truncation length for the cross-encoder
 
 ## Output
 

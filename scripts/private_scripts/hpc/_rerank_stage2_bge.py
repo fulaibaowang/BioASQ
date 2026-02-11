@@ -347,6 +347,19 @@ def evaluate_adaptive(
     return metrics, pd.DataFrame(rows)
 
 def main() -> None:
+    print("=" * 80)
+    print("[CONFIG] Reranker Parameters")
+    print("=" * 80)
+    print(f"MODEL_NAME: {MODEL_NAME}")
+    print(f"USE_MULTI_GPU: {USE_MULTI_GPU}")
+    print(f"NUM_GPUS: {NUM_GPUS}")
+    print(f"BATCH_SIZE: {BATCH_SIZE}")
+    print(f"DEVICE: {DEVICE}")
+    print(f"P_TARGET (adaptive cutoff): {P_TARGET}")
+    print(f"K_CAP (max cutoff rank): {K_CAP}")
+    print(f"SELECTED_RUNS: {SELECTED_RUNS}")
+    print("=" * 80)
+    
     gold_maps: Dict[str, Dict[str, List[str]]] = {}
     topics_map: Dict[str, str] = {}
 

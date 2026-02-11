@@ -64,9 +64,31 @@ stunnel -c16 --time=12:00:00 --mem=64G --gres=gpu:A100_80GB:1 \
   --container-workdir /work 
 
 
+srun -p dev --time=1:00:00 -c 4 --mem=32G --gres=gpu:1 \
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs \
+  --container-mount-home \
+  --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
+  --container-workdir /work \
+  --pty bash
+  
+python scripts/public/rerank/rerank_stage2.py \
+  --output-dir output/eval_stage2_rerank_hpc_minitest \
+  --runs-dir output/eval_hybird_production_test/runs \
+  --docs-jsonl output/subset_pubmed.jsonl \
+  --train_subset_json example/training14b_10pct_sample.json \
+  --test_batch_jsons \
+    bioasq_data/Task13BGoldenEnriched/13B1_golden.json \
+    bioasq_data/Task13BGoldenEnriched/13B2_golden.json \
+    bioasq_data/Task13BGoldenEnriched/13B3_golden.json \
+    bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
+  --model cross-encoder/ms-marco-MiniLM-L-12-v2 \
+  --model-device cuda \
+  --model-batch 32 
 
+  --use-multi-gpu \
+  --num-gpus 2
 
-
+sbatch scripts/private_scripts/hpc/sbatch_rerank_stage2.sh
 
 
 

@@ -46,6 +46,7 @@ See [notebooks/hybird.ipynb](../notebooks/hybird.ipynb) for the RRF grid search.
 | `--model` | Cross-encoder HF model | Default: `cross-encoder/ms-marco-MiniLM-L-12-v2` |
 | `--model-device` | cpu / cuda / mps / auto | Device selection (auto picks best available) |
 | `--model-batch` | 8 – 64 | Cross-encoder batch size |
+| `--model-max-length` | 128 – 1024 | Cross-encoder token truncation length |
 | `--adaptive-p` | 0.90 – 0.99 | Target recall ratio for adaptive K |
 | `--adaptive-cap` | 100 – 500 | Max adaptive cutoff K |
 | `--ks-recall` | 50 – 2000 | Recall K values (comma-separated) |
