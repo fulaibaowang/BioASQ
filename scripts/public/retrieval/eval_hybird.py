@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
@@ -388,6 +389,68 @@ def plot_scatter_krec(df_cfg: pd.DataFrame, cap: int, save_path: Path) -> None:
     plt.close()
 
 
+def _evaluate_single_config(
+    split: str,
+    k_rrf: int,
+    w_bm25: float,
+    w_dense: float,
+    bm25_df: pd.DataFrame,
+    dense_df: pd.DataFrame,
+    gold_map: Dict[str, List[str]],
+    kb: int,
+    kd: int,
+    k_max_eval_eff: int,
+    ks_eval: Tuple[int, ...],
+    fixed_ks: Tuple[int, ...],
+    ks_cap: Tuple[int, ...],
+    cap_eff: int,
+    p: float,
+    cap: int,
+    k_max_eval: int,
+) -> Dict[str, Any]:
+    """Worker function for parallel evaluation."""
+    fused = fuse_rrf(
+        bm25_df=bm25_df,
+        dense_df=dense_df,
+        k_bm25=kb,
+        k_dense=kd,
+        k_rrf=k_rrf,
+        w_bm25=w_bm25,
+        w_dense=w_dense,
+        k_out=k_max_eval_eff,
+    )
+
+    metrics = evaluate_recall_points(gold_map, fused, ks=ks_eval)
+    eval_summary, _ = evaluate_run(gold_map, fused, ks_recall=fixed_ks)
+    k_rec = find_k_relative_to_best(metrics, ks_cap=ks_cap, k_best=k_max_eval_eff, p=p)
+
+    row: Dict[str, Any] = {
+        "split": split,
+        "k_rrf": int(k_rrf),
+        "w_bm25": float(w_bm25),
+        "w_dense": float(w_dense),
+        "KB": int(kb),
+        "KD": int(kd),
+        "CAP": int(cap),
+        "CAP_eff": int(cap_eff),
+        "K_MAX_EVAL": int(k_max_eval),
+        "K_MAX_EVAL_eff": int(k_max_eval_eff),
+        "P": float(p),
+        "K_rec": int(k_rec),
+        f"ShortfallRate@{cap_eff}": metrics.get(f"ShortfallRate@{cap_eff}", np.nan),
+        f"MeanKeff@{cap_eff}": metrics.get(f"MeanKeff@{cap_eff}", np.nan),
+        f"MeanR@{cap_eff}": metrics.get(f"MeanR@{cap_eff}", np.nan),
+        f"MeanR@{k_max_eval_eff}": metrics.get(f"MeanR@{k_max_eval_eff}", np.nan),
+        "MAP@10": eval_summary.get("MAP@10", np.nan),
+        "MRR@10": eval_summary.get("MRR@10", np.nan),
+        "GMAP@10": eval_summary.get("GMAP@10", np.nan),
+        "Success@10": eval_summary.get("Success@10", np.nan),
+    }
+    for k in ks_eval:
+        row[f"MeanR@{k}"] = metrics.get(f"MeanR@{k}", np.nan)
+    return row
+
+
 def plot_param_sensitivity(
     results_df: pd.DataFrame,
     test_splits: List[str],
@@ -478,6 +541,7 @@ def main() -> None:
     ap.add_argument("--no_exclude_test_qids", action="store_true")
     ap.add_argument("--save_plots", action="store_true", help="Force plot generation")
     ap.add_argument("--no_plots", action="store_true", help="Disable plot generation")
+    ap.add_argument("--jobs", type=int, default=None, help="Number of parallel processes (default: CPU count)")
     args = ap.parse_args()
 
     out_dir = Path(args.out_dir)
@@ -563,50 +627,39 @@ def main() -> None:
         k_rrf_list = [int(args.k_rrf)]
         weights = [(float(args.w_bm25), float(args.w_dense))]
 
-    for (w_bm25, w_dense) in weights:
+    # Prepare tasks for parallel execution
+    tasks = []
+    for w_bm25, w_dense in weights:
         for k_rrf in k_rrf_list:
             for split in splits:
-                gold_map = gold_maps[split]
-                fused = fuse_rrf(
-                    bm25_df=bm25_runs[split],
-                    dense_df=dense_runs[split],
-                    k_bm25=kb,
-                    k_dense=kd,
-                    k_rrf=k_rrf,
-                    w_bm25=w_bm25,
-                    w_dense=w_dense,
-                    k_out=k_max_eval_eff,
-                )
+                tasks.append((
+                    split, k_rrf, w_bm25, w_dense,
+                    bm25_runs[split], dense_runs[split], gold_maps[split],
+                    kb, kd, k_max_eval_eff, ks_eval, fixed_ks, ks_cap, cap_eff,
+                    float(args.p), int(args.cap), k_max_eval
+                ))
 
-                metrics = evaluate_recall_points(gold_map, fused, ks=ks_eval)
-                eval_summary, _ = evaluate_run(gold_map, fused, ks_recall=fixed_ks)
-                k_rec = find_k_relative_to_best(metrics, ks_cap=ks_cap, k_best=k_max_eval_eff, p=float(args.p))
+    n_jobs = args.jobs if args.jobs and args.jobs > 0 else None
+    print(f"Evaluating {len(tasks)} configs with {n_jobs or 'auto'} workers...")
 
-                row: Dict[str, Any] = {
-                    "split": split,
-                    "k_rrf": int(k_rrf),
-                    "w_bm25": float(w_bm25),
-                    "w_dense": float(w_dense),
-                    "KB": int(kb),
-                    "KD": int(kd),
-                    "CAP": int(args.cap),
-                    "CAP_eff": int(cap_eff),
-                    "K_MAX_EVAL": int(k_max_eval),
-                    "K_MAX_EVAL_eff": int(k_max_eval_eff),
-                    "P": float(args.p),
-                    "K_rec": int(k_rec),
-                    f"ShortfallRate@{cap_eff}": metrics.get(f"ShortfallRate@{cap_eff}", np.nan),
-                    f"MeanKeff@{cap_eff}": metrics.get(f"MeanKeff@{cap_eff}", np.nan),
-                    f"MeanR@{cap_eff}": metrics.get(f"MeanR@{cap_eff}", np.nan),
-                    f"MeanR@{k_max_eval_eff}": metrics.get(f"MeanR@{k_max_eval_eff}", np.nan),
-                    "MAP@10": eval_summary.get("MAP@10", np.nan),
-                    "MRR@10": eval_summary.get("MRR@10", np.nan),
-                    "GMAP@10": eval_summary.get("GMAP@10", np.nan),
-                    "Success@10": eval_summary.get("Success@10", np.nan),
-                }
-                for k in ks_eval:
-                    row[f"MeanR@{k}"] = metrics.get(f"MeanR@{k}", np.nan)
-                rows.append(row)
+    if n_jobs == 1:
+        # Sequential execution
+        for task in tasks:
+            row = _evaluate_single_config(*task)
+            rows.append(row)
+    else:
+        # Parallel execution
+        with ProcessPoolExecutor(max_workers=n_jobs) as executor:
+            futures = {executor.submit(_evaluate_single_config, *task): i for i, task in enumerate(tasks)}
+            for future in as_completed(futures):
+                try:
+                    row = future.result()
+                    rows.append(row)
+                    if len(rows) % 10 == 0:
+                        print(f"Completed {len(rows)}/{len(tasks)} configs")
+                except Exception as e:
+                    idx = futures[future]
+                    print(f"Error evaluating task {idx}: {e}")
 
     results_df = pd.DataFrame(rows)
     results_df.to_csv(out_dir / "results_all.csv", index=False)
