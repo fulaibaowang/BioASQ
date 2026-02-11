@@ -58,4 +58,5 @@ python scripts/public/retrieval/eval_hybird.py \
     bioasq_data/Task13BGoldenEnriched/13B3_golden.json \
     bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
   --out_dir output/eval_hybird_production_test \
-  --mode default
+  --mode default \
+  --jobs 4

@@ -82,7 +82,7 @@ MAX_QUERIES_PER_SPLIT = None  # e.g., 50 for a quick test
 CANDIDATE_LIMIT = 2000  # stage-1 top K
 
 # ---- reranker ----
-MODEL_NAME = "BAAI/bge-reranker-v2-m3"
+MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-12-v2"
 DEVICE = "cpu"  # "cuda", "mps", or "cpu"
 BATCH_SIZE = 16
 
@@ -367,3 +367,5 @@ for name in adaptive_perq.keys():
     adaptive_perq[name].to_csv(OUTPUT_DIR / f"adaptive_{name}.csv", index=False)
 
 print("saved to", OUTPUT_DIR)
+
+# %%
