@@ -77,6 +77,13 @@ srun \
     export OMP_NUM_THREADS=8
     export PYTHONUNBUFFERED=1
 
+    TEST_BATCH_JSONS=(
+      "bioasq_data/Task13BGoldenEnriched/13B1_golden.json"
+      "bioasq_data/Task13BGoldenEnriched/13B2_golden.json"
+      "bioasq_data/Task13BGoldenEnriched/13B3_golden.json"
+      "bioasq_data/Task13BGoldenEnriched/13B4_golden.json"
+    )
+
     printf '[debug] CUDA_VISIBLE_DEVICES=%s\n' "${CUDA_VISIBLE_DEVICES:-<unset>}"
     nvidia-smi -L || true
 
@@ -88,7 +95,7 @@ srun \
       --run-glob '${RUN_GLOB}' \
       --docs-jsonl '${DOCS_JSONL}' \
       --train-subset-json '${TRAIN_SUBSET_JSON}' \
-      --test-batch-jsons ${TEST_BATCH_JSONS[@]} \
+      --test-batch-jsons \${TEST_BATCH_JSONS[@]} \
       --candidate-limit ${CANDIDATE_LIMIT} \
       --model '${MODEL_NAME}' \
       --model-batch ${BATCH_SIZE} \
