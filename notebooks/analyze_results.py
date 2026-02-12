@@ -7,9 +7,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: dicty (Python 3.14 venv)
+#     display_name: .venv (3.14.2)
 #     language: python
-#     name: dicty-py314
+#     name: python3
 # ---
 
 # %% [markdown]
@@ -297,10 +297,13 @@ colors = {
     "BGE v2 (len=1024)": "#d62728",
 }
 
-fig, ax = plt.subplots()
+fig, axes = plt.subplots(2, 1, figsize=(8, 8))
+
+# Recall vs K (top).
+ax_recall = axes[0]
 for method in compare_methods:
     values = [test_avg.loc[method, f"MeanR@{k}"] for k in k_list]
-    ax.plot(
+    ax_recall.plot(
         k_list,
         values,
         marker="o",
@@ -308,13 +311,22 @@ for method in compare_methods:
         color=colors.get(method),
     )
 
-ax.set_xlabel("K (Recall Cutoff)")
-ax.set_ylabel("Mean Recall")
-ax.set_title("Hybrid vs Reranker Recall (Small K vs Large K)")
-ax.set_xscale("log")
-ax.legend(fontsize=9, loc="lower right")
+ax_recall.set_xlabel("K (Recall Cutoff)")
+ax_recall.set_ylabel("Mean Recall")
+ax_recall.set_title("Hybrid vs Reranker Recall")
+ax_recall.set_xscale("log")
+ax_recall.legend(fontsize=9, loc="lower right")
 
-fig_path = figures_dir / "02_hybrid_reranker_recall_small_vs_large_k.png"
+# MAP@10 comparison (bottom).
+ax_map = axes[1]
+map_values = [test_avg.loc[method, "MAP@10"] for method in compare_methods]
+bar_colors = [colors.get(method) for method in compare_methods]
+ax_map.bar(compare_methods, map_values, color=bar_colors)
+ax_map.set_ylabel("MAP@10")
+ax_map.set_title("Hybrid vs Reranker MAP@10")
+ax_map.tick_params(axis="x", rotation=25)
+
+fig_path = figures_dir / "02_hybrid_reranker_recall_map10.png"
 plt.tight_layout()
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
