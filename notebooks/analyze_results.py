@@ -6,6 +6,10 @@
 #       format_name: percent
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
+#   kernelspec:
+#     display_name: dicty (Python 3.14 venv)
+#     language: python
+#     name: dicty-py314
 # ---
 
 # %% [markdown]
@@ -30,18 +34,24 @@ plt.rcParams["axes.grid"] = True
 # ## 2. Set Input Paths
 
 # %%
-base_dir = Path("/Users/yun/develop/BioASQ")
+base_dir = Path.cwd().resolve()
+if not (base_dir / "output").exists() and (base_dir.parent / "output").exists():
+    # Notebook run from notebooks/ or a subdir
+    base_dir = base_dir.parent
 
+print("Base dir:", base_dir)
+
+# %%
 results = {
     "BM25+RM3": base_dir / "output/eval_bm25_rm3",
     "Dense (MedEmbed)": base_dir / "output/eval_dense_medembed_small",
-    "Hybrid (RRF)": base_dir / "output/eval_hybird",
+    "Hybrid (RRF)": base_dir / "output/eval_hybird_production_test",
     "Reranker MiniLM": base_dir / "output/eval_stage2_rerank",
     "BGE v2 (len=200)": base_dir / "output/eval_stage2_rerank_bge_reranker_v2_m3_len200",
     "BGE v2 (len=512)": base_dir / "output/eval_stage2_rerank_bge_reranker_v2_m3_len512",
 }
 
-output_dir = base_dir / "notebooks" / "analysis_output"
+output_dir = base_dir / "output" / "analysis_output"
 figures_dir = output_dir / "figures"
 output_dir.mkdir(parents=True, exist_ok=True)
 figures_dir.mkdir(exist_ok=True)
@@ -59,15 +69,40 @@ def load_metrics_from_dir(result_dir: Path) -> pd.DataFrame | None:
     metrics_file = result_dir / "rerank_metrics.csv"
     if not metrics_file.exists():
         metrics_file = result_dir / "metrics.csv"
-    if not metrics_file.exists():
-        print(f"Missing metrics in {result_dir}")
-        return None
-    return pd.read_csv(metrics_file)
+    if metrics_file.exists():
+        df = pd.read_csv(metrics_file)
+        if "split" not in df.columns and "batch" in df.columns:
+            df["split"] = df["batch"]
+        return df
+
+    # Hybrid outputs recall-focused tables in results_all.csv
+    results_all = result_dir / "results_all.csv"
+    if results_all.exists():
+        df = pd.read_csv(results_all)
+        best_cfg = result_dir / "best_config.json"
+        if best_cfg.exists():
+            with best_cfg.open("r", encoding="utf-8") as f:
+                cfg = json.load(f)
+            k_rrf = cfg.get("k_rrf")
+            w_bm25 = cfg.get("w_bm25")
+            w_dense = cfg.get("w_dense")
+            if k_rrf is not None and w_bm25 is not None and w_dense is not None:
+                df = df[
+                    np.isclose(df["k_rrf"], float(k_rrf))
+                    & np.isclose(df["w_bm25"], float(w_bm25))
+                    & np.isclose(df["w_dense"], float(w_dense))
+                ]
+        if "split" not in df.columns and "batch" in df.columns:
+            df["split"] = df["batch"]
+        return df
+
+    print(f"Missing metrics in {result_dir}")
+    return None
 
 all_metrics = {}
 for name, result_dir in results.items():
     df = load_metrics_from_dir(result_dir)
-    if df is not None:
+    if df is not None and not df.empty:
         all_metrics[name] = df
         print(f"Loaded {name}: {result_dir}")
 
@@ -103,6 +138,9 @@ for method_name, df in all_metrics.items():
     rows.append(df_copy)
 
 df_all = pd.concat(rows, ignore_index=True)
+
+if "split" not in df_all.columns:
+    raise ValueError("Missing 'split' column after loading metrics.")
 
 def normalize_split(split_name: str) -> str:
     if pd.isna(split_name):
@@ -145,191 +183,175 @@ df_summary.to_csv(summary_path, index=False)
 print("Saved:", summary_path)
 
 # %% [markdown]
-# ## 7. Recall Curves - Train Subset
+# ## 7. Stage 1 Recall Curves - Train vs Test Avg
+# Plot train and test average on the same axes. Use only K values that exist for all three stage-1 methods.
 
 # %%
 df_train = df_all[df_all["split_normalized"] == "train_subset"].copy()
 
-k_list = [50, 100, 200, 300, 400, 500, 1000, 2000]
+test_splits = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
+df_test = df_all[df_all["split_normalized"].isin(test_splits)].copy()
+
+stage1_methods = ["BM25+RM3", "Dense (MedEmbed)", "Hybrid (RRF)"]
+
+# Use a fixed K list shared across methods.
+fixed_k = [50, 100, 200, 500, 2000, 5000]
+
+# Keep only K values that are present and non-NaN for every method in train and test.
+valid_k = []
+for k in fixed_k:
+    col = f"MeanR@{k}"
+    ok = True
+    for method in stage1_methods:
+        method_train = df_train[df_train["method"] == method]
+        method_test = df_test[df_test["method"] == method]
+        if method_train.empty or method_test.empty:
+            ok = False
+            break
+        train_val = method_train.iloc[0].get(col)
+        test_val = method_test[col].mean() if col in method_test.columns else np.nan
+        if pd.isna(train_val) or pd.isna(test_val):
+            ok = False
+            break
+    if ok:
+        valid_k.append(k)
+
+k_list = valid_k
+if not k_list:
+    raise ValueError("No overlapping MeanR@K columns found for stage-1 methods.")
+
+print("Stage 1 K values (fixed + available):", k_list)
+
+colors = {
+    "BM25+RM3": "#1f77b4",
+    "Dense (MedEmbed)": "#ff7f0e",
+    "Hybrid (RRF)": "#2ca02c",
+}
 
 fig, ax = plt.subplots()
-for _, row in df_train.iterrows():
-    values = []
-    for k in k_list:
-        col = f"MeanR@{k}"
-        values.append(row[col] if col in row.index else np.nan)
-    if np.all(np.isnan(values)):
+for method in stage1_methods:
+    train_row = df_train[df_train["method"] == method]
+    test_rows = df_test[df_test["method"] == method]
+    if train_row.empty or test_rows.empty:
         continue
-    ax.plot(k_list, values, marker="o", label=row["method"])
+    train_row = train_row.iloc[0]
+    train_vals = [train_row.get(f"MeanR@{k}", np.nan) for k in k_list]
+    test_vals = [test_rows[f"MeanR@{k}"].mean() for k in k_list]
+
+    color = colors.get(method)
+    ax.plot(k_list, train_vals, marker="o", label=f"{method} (train)", color=color)
+    ax.plot(k_list, test_vals, marker="o", linestyle="--", label=f"{method} (test avg)", color=color)
 
 ax.set_xlabel("K (Recall Cutoff)")
 ax.set_ylabel("Mean Recall")
-ax.set_title("Recall Curves - Train Subset")
+ax.set_title("Stage 1 Recall")
 ax.set_xscale("log")
 ax.legend(fontsize=9, loc="lower right")
 
-fig_path = figures_dir / "01_recall_curves_train.png"
+fig_path = figures_dir / "01_stage1_recall_train_test.png"
 plt.tight_layout()
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
 
 # %% [markdown]
-# ## 8. Recall Curves - Test Average (13B1-4)
+# ## 9. Stage 1 Recall and Reranker Quality
+# Stage 1 retrieval prioritizes recall at large K (overfetch). Then we evaluate rerankers for top-rank precision and whether recall stays strong at smaller K.
 
 # %%
-fig, ax = plt.subplots()
-for method in df_test["method"].unique():
-    method_data = df_test[df_test["method"] == method]
-    if method_data.empty:
+# --- Stage 1: Recall at overfetch K (2000/5000) ---
+stage1_methods = ["BM25+RM3", "Dense (MedEmbed)", "Hybrid (RRF)"]
+
+rows = []
+for method in stage1_methods:
+    data = df_test[df_test["method"] == method]
+    if data.empty:
         continue
-    values = []
-    for k in k_list:
+    row = {"method": method}
+    for k in [2000, 5000]:
         col = f"MeanR@{k}"
-        values.append(method_data[col].mean() if col in method_data.columns else np.nan)
-    if np.all(np.isnan(values)):
-        continue
-    ax.plot(k_list, values, marker="o", label=method)
+        row[col] = data[col].mean() if col in data.columns else np.nan
+    rows.append(row)
 
-ax.set_xlabel("K (Recall Cutoff)")
-ax.set_ylabel("Mean Recall")
-ax.set_title("Recall Curves - Test Avg (13B1-4)")
-ax.set_xscale("log")
-ax.legend(fontsize=9, loc="lower right")
-
-fig_path = figures_dir / "02_recall_curves_test_avg.png"
-plt.tight_layout()
-plt.savefig(fig_path, dpi=150, bbox_inches="tight")
-print("Saved:", fig_path)
-plt.show()
-
-# %% [markdown]
-# ## 9. Precision Comparison (MAP@10, MRR@10)
-
-# %%
-fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-
-methods_sorted = df_summary["method"].tolist()
-
-# MAP@10
-ax = axes[0]
-map_vals = df_summary["MAP@10"].values
-ax.barh(methods_sorted, map_vals)
-ax.set_xlabel("MAP@10")
-ax.set_title("MAP@10 (Test Avg)")
-for i, v in enumerate(map_vals):
-    ax.text(v + 0.01, i, f"{v:.3f}", va="center", fontsize=9)
-
-# MRR@10
-ax = axes[1]
-mrr_vals = df_summary["MRR@10"].values
-ax.barh(methods_sorted, mrr_vals)
-ax.set_xlabel("MRR@10")
-ax.set_title("MRR@10 (Test Avg)")
-for i, v in enumerate(mrr_vals):
-    ax.text(v + 0.01, i, f"{v:.3f}", va="center", fontsize=9)
-
-fig_path = figures_dir / "03_precision_comparison.png"
-plt.tight_layout()
-plt.savefig(fig_path, dpi=150, bbox_inches="tight")
-print("Saved:", fig_path)
-plt.show()
-
-# %% [markdown]
-# ## 10. BGE Length Sensitivity (200 vs 512)
-
-# %%
-bge_200 = df_all[df_all["method"] == "BGE v2 (len=200)"].copy()
-bge_512 = df_all[df_all["method"] == "BGE v2 (len=512)"].copy()
-
-bge_200_sel = bge_200[["split_normalized", "MAP@10", "MRR@10", "MeanR@500", "MeanR@2000"]].copy()
-bge_200_sel.columns = ["split", "MAP@10_200", "MRR@10_200", "MeanR@500_200", "MeanR@2000_200"]
-
-bge_512_sel = bge_512[["split_normalized", "MAP@10", "MRR@10", "MeanR@500", "MeanR@2000"]].copy()
-bge_512_sel.columns = ["split", "MAP@10_512", "MRR@10_512", "MeanR@500_512", "MeanR@2000_512"]
-
-bge_merged = pd.merge(bge_200_sel, bge_512_sel, on="split", how="inner")
-
-for metric in ["MAP@10", "MRR@10", "MeanR@500", "MeanR@2000"]:
-    bge_merged[f"{metric}_delta"] = bge_merged[f"{metric}_512"] - bge_merged[f"{metric}_200"]
-
-print(bge_merged[["split", "MAP@10_delta", "MRR@10_delta", "MeanR@500_delta", "MeanR@2000_delta"]].round(3).to_string(index=False))
+stage1_overfetch_df = pd.DataFrame(rows)
+print(stage1_overfetch_df.round(3).to_string(index=False))
 
 fig, ax = plt.subplots()
-metrics = ["MAP@10_delta", "MRR@10_delta", "MeanR@500_delta", "MeanR@2000_delta"]
-labels = ["MAP@10", "MRR@10", "MeanR@500", "MeanR@2000"]
+x = np.arange(len(stage1_overfetch_df))
+width = 0.35
 
-x = np.arange(len(bge_merged))
-width = 0.2
-for i, (metric, label) in enumerate(zip(metrics, labels)):
-    ax.bar(x + i * width, bge_merged[metric], width, label=label)
+ax.bar(x - width / 2, stage1_overfetch_df["MeanR@2000"], width, label="MeanR@2000")
+ax.bar(x + width / 2, stage1_overfetch_df["MeanR@5000"], width, label="MeanR@5000")
 
-ax.set_xticks(x + width * 1.5)
-ax.set_xticklabels(bge_merged["split"], rotation=0)
-ax.set_ylabel("Delta (len=512 - len=200)")
-ax.set_title("BGE Length Sensitivity")
-ax.axhline(0, color="black", linewidth=0.5)
+ax.set_xticks(x)
+ax.set_xticklabels(stage1_overfetch_df["method"], rotation=0)
+ax.set_ylabel("Mean Recall")
+ax.set_title("Stage 1 Recall (Test Avg, Overfetch K)")
 ax.legend(fontsize=9)
 
-fig_path = figures_dir / "04_bge_length_sensitivity.png"
+fig_path = figures_dir / "03_stage1_overfetch_recall.png"
 plt.tight_layout()
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
 
-# %% [markdown]
-# ## 11. Stage-to-Stage Improvements
+# --- Rerankers: Precision at top ranks (MAP@10, MRR@10) ---
+reranker_methods = ["Reranker MiniLM", "BGE v2 (len=200)", "BGE v2 (len=512)"]
 
-# %%
-baseline_row = df_summary[df_summary["method"] == "BM25+RM3"]
-if baseline_row.empty:
-    raise ValueError("BM25+RM3 baseline missing from summary")
-
-baseline_map = baseline_row["MAP@10"].values[0]
-baseline_meanr = baseline_row["MeanR@500"].values[0]
-
-stages = [
-    "BM25+RM3",
-    "Dense (MedEmbed)",
-    "Hybrid (RRF)",
-    "Reranker MiniLM",
-    "BGE v2 (len=200)",
-    "BGE v2 (len=512)",
-]
-
-improve_rows = []
-for method in stages:
-    if method not in df_summary["method"].values:
-        continue
-    row = df_summary[df_summary["method"] == method].iloc[0]
-    improve_rows.append(
-        {
-            "method": method,
-            "MAP@10": row["MAP@10"],
-            "MAP@10_improve_pct": (row["MAP@10"] - baseline_map) / baseline_map * 100,
-            "MeanR@500": row["MeanR@500"],
-            "MeanR@500_improve_pct": (row["MeanR@500"] - baseline_meanr) / baseline_meanr * 100,
-        }
-    )
-
-df_improvements = pd.DataFrame(improve_rows)
-print(df_improvements.round(3).to_string(index=False))
+reranker_precision_df = df_summary[df_summary["method"].isin(reranker_methods)].copy()
+reranker_precision_df = reranker_precision_df.dropna(subset=["MAP@10", "MRR@10"])
 
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
 ax = axes[0]
-ax.barh(df_improvements["method"], df_improvements["MAP@10_improve_pct"])
-ax.set_xlabel("Improvement (%)")
-ax.set_title("MAP@10 Improvement vs BM25+RM3")
-ax.axvline(0, color="black", linewidth=0.5)
+ax.barh(reranker_precision_df["method"], reranker_precision_df["MAP@10"])
+ax.set_xlabel("MAP@10")
+ax.set_title("Reranker MAP@10 (Test Avg)")
 
 ax = axes[1]
-ax.barh(df_improvements["method"], df_improvements["MeanR@500_improve_pct"])
-ax.set_xlabel("Improvement (%)")
-ax.set_title("MeanR@500 Improvement vs BM25+RM3")
-ax.axvline(0, color="black", linewidth=0.5)
+ax.barh(reranker_precision_df["method"], reranker_precision_df["MRR@10"])
+ax.set_xlabel("MRR@10")
+ax.set_title("Reranker MRR@10 (Test Avg)")
 
-fig_path = figures_dir / "05_stage_improvements.png"
+fig_path = figures_dir / "04_reranker_precision.png"
+plt.tight_layout()
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
+
+# --- Rerankers: Recall at smaller K (200/500) ---
+rows = []
+for method in reranker_methods:
+    data = df_test[df_test["method"] == method]
+    if data.empty:
+        continue
+    row = {"method": method}
+    for k in [200, 500]:
+        col = f"MeanR@{k}"
+        row[col] = data[col].mean() if col in data.columns else np.nan
+    rows.append(row)
+
+reranker_recall_df = pd.DataFrame(rows)
+print(reranker_recall_df.round(3).to_string(index=False))
+
+hybrid_row = stage1_overfetch_df[stage1_overfetch_df["method"] == "Hybrid (RRF)"]
+if not hybrid_row.empty and "MeanR@2000" in hybrid_row.columns:
+    print("Hybrid MeanR@2000 (test avg):", float(hybrid_row["MeanR@2000"]))
+
+fig, ax = plt.subplots()
+x = np.arange(len(reranker_recall_df))
+width = 0.35
+
+ax.bar(x - width / 2, reranker_recall_df["MeanR@200"], width, label="MeanR@200")
+ax.bar(x + width / 2, reranker_recall_df["MeanR@500"], width, label="MeanR@500")
+
+ax.set_xticks(x)
+ax.set_xticklabels(reranker_recall_df["method"], rotation=0)
+ax.set_ylabel("Mean Recall")
+ax.set_title("Reranker Recall at Smaller K (Test Avg)")
+ax.legend(fontsize=9)
+
+fig_path = figures_dir / "05_reranker_recall_small_k.png"
 plt.tight_layout()
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
@@ -343,12 +365,23 @@ consolidated_path = output_dir / "consolidated_all_metrics.csv"
 df_all.to_csv(consolidated_path, index=False)
 print("Saved:", consolidated_path)
 
-improvements_path = output_dir / "stage_improvements.csv"
-df_improvements.to_csv(improvements_path, index=False)
-print("Saved:", improvements_path)
+summary_path = output_dir / "summary_test_avg.csv"
+df_summary.to_csv(summary_path, index=False)
+print("Saved:", summary_path)
 
-bge_path = output_dir / "bge_length_comparison.csv"
-bge_merged.to_csv(bge_path, index=False)
-print("Saved:", bge_path)
+if "stage1_overfetch_df" in locals():
+    stage1_path = output_dir / "stage1_overfetch_test_avg.csv"
+    stage1_overfetch_df.to_csv(stage1_path, index=False)
+    print("Saved:", stage1_path)
+
+if "reranker_precision_df" in locals():
+    precision_path = output_dir / "reranker_precision_test_avg.csv"
+    reranker_precision_df.to_csv(precision_path, index=False)
+    print("Saved:", precision_path)
+
+if "reranker_recall_df" in locals():
+    recall_path = output_dir / "reranker_recall_small_k.csv"
+    reranker_recall_df.to_csv(recall_path, index=False)
+    print("Saved:", recall_path)
 
 print("Done. Outputs in:", output_dir)
