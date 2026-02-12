@@ -7,9 +7,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: dicty (Python 3.14 venv)
+#     display_name: .venv (3.14.2)
 #     language: python
-#     name: dicty-py314
+#     name: python3
 # ---
 
 # %% [markdown]
@@ -195,6 +195,78 @@ df_test = df_all[df_all["split_normalized"].isin(test_splits)].copy()
 stage1_methods = ["BM25+RM3", "Dense (MedEmbed)", "Hybrid (RRF)"]
 
 # Use a fixed K list shared across methods.
+fixed_k = [100, 200, 500, 2000, 5000]
+
+# Keep only K values that are present and non-NaN for every method in train and test.
+valid_k = []
+for k in fixed_k:
+    col = f"MeanR@{k}"
+    ok = True
+    for method in stage1_methods:
+        method_train = df_train[df_train["method"] == method]
+        method_test = df_test[df_test["method"] == method]
+        if method_train.empty or method_test.empty:
+            ok = False
+            break
+        train_val = method_train.iloc[0].get(col)
+        test_val = method_test[col].mean() if col in method_test.columns else np.nan
+        if pd.isna(train_val) or pd.isna(test_val):
+            ok = False
+            break
+    if ok:
+        valid_k.append(k)
+
+k_list = valid_k
+if not k_list:
+    raise ValueError("No overlapping MeanR@K columns found for stage-1 methods.")
+
+print("Stage 1 K values (fixed + available):", k_list)
+
+colors = {
+    "BM25+RM3": "#1f77b4",
+    "Dense (MedEmbed)": "#ff7f0e",
+    "Hybrid (RRF)": "#2ca02c",
+}
+
+fig, ax = plt.subplots()
+for method in stage1_methods:
+    train_row = df_train[df_train["method"] == method]
+    test_rows = df_test[df_test["method"] == method]
+    if train_row.empty or test_rows.empty:
+        continue
+    train_row = train_row.iloc[0]
+    train_vals = [train_row.get(f"MeanR@{k}", np.nan) for k in k_list]
+    test_vals = [test_rows[f"MeanR@{k}"].mean() for k in k_list]
+
+    color = colors.get(method)
+    ax.plot(k_list, train_vals, marker="o", label=f"{method} (train)", color=color)
+    ax.plot(k_list, test_vals, marker="o", linestyle="--", label=f"{method} (test avg)", color=color)
+
+ax.set_xlabel("K (Recall Cutoff)")
+ax.set_ylabel("Mean Recall")
+ax.set_title("Stage 1 Recall")
+ax.set_xscale("log")
+ax.legend(fontsize=9, loc="lower right")
+
+fig_path = figures_dir / "01_stage1_recall_train_test.png"
+plt.tight_layout()
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
+
+# %% [markdown]
+# ## 9. Stage 1 Recall and Reranker Quality
+# Stage 1 retrieval prioritizes recall at large K (overfetch). Then we evaluate rerankers for top-rank precision and whether recall stays strong at smaller K.
+
+# %%
+df_train = df_all[df_all["split_normalized"] == "train_subset"].copy()
+
+test_splits = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
+df_test = df_all[df_all["split_normalized"].isin(test_splits)].copy()
+
+stage1_methods = ["BM25+RM3", "Dense (MedEmbed)", "Hybrid (RRF)"]
+
+# Use a fixed K list shared across methods.
 fixed_k = [50, 100, 200, 500, 2000, 5000]
 
 # Keep only K values that are present and non-NaN for every method in train and test.
@@ -228,14 +300,6 @@ colors = {
     "Hybrid (RRF)": "#2ca02c",
 }
 
-def _format_n(value) -> str:
-    if pd.isna(value):
-        return "?"
-    try:
-        return str(int(value))
-    except (TypeError, ValueError):
-        return "?"
-
 fig, ax = plt.subplots()
 for method in stage1_methods:
     train_row = df_train[df_train["method"] == method]
@@ -246,14 +310,9 @@ for method in stage1_methods:
     train_vals = [train_row.get(f"MeanR@{k}", np.nan) for k in k_list]
     test_vals = [test_rows[f"MeanR@{k}"].mean() for k in k_list]
 
-    train_n = _format_n(train_row.get("n_queries"))
-    test_n = _format_n(test_rows["n_queries"].sum()) if "n_queries" in test_rows.columns else "?"
-    train_label = f"{method} (train, n={train_n})"
-    test_label = f"{method} (test avg, n={test_n})"
-
     color = colors.get(method)
-    ax.plot(k_list, train_vals, marker="o", label=train_label, color=color)
-    ax.plot(k_list, test_vals, marker="o", linestyle="--", label=test_label, color=color)
+    ax.plot(k_list, train_vals, marker="o", label=f"{method} (train)", color=color)
+    ax.plot(k_list, test_vals, marker="o", linestyle="--", label=f"{method} (test avg)", color=color)
 
 ax.set_xlabel("K (Recall Cutoff)")
 ax.set_ylabel("Mean Recall")
@@ -262,109 +321,6 @@ ax.set_xscale("log")
 ax.legend(fontsize=9, loc="lower right")
 
 fig_path = figures_dir / "01_stage1_recall_train_test.png"
-plt.tight_layout()
-plt.savefig(fig_path, dpi=150, bbox_inches="tight")
-print("Saved:", fig_path)
-plt.show()
-
-# %% [markdown]
-# ## 9. Stage 1 Recall and Reranker Quality
-# Stage 1 retrieval prioritizes recall at large K (overfetch). Then we evaluate rerankers for top-rank precision and whether recall stays strong at smaller K.
-
-# %%
-# --- Stage 1: Recall at overfetch K (2000/5000) ---
-stage1_methods = ["BM25+RM3", "Dense (MedEmbed)", "Hybrid (RRF)"]
-
-rows = []
-for method in stage1_methods:
-    data = df_test[df_test["method"] == method]
-    if data.empty:
-        continue
-    row = {"method": method}
-    for k in [2000, 5000]:
-        col = f"MeanR@{k}"
-        row[col] = data[col].mean() if col in data.columns else np.nan
-    rows.append(row)
-
-stage1_overfetch_df = pd.DataFrame(rows)
-print(stage1_overfetch_df.round(3).to_string(index=False))
-
-fig, ax = plt.subplots()
-x = np.arange(len(stage1_overfetch_df))
-width = 0.35
-
-ax.bar(x - width / 2, stage1_overfetch_df["MeanR@2000"], width, label="MeanR@2000")
-ax.bar(x + width / 2, stage1_overfetch_df["MeanR@5000"], width, label="MeanR@5000")
-
-ax.set_xticks(x)
-ax.set_xticklabels(stage1_overfetch_df["method"], rotation=0)
-ax.set_ylabel("Mean Recall")
-ax.set_title("Stage 1 Recall (Test Avg, Overfetch K)")
-ax.legend(fontsize=9)
-
-fig_path = figures_dir / "03_stage1_overfetch_recall.png"
-plt.tight_layout()
-plt.savefig(fig_path, dpi=150, bbox_inches="tight")
-print("Saved:", fig_path)
-plt.show()
-
-# --- Rerankers: Precision at top ranks (MAP@10, MRR@10) ---
-reranker_methods = ["Reranker MiniLM", "BGE v2 (len=200)", "BGE v2 (len=512)"]
-
-reranker_precision_df = df_summary[df_summary["method"].isin(reranker_methods)].copy()
-reranker_precision_df = reranker_precision_df.dropna(subset=["MAP@10", "MRR@10"])
-
-fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-
-ax = axes[0]
-ax.barh(reranker_precision_df["method"], reranker_precision_df["MAP@10"])
-ax.set_xlabel("MAP@10")
-ax.set_title("Reranker MAP@10 (Test Avg)")
-
-ax = axes[1]
-ax.barh(reranker_precision_df["method"], reranker_precision_df["MRR@10"])
-ax.set_xlabel("MRR@10")
-ax.set_title("Reranker MRR@10 (Test Avg)")
-
-fig_path = figures_dir / "04_reranker_precision.png"
-plt.tight_layout()
-plt.savefig(fig_path, dpi=150, bbox_inches="tight")
-print("Saved:", fig_path)
-plt.show()
-
-# --- Rerankers: Recall at smaller K (200/500) ---
-rows = []
-for method in reranker_methods:
-    data = df_test[df_test["method"] == method]
-    if data.empty:
-        continue
-    row = {"method": method}
-    for k in [200, 500]:
-        col = f"MeanR@{k}"
-        row[col] = data[col].mean() if col in data.columns else np.nan
-    rows.append(row)
-
-reranker_recall_df = pd.DataFrame(rows)
-print(reranker_recall_df.round(3).to_string(index=False))
-
-hybrid_row = stage1_overfetch_df[stage1_overfetch_df["method"] == "Hybrid (RRF)"]
-if not hybrid_row.empty and "MeanR@2000" in hybrid_row.columns:
-    print("Hybrid MeanR@2000 (test avg):", float(hybrid_row["MeanR@2000"]))
-
-fig, ax = plt.subplots()
-x = np.arange(len(reranker_recall_df))
-width = 0.35
-
-ax.bar(x - width / 2, reranker_recall_df["MeanR@200"], width, label="MeanR@200")
-ax.bar(x + width / 2, reranker_recall_df["MeanR@500"], width, label="MeanR@500")
-
-ax.set_xticks(x)
-ax.set_xticklabels(reranker_recall_df["method"], rotation=0)
-ax.set_ylabel("Mean Recall")
-ax.set_title("Reranker Recall at Smaller K (Test Avg)")
-ax.legend(fontsize=9)
-
-fig_path = figures_dir / "05_reranker_recall_small_k.png"
 plt.tight_layout()
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
