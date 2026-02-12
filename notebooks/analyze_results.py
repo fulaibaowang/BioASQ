@@ -386,4 +386,179 @@ reranker_recall_df = pd.DataFrame(reranker_recall_rows)
 if not reranker_recall_df.empty:
     display(reranker_recall_df)
 
+# %% [markdown]
+# ## 9. Per-split Recall Stability
+# Show per-split MeanR@200 and MeanR@500 for Hybrid vs rerankers to spot unstable batches.
+
 # %%
+split_order = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
+method_order = ["Hybrid (RRF)", "Reranker MiniLM", "BGE v2 (len=512)"]
+
+plot_df = df_all[
+    df_all["split_normalized"].isin(split_order)
+    & df_all["method"].isin(method_order)
+].copy()
+
+if plot_df.empty:
+    raise ValueError("No rows found for per-split stability plot.")
+
+colors = {
+    "Hybrid (RRF)": "#444444",
+    "Reranker MiniLM": "#1f77b4",
+    "BGE v2 (len=512)": "#2ca02c",
+}
+
+for metric in ["MeanR@200", "MeanR@500"]:
+    if metric not in plot_df.columns:
+        raise ValueError(f"Missing column: {metric}")
+
+    pivot = plot_df.pivot_table(
+        index="split_normalized",
+        columns="method",
+        values=metric,
+        aggfunc="mean",
+    ).reindex(split_order)
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    pivot[method_order].plot(
+        kind="bar",
+        ax=ax,
+        color=[colors.get(m) for m in method_order],
+        width=0.8,
+    )
+
+    ax.set_ylabel(metric)
+    ax.set_title(f"Per-split {metric}: Hybrid vs Rerankers")
+    ax.legend(fontsize=9, loc="lower right")
+    ax.tick_params(axis="x", rotation=0)
+
+    fig_path = figures_dir / f"03_per_split_{metric.lower().replace('@', '_')}.png"
+    plt.tight_layout()
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    print("Saved:", fig_path)
+    plt.show()
+
+# %% [markdown]
+# ## 10. Delta Distribution (Per-query)
+# Histogram of per-query $\Delta$ (reranker − hybrid) at K=200 using test splits.
+
+# %%
+import json
+from collections import defaultdict
+
+k_delta = 200
+split_order = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
+
+qrels_paths = {
+    "13B1_golden": base_dir / "bioasq_data" / "Task13BGoldenEnriched" / "13B1_golden.json",
+    "13B2_golden": base_dir / "bioasq_data" / "Task13BGoldenEnriched" / "13B2_golden.json",
+    "13B3_golden": base_dir / "bioasq_data" / "Task13BGoldenEnriched" / "13B3_golden.json",
+    "13B4_golden": base_dir / "bioasq_data" / "Task13BGoldenEnriched" / "13B4_golden.json",
+}
+
+run_dirs = {
+    "Hybrid (RRF)": base_dir / "output" / "eval_hybird_production_test" / "runs",
+    "Reranker MiniLM": base_dir / "output" / "eval_stage2_rerank_minitest" / "runs",
+    "BGE v2 (len=512)": base_dir / "output" / "eval_stage2_rerank_bge_reranker_v2_m3_len512" / "runs",
+}
+
+run_template = "best_rrf_{split}_top2000.tsv"
+
+
+def _extract_pmid(doc_entry):
+    if isinstance(doc_entry, dict):
+        doc_entry = doc_entry.get("document", "")
+    if not isinstance(doc_entry, str):
+        return None
+    if "/" in doc_entry:
+        return doc_entry.rsplit("/", 1)[-1]
+    return doc_entry
+
+
+def _load_qrels(path):
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    qrels = {}
+    for q in data.get("questions", []):
+        qid = q.get("id")
+        docs = q.get("documents", [])
+        pmids = {
+            _extract_pmid(d)
+            for d in docs
+            if _extract_pmid(d)
+        }
+        if qid:
+            qrels[qid] = pmids
+    return qrels
+
+
+def _load_run(path):
+    df = pd.read_csv(path, sep="\t")
+    cols = {c.lower(): c for c in df.columns}
+    qid_col = cols.get("qid")
+    doc_col = cols.get("docno") or cols.get("docid") or cols.get("doc")
+    rank_col = cols.get("rank")
+    if qid_col is None or doc_col is None:
+        raise ValueError(f"Missing qid/doc columns in {path}")
+    df[qid_col] = df[qid_col].astype(str)
+    df[doc_col] = df[doc_col].astype(str)
+    if rank_col:
+        df = df.sort_values([qid_col, rank_col])
+    return df[[qid_col, doc_col]]
+
+
+def _recall_at_k(run_df, qrels, k):
+    qid_col, doc_col = run_df.columns.tolist()
+    recall = {}
+    for qid, group in run_df.groupby(qid_col, sort=False):
+        rels = qrels.get(qid, set())
+        if not rels:
+            continue
+        docs = group[doc_col].head(k).tolist()
+        hit = len(set(docs) & rels)
+        recall[qid] = hit / len(rels)
+    return recall
+
+
+qrels_by_split = {s: _load_qrels(p) for s, p in qrels_paths.items()}
+
+hybrid_runs = {}
+for split in split_order:
+    path = run_dirs["Hybrid (RRF)"] / run_template.format(split=split)
+    hybrid_runs[split] = _load_run(path)
+
+reranker_labels = ["Reranker MiniLM", "BGE v2 (len=512)"]
+
+all_deltas = defaultdict(list)
+for split in split_order:
+    qrels = qrels_by_split[split]
+    hybrid_recall = _recall_at_k(hybrid_runs[split], qrels, k_delta)
+
+    for label in reranker_labels:
+        path = run_dirs[label] / run_template.format(split=split)
+        rerank_run = _load_run(path)
+        rerank_recall = _recall_at_k(rerank_run, qrels, k_delta)
+
+        for qid, base_val in hybrid_recall.items():
+            if qid not in rerank_recall:
+                continue
+            all_deltas[label].append(rerank_recall[qid] - base_val)
+
+fig, ax = plt.subplots(figsize=(7, 4))
+for label in reranker_labels:
+    values = all_deltas.get(label, [])
+    if not values:
+        continue
+    ax.hist(values, bins=30, alpha=0.55, label=label)
+
+ax.axvline(0, color="#333333", linestyle="--", linewidth=1)
+ax.set_xlabel(f"Delta Recall@{k_delta} (reranker - hybrid)")
+ax.set_ylabel("Query count")
+ax.set_title(f"Per-query Delta Distribution (K={k_delta})")
+ax.legend(fontsize=9)
+
+fig_path = figures_dir / f"04_delta_distribution_k{k_delta}.png"
+plt.tight_layout()
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
