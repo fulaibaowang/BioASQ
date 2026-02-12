@@ -228,6 +228,14 @@ colors = {
     "Hybrid (RRF)": "#2ca02c",
 }
 
+def _format_n(value) -> str:
+    if pd.isna(value):
+        return "?"
+    try:
+        return str(int(value))
+    except (TypeError, ValueError):
+        return "?"
+
 fig, ax = plt.subplots()
 for method in stage1_methods:
     train_row = df_train[df_train["method"] == method]
@@ -238,9 +246,14 @@ for method in stage1_methods:
     train_vals = [train_row.get(f"MeanR@{k}", np.nan) for k in k_list]
     test_vals = [test_rows[f"MeanR@{k}"].mean() for k in k_list]
 
+    train_n = _format_n(train_row.get("n_queries"))
+    test_n = _format_n(test_rows["n_queries"].sum()) if "n_queries" in test_rows.columns else "?"
+    train_label = f"{method} (train, n={train_n})"
+    test_label = f"{method} (test avg, n={test_n})"
+
     color = colors.get(method)
-    ax.plot(k_list, train_vals, marker="o", label=f"{method} (train)", color=color)
-    ax.plot(k_list, test_vals, marker="o", linestyle="--", label=f"{method} (test avg)", color=color)
+    ax.plot(k_list, train_vals, marker="o", label=train_label, color=color)
+    ax.plot(k_list, test_vals, marker="o", linestyle="--", label=test_label, color=color)
 
 ax.set_xlabel("K (Recall Cutoff)")
 ax.set_ylabel("Mean Recall")
