@@ -7,9 +7,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: .venv (3.14.2)
+#     display_name: dicty (Python 3.14 venv)
 #     language: python
-#     name: python3
+#     name: dicty-py314
 # ---
 
 # %% [markdown]
@@ -260,34 +260,16 @@ plt.show()
 
 # %%
 df_test = df_all[df_all["split_normalized"].isin(["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"])].copy()
+df_train = df_all[df_all["split_normalized"] == "train_subset"].copy()
 
 test_avg = df_test.groupby("method").mean(numeric_only=True)
+train_avg = df_train.groupby("method").mean(numeric_only=True)
 
 baseline_method = "Hybrid (RRF)"
 reranker_methods = [
     m for m in test_avg.index
     if m.startswith("Reranker") or m.startswith("BGE v2")
 ]
-
-compare_methods = []
-if baseline_method in test_avg.index:
-    compare_methods.append(baseline_method)
-compare_methods.extend([m for m in reranker_methods if m in test_avg.index])
-
-k_candidates = [50, 100, 200, 2000]
-k_list = []
-for k in k_candidates:
-    col = f"MeanR@{k}"
-    if col not in test_avg.columns:
-        continue
-    if test_avg.loc[compare_methods, col].isna().all():
-        continue
-    k_list.append(k)
-
-if not k_list:
-    raise ValueError("No overlapping MeanR@K columns found for hybrid/reranker recall plot.")
-
-print("Hybrid/Reranker K values:", k_list)
 
 colors = {
     baseline_method: "#444444",
@@ -297,42 +279,92 @@ colors = {
     "BGE v2 (len=1024)": "#d62728",
 }
 
-fig, axes = plt.subplots(2, 1, figsize=(8, 8))
+k_candidates = [50, 100, 200, 2000]
 
-# Recall vs K (top).
-ax_recall = axes[0]
-for method in compare_methods:
-    values = [test_avg.loc[method, f"MeanR@{k}"] for k in k_list]
-    ax_recall.plot(
-        k_list,
-        values,
-        marker="o",
-        label=f"{method} (test avg)",
-        color=colors.get(method),
-    )
 
-ax_recall.set_xlabel("K (Recall Cutoff)")
-ax_recall.set_ylabel("Mean Recall")
-ax_recall.set_title("Hybrid vs Reranker Recall")
-ax_recall.set_xscale("log")
-ax_recall.legend(fontsize=9, loc="lower right")
+def _build_compare_methods(avg_df):
+    compare = []
+    if baseline_method in avg_df.index:
+        compare.append(baseline_method)
+    compare.extend([m for m in reranker_methods if m in avg_df.index])
+    return compare
 
-# MAP@10 comparison (bottom).
-ax_map = axes[1]
-map_values = [test_avg.loc[method, "MAP@10"] for method in compare_methods]
-bar_colors = [colors.get(method) for method in compare_methods]
-ax_map.bar(compare_methods, map_values, color=bar_colors)
-ax_map.set_ylabel("MAP@10")
-ax_map.set_title("Hybrid vs Reranker MAP@10")
-ax_map.tick_params(axis="x", rotation=25)
 
-fig_path = figures_dir / "02_hybrid_reranker_recall_map10.png"
-plt.tight_layout()
-plt.savefig(fig_path, dpi=150, bbox_inches="tight")
-print("Saved:", fig_path)
-plt.show()
+def _build_k_list(avg_df, compare):
+    k_values = []
+    for k in k_candidates:
+        col = f"MeanR@{k}"
+        if col not in avg_df.columns:
+            continue
+        if avg_df.loc[compare, col].isna().all():
+            continue
+        k_values.append(k)
+    return k_values
 
-# Delta vs hybrid baseline to emphasize small-K gains.
+
+def _plot_recall_map(avg_df, compare, k_list, title_prefix, fig_path):
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+    ax_recall = axes[0]
+    for method in compare:
+        values = [avg_df.loc[method, f"MeanR@{k}"] for k in k_list]
+        ax_recall.plot(
+            k_list,
+            values,
+            marker="o",
+            label=f"{method} (avg)",
+            color=colors.get(method),
+        )
+
+    ax_recall.set_xlabel("K (Recall Cutoff)")
+    ax_recall.set_ylabel("Mean Recall")
+    ax_recall.set_title(f"{title_prefix} Recall")
+    ax_recall.set_xscale("log")
+    ax_recall.legend(fontsize=9, loc="lower right")
+
+    ax_map = axes[1]
+    map_values = [avg_df.loc[method, "MAP@10"] for method in compare]
+    bar_colors = [colors.get(method) for method in compare]
+    ax_map.bar(compare, map_values, color=bar_colors)
+    ax_map.set_ylabel("MAP@10")
+    ax_map.set_title(f"{title_prefix} MAP@10")
+    ax_map.tick_params(axis="x", rotation=25)
+
+    plt.tight_layout()
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    print("Saved:", fig_path)
+    plt.show()
+
+
+compare_test = _build_compare_methods(test_avg)
+k_list_test = _build_k_list(test_avg, compare_test)
+if not k_list_test:
+    raise ValueError("No overlapping MeanR@K columns found for hybrid/reranker recall plot (test).")
+
+print("Hybrid/Reranker K values (test):", k_list_test)
+_plot_recall_map(
+    test_avg,
+    compare_test,
+    k_list_test,
+    "Hybrid vs Reranker (Test Avg)",
+    figures_dir / "02_hybrid_reranker_recall_map10_test.png",
+)
+
+compare_train = _build_compare_methods(train_avg)
+k_list_train = _build_k_list(train_avg, compare_train)
+if not k_list_train:
+    raise ValueError("No overlapping MeanR@K columns found for hybrid/reranker recall plot (train).")
+
+print("Hybrid/Reranker K values (train):", k_list_train)
+_plot_recall_map(
+    train_avg,
+    compare_train,
+    k_list_train,
+    "Hybrid vs Reranker (Train)",
+    figures_dir / "02_hybrid_reranker_recall_map10_train.png",
+)
+
+# Delta vs hybrid baseline to emphasize small-K gains (test only).
 reranker_recall_rows = []
 if baseline_method in test_avg.index:
     baseline = test_avg.loc[baseline_method]
@@ -340,7 +372,7 @@ if baseline_method in test_avg.index:
         if method not in test_avg.index:
             continue
         row = {"method": method}
-        for k in k_list:
+        for k in k_list_test:
             col = f"MeanR@{k}"
             base_val = baseline.get(col)
             method_val = test_avg.loc[method, col]
@@ -353,3 +385,5 @@ if baseline_method in test_avg.index:
 reranker_recall_df = pd.DataFrame(reranker_recall_rows)
 if not reranker_recall_df.empty:
     display(reranker_recall_df)
+
+# %%
