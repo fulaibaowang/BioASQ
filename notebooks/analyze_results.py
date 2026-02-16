@@ -664,11 +664,17 @@ len_values = per_query_df["len_words"].dropna().astype(int)
 if len_values.empty:
     raise ValueError("No length values available.")
 
+min_len = int(len_values.min())
+max_len = int(len_values.max())
+step = max(1, int(np.ceil((max_len - min_len) / 10)))
+bins = np.arange(min_len - 0.5, max_len + 1.5, 1)
+
 fig, ax = plt.subplots(figsize=(7, 4))
-ax.hist(len_values, bins=40, color="#4c72b0", alpha=0.8)
+ax.hist(len_values, bins=bins, color="#4c72b0", alpha=0.8, edgecolor="white")
 ax.set_xlabel("Question length (words)")
 ax.set_ylabel("Count")
 ax.set_title("Question Length Distribution")
+ax.set_xticks(np.arange(min_len, max_len + 1, step))
 fig_path = figures_dir / "05_length_distribution.png"
 plt.tight_layout()
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
