@@ -26,7 +26,7 @@ python scripts/public/data/build_dense_hnsw_index_from_jsonl_shards.py \
 
 # eval
 /usr/bin/time -l \
-python scripts/public/retrieval/eval_bm25_rm3_bioasq.py \
+python scripts/public/retrieval/eval_bm25_rm3.py \
   --index_path "output/pubmed_bm25_2026_subset_index" \
   --train_json "example/training14b_10pct_sample.json" \
   --test_batch_jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \

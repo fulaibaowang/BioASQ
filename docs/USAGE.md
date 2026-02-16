@@ -79,7 +79,7 @@ python scripts/public/data/build_dense_hnsw_index_from_jsonl_shards.py \
 Evaluate BM25 and BM25+RM3 on training and test sets:
 
 ```bash
-python scripts/public/retrieval/eval_bm25_rm3_bioasq.py \
+python scripts/public/retrieval/eval_bm25_rm3.py \
   --index_path "/path/to/indexes/pubmed_bm25_2026/data.properties" \
   --train_json "example/training14b_10pct_sample.json" \
   --test_batch_jsons \

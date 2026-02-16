@@ -28,6 +28,7 @@ from retrieval_eval.common import (  # noqa: E402
     evaluate_run,
     load_questions,
     normalize_pmid,
+    RECALL_KS,
 )
 
 
@@ -112,6 +113,30 @@ def load_dense_parquet_run(path: Path) -> pd.DataFrame:
     return out
 
 
+def load_dense_tsv_run(path: Path) -> pd.DataFrame:
+    """Load Dense run from canonical TSV (qid, docno, rank, score)."""
+    df = pd.read_csv(path, sep="\t")
+    cols = {c.lower(): c for c in df.columns}
+    qid_col = cols.get("qid") or df.columns[0]
+    doc_col = cols.get("docno") or cols.get("docid") or df.columns[1]
+    rank_col = cols.get("rank")
+    score_col = cols.get("score")
+    out = pd.DataFrame({
+        "qid": df[qid_col].astype(str),
+        "docno": df[doc_col].astype(str).map(normalize_pmid),
+    })
+    if rank_col:
+        out["rank"] = df[rank_col].astype(int)
+    else:
+        out["rank"] = out.groupby("qid").cumcount() + 1
+    if score_col:
+        out["score"] = df[score_col].astype(float)
+    else:
+        out["score"] = np.nan
+    out = out.sort_values(["qid", "rank"]).reset_index(drop=True)
+    return out
+
+
 def cut_topk(df: pd.DataFrame, k: int) -> pd.DataFrame:
     return df[df["rank"] <= int(k)].copy()
 
@@ -182,17 +207,6 @@ def make_ks(k_max: int, k0: int = 200, n: int = 4) -> Tuple[int, ...]:
     return tuple(sorted(set(ks)))
 
 
-def find_k_relative_to_best(metrics: Dict[str, float], ks_cap: Tuple[int, ...], k_best: int, p: float) -> int:
-    r_best = metrics.get(f"MeanR@{k_best}", None)
-    if r_best is None:
-        return max(ks_cap) + 1
-    target = p * float(r_best)
-    for k in ks_cap:
-        if metrics.get(f"MeanR@{k}", -1.0) >= target:
-            return int(k)
-    return max(ks_cap) + 1
-
-
 def fuse_rrf(
     bm25_df: pd.DataFrame,
     dense_df: pd.DataFrame,
@@ -231,24 +245,19 @@ def fuse_rrf(
 
 
 def rank_option1(df: pd.DataFrame, test_splits: List[str], cap_eff: int, k_max_eval_eff: int) -> pd.DataFrame:
+    """Rank configs by MeanR@cap (fixed-depth; no adaptive K)."""
     d = df[df["split"].isin(test_splits)].copy()
-    d["K_rec_clipped"] = d["K_rec"].clip(upper=cap_eff)
-
-    agg_cols = {
-        "K_rec_clipped": "mean",
-        f"MeanR@{cap_eff}": "mean",
-        f"MeanR@{k_max_eval_eff}": "mean",
-        f"ShortfallRate@{cap_eff}": "mean",
-        f"MeanKeff@{cap_eff}": "mean",
-    }
-
+    recall_cols = [c for c in d.columns if c.startswith("MeanR@")]
+    extra = [f"ShortfallRate@{cap_eff}", f"MeanKeff@{cap_eff}"]
+    agg_cols = {c: "mean" for c in recall_cols + extra if c in d.columns}
+    if not agg_cols:
+        agg_cols = {f"MeanR@{cap_eff}": "mean", f"MeanR@{k_max_eval_eff}": "mean"}
     grp = d.groupby(["k_rrf", "w_bm25", "w_dense"], as_index=False).agg(agg_cols)
-    grp = grp.rename(columns={"K_rec_clipped": "K_rec"})
-
-    grp = grp.sort_values(
-        by=["K_rec", f"MeanR@{cap_eff}", f"ShortfallRate@{cap_eff}"],
-        ascending=[True, False, True],
-    ).reset_index(drop=True)
+    sort_cols = [f"MeanR@{cap_eff}", f"MeanR@{k_max_eval_eff}"]
+    sort_cols = [c for c in sort_cols if c in grp.columns]
+    if not sort_cols:
+        sort_cols = [c for c in grp.columns if c.startswith("MeanR@")][:2]
+    grp = grp.sort_values(by=sort_cols, ascending=[False] * len(sort_cols)).reset_index(drop=True)
     return grp
 
 
@@ -298,12 +307,8 @@ def plot_recall_curves(
         plt.plot(ks, [dense_metrics.get(f"MeanR@{k}", np.nan) for k in ks], marker="o", label="Dense")
 
         rmax = row.get(f"MeanR@{k_max_eval_eff}", np.nan)
-        target = p * rmax if np.isfinite(rmax) else np.nan
-        k_rec = row.get("K_rec", np.nan)
-        if np.isfinite(target):
-            plt.axhline(target, linestyle="--", label=f"p*Rmax (p={p})")
-        if np.isfinite(k_rec) and k_rec <= cap_eff:
-            plt.axvline(k_rec, linestyle=":", label=f"K_rec={int(k_rec)}")
+        if np.isfinite(rmax):
+            plt.axhline(p * rmax, linestyle="--", label=f"p*Rmax (p={p})")
 
         plt.xlabel("K")
         plt.ylabel("Mean Recall@K (k_eff per query)")
@@ -312,7 +317,7 @@ def plot_recall_curves(
         plt.savefig(output_dir / f"recall_curve_{split}.png", dpi=150, bbox_inches="tight")
         plt.close()
 
-    mean_best = {"K_rec": None}
+    mean_best: Dict[str, float] = {}
     mean_bm25: Dict[str, float] = {}
     mean_dense: Dict[str, float] = {}
     for k in ks_eval:
@@ -378,12 +383,13 @@ def plot_keff(df_cfg: pd.DataFrame, cap: int, topn: int, save_path: Path) -> Non
 
 def plot_scatter_krec(df_cfg: pd.DataFrame, cap: int, save_path: Path) -> None:
     d = df_cfg.copy()
-    d["K_rec_plot"] = d["K_rec"].clip(upper=cap + 50)
+    if f"MeanR@{cap}" not in d.columns:
+        return
     plt.figure()
-    plt.scatter(d["K_rec_plot"], d[f"MeanR@{cap}"], s=40)
-    plt.xlabel("K_rec (clipped)")
+    plt.scatter(d["k_rrf"], d[f"MeanR@{cap}"], s=40)
+    plt.xlabel("k_rrf")
     plt.ylabel(f"MeanR@{cap}")
-    plt.title("Configs: K_rec vs MeanR@CAP")
+    plt.title("Configs: k_rrf vs MeanR@CAP")
     plt.ticklabel_format(axis="x", style="plain", useOffset=False)
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
@@ -402,7 +408,6 @@ def _evaluate_single_config(
     k_max_eval_eff: int,
     ks_eval: Tuple[int, ...],
     fixed_ks: Tuple[int, ...],
-    ks_cap: Tuple[int, ...],
     cap_eff: int,
     p: float,
     cap: int,
@@ -422,7 +427,6 @@ def _evaluate_single_config(
 
     metrics = evaluate_recall_points(gold_map, fused, ks=ks_eval)
     eval_summary, _ = evaluate_run(gold_map, fused, ks_recall=fixed_ks)
-    k_rec = find_k_relative_to_best(metrics, ks_cap=ks_cap, k_best=k_max_eval_eff, p=p)
 
     row: Dict[str, Any] = {
         "split": split,
@@ -436,7 +440,6 @@ def _evaluate_single_config(
         "K_MAX_EVAL": int(k_max_eval),
         "K_MAX_EVAL_eff": int(k_max_eval_eff),
         "P": float(p),
-        "K_rec": int(k_rec),
         f"ShortfallRate@{cap_eff}": metrics.get(f"ShortfallRate@{cap_eff}", np.nan),
         f"MeanKeff@{cap_eff}": metrics.get(f"MeanKeff@{cap_eff}", np.nan),
         f"MeanR@{cap_eff}": metrics.get(f"MeanR@{cap_eff}", np.nan),
@@ -463,7 +466,7 @@ def plot_param_sensitivity(
     recall_cols = sorted(recall_cols, key=lambda c: int(c.split("@")[1]))
 
     agg = df_test.groupby(["k_rrf", "w_bm25", "w_dense"], as_index=False).agg(
-        {**{c: "mean" for c in recall_cols}, "K_rec": "mean"}
+        {c: "mean" for c in recall_cols if c in df_test.columns}
     )
     agg["weight_ratio"] = agg["w_dense"] / agg["w_bm25"]
     agg = agg.sort_values(["weight_ratio", "k_rrf"]).reset_index(drop=True)
@@ -496,7 +499,10 @@ def plot_param_sensitivity(
         baseline = agg.iloc[[0]]
     baseline = baseline.iloc[0]
 
-    top_configs = agg.sort_values(["K_rec", f"MeanR@{cap_eff}"], ascending=[True, False]).head(6)
+    sort_col = f"MeanR@{cap_eff}" if f"MeanR@{cap_eff}" in agg.columns else (recall_cols[0] if recall_cols else None)
+    if sort_col is None:
+        return
+    top_configs = agg.sort_values(sort_col, ascending=False).head(6)
     ks = [int(c.split("@")[1]) for c in recall_cols]
     plt.figure()
     for _, row in top_configs.iterrows():
@@ -539,6 +545,7 @@ def main() -> None:
     ap.add_argument("--kd", type=int, default=None)
 
     ap.add_argument("--no_exclude_test_qids", action="store_true")
+    ap.add_argument("--no_eval", action="store_true", help="Skip evaluation; use fixed config and write run TSVs only")
     ap.add_argument("--save_plots", action="store_true", help="Force plot generation")
     ap.add_argument("--no_plots", action="store_true", help="Disable plot generation")
     ap.add_argument("--jobs", type=int, default=None, help="Number of parallel processes (default: CPU count)")
@@ -590,14 +597,17 @@ def main() -> None:
 
     for split in splits:
         bm25_path = bm25_runs_dir / f"{args.bm25_method}__{split}__top{args.bm25_topk}.tsv"
-        dense_path = dense_root / f"dense_{split}.parquet"
         if not bm25_path.exists():
             raise FileNotFoundError(f"Missing BM25 run: {bm25_path}")
-        if not dense_path.exists():
-            raise FileNotFoundError(f"Missing dense run: {dense_path}")
-
         bm25_runs[split] = load_bm25_tsv_run(bm25_path)
-        dense_runs[split] = load_dense_parquet_run(dense_path)
+        dense_tsv = dense_root / "runs" / f"dense_{split}.tsv"
+        dense_parquet = dense_root / f"dense_{split}.parquet"
+        if dense_tsv.exists():
+            dense_runs[split] = load_dense_tsv_run(dense_tsv)
+        elif dense_parquet.exists():
+            dense_runs[split] = load_dense_parquet_run(dense_parquet)
+        else:
+            raise FileNotFoundError(f"Missing dense run: {dense_tsv} or {dense_parquet}")
 
     k_max_eval = int(args.k_max_eval)
     kb = int(args.kb) if args.kb is not None else k_max_eval
@@ -606,7 +616,7 @@ def main() -> None:
     cap_eff = int(min(int(args.cap), k_max_eval_eff))
 
     ks_cap = make_ks(cap_eff, k0=200, n=4)
-    fixed_ks = tuple(k for k in (50, 100, 200, 300, 400, 500) if k <= k_max_eval_eff)
+    fixed_ks = tuple(k for k in RECALL_KS if k <= k_max_eval_eff)
     ks_eval = tuple(sorted(set(ks_cap + (k_max_eval_eff,) + fixed_ks)))
 
     if not ks_eval:
@@ -617,6 +627,26 @@ def main() -> None:
     )
     print("ks_cap:", ks_cap)
     print("ks_eval:", ks_eval)
+
+    if args.no_eval:
+        k_out = min(cap_eff, k_max_eval_eff)
+        for split in splits:
+            best_run = fuse_rrf(
+                bm25_df=bm25_runs[split],
+                dense_df=dense_runs[split],
+                k_bm25=k_out,
+                k_dense=k_out,
+                k_rrf=int(args.k_rrf),
+                w_bm25=float(args.w_bm25),
+                w_dense=float(args.w_dense),
+                k_out=k_out,
+            )
+            runmap_to_tsv(best_run, runs_dir / f"best_rrf_{split}_top{k_out}.tsv")
+        config = vars(args)
+        config.update({"ks_cap": list(ks_cap), "ks_eval": list(ks_eval)})
+        (out_dir / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
+        print("No-eval mode: runs saved to", runs_dir)
+        return
 
     rows: List[Dict[str, Any]] = []
 
@@ -635,7 +665,7 @@ def main() -> None:
                 tasks.append((
                     split, k_rrf, w_bm25, w_dense,
                     bm25_runs[split], dense_runs[split], gold_maps[split],
-                    kb, kd, k_max_eval_eff, ks_eval, fixed_ks, ks_cap, cap_eff,
+                    kb, kd, k_max_eval_eff, ks_eval, fixed_ks, cap_eff,
                     float(args.p), int(args.cap), k_max_eval
                 ))
 
@@ -686,7 +716,7 @@ def main() -> None:
             & (results_df["w_dense"] == float(best_cfg["w_dense"]))
         ].iloc[0]
 
-        k_out = int(best_row["K_rec"]) if int(best_row["K_rec"]) <= int(args.cap) else int(args.cap)
+        k_out = min(cap_eff, k_max_eval_eff)
         best_run = fuse_rrf(
             bm25_df=bm25_runs[split],
             dense_df=dense_runs[split],

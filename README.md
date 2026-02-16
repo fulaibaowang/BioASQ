@@ -13,7 +13,7 @@ This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A 
 
 ### First Stage Retrieval
 
-- **BM25 + RM3** ([script](scripts/public/retrieval/eval_bm25_rm3_bioasq.py), [notebook](notebooks/bm25_test.ipynb))
+- **BM25 + RM3** ([script](scripts/public/retrieval/eval_bm25_rm3.py), [notebook](notebooks/bm25_test.ipynb))
   - Keyword retrieval with RM3 query expansion
   - Tunable: `--rm3_fb_docs`, `--rm3_fb_terms`, `--rm3_lambda`
 

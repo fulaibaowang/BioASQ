@@ -29,6 +29,7 @@ from retrieval_eval.common import (  # noqa: E402
     evaluate_run,
     load_questions,
     normalize_pmid,
+    RECALL_KS,
     run_df_to_run_map,
 )
 
@@ -211,25 +212,23 @@ def save_dense_outputs(
     meta: dict[str, Any] | None = None,
     save_run_map: bool = True,
 ):
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    res_df = ensure_dense_schema(res_df)
-
-    pq_path = out_dir / f"dense_{split}.parquet"
-    res_df.to_parquet(pq_path, index=False, compression="zstd")
-
-    if save_run_map:
-        run_map = run_df_to_run_map(res_df, qid_col="qid", docno_col="docno")
-        jm_path = out_dir / f"dense_{split}_run_map.json"
-        with open(jm_path, "w", encoding="utf-8") as f:
-            json.dump(run_map, f)
-
+    """Write run as TSV only (canonical format). Optionally write meta.json."""
+    save_dense_run_tsv(out_dir, split, res_df)
     if meta is not None:
+        out_dir.mkdir(parents=True, exist_ok=True)
         meta_path = out_dir / f"dense_{split}_meta.json"
         with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(meta, f, indent=2)
 
-    print(f"[saved] {pq_path}")
+
+def save_dense_run_tsv(out_dir: Path, split: str, res_df: pd.DataFrame) -> None:
+    """Write run as TSV only (canonical format: qid, docno, rank, score)."""
+    runs_dir = out_dir / "runs"
+    runs_dir.mkdir(parents=True, exist_ok=True)
+    res_df = ensure_dense_schema(res_df)
+    tsv_path = runs_dir / f"dense_{split}.tsv"
+    res_df[["qid", "docno", "rank", "score"]].to_csv(tsv_path, sep="\t", index=False)
+    print(f"[saved] {tsv_path}")
 
 
 # =========================
@@ -311,7 +310,7 @@ def main():
     ap.add_argument("--test_batch_jsons", nargs="*", default=[], help="List of 13B*_golden.json files")
 
     ap.add_argument("--topk", type=int, default=5000)
-    ap.add_argument("--ks", type=str, default="50,100,200,500,1000,2000,5000")
+    ap.add_argument("--ks", type=str, default=",".join(map(str, RECALL_KS)), help="Comma-separated K values for recall (default: RECALL_KS)")
     ap.add_argument(
         "--ef_search",
         type=int,
@@ -331,6 +330,7 @@ def main():
 
     ap.add_argument("--notes", type=str, default="")
     ap.add_argument("--save_per_query", action="store_true", help="Save per-query metrics CSVs")
+    ap.add_argument("--no_eval", action="store_true", help="Skip evaluation; only run retrieval and write run TSV")
 
     args = ap.parse_args()
 
@@ -390,6 +390,43 @@ def main():
         "cap": int(args.ef_cap) if args.ef_cap is not None else None,
         "effective": int(ef_effective),
     }
+
+    if args.no_eval:
+        train_data = json.loads(Path(args.train_subset_json).read_text(encoding="utf-8"))
+        topics_df, _ = build_topics_and_gold(train_data["questions"])
+        res_df = dense_retrieve_topics(
+            model=model,
+            index=index,
+            rowid_to_pmid=rowid_to_pmid,
+            topics_df=topics_df,
+            topk=args.topk,
+            batch_size=args.batch_size,
+            normalize_embeddings=normalize_embeddings,
+            space=space,
+            ef=ef_effective,
+        )
+        save_dense_run_tsv(out_dir, "train_subset", res_df)
+        for fp in args.test_batch_jsons:
+            p = Path(fp)
+            data = json.loads(p.read_text(encoding="utf-8"))
+            topics_df, _ = build_topics_and_gold(data["questions"])
+            res_df = dense_retrieve_topics(
+                model=model,
+                index=index,
+                rowid_to_pmid=rowid_to_pmid,
+                topics_df=topics_df,
+                topk=args.topk,
+                batch_size=args.batch_size,
+                normalize_embeddings=normalize_embeddings,
+                space=space,
+                ef=ef_effective,
+            )
+            save_dense_run_tsv(out_dir, p.stem, res_df)
+        config = vars(args)
+        config["index_dir"] = str(args.index_dir)
+        (out_dir / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
+        print("No-eval mode: runs saved to", out_dir / "runs")
+        return
 
     all_rows = []
 

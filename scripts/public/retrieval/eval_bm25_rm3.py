@@ -7,7 +7,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import pandas as pd
 import pyterrier as pt
@@ -21,6 +21,7 @@ from retrieval_eval.common import (
     collect_qids_from_questions,
     evaluate_run,
     load_questions,
+    RECALL_KS,
     run_df_to_run_map,
     zero_recall_qids,
 )
@@ -121,6 +122,18 @@ def cut_to_k(res: pd.DataFrame, k: int) -> pd.DataFrame:
     return res[res["rank"] <= k].copy()
 
 
+def run_retrieval_only(
+    topics_df: pd.DataFrame,
+    pipe: pt.Transformer,
+    k_eval: int,
+) -> Tuple[Dict[str, List[str]], pd.DataFrame]:
+    """Run retrieval only (no evaluation). Returns run_map and res_df."""
+    res_df = pipe(topics_df)
+    res_df = cut_to_k(res_df, k_eval)
+    run_map = run_df_to_run_map(res_df, qid_col="qid", docno_col="docno")
+    return run_map, res_df
+
+
 def eval_one(
     method: str,
     batch_name: str,
@@ -128,13 +141,13 @@ def eval_one(
     gold_map: Dict[str, List[str]],
     pipe: pt.Transformer,
     k_eval: int,
-    ks_recall=(50, 100, 200, 500, 2000, 5000),
+    ks_recall: Optional[Sequence[int]] = None,
     eps: float = 1e-5,
 ) -> Tuple[BatchResult, pd.DataFrame, Dict[str, List[str]], pd.DataFrame]:
     res_df = pipe(topics_df)
     res_df = cut_to_k(res_df, k_eval)
     run_map = run_df_to_run_map(res_df, qid_col="qid", docno_col="docno")
-    summary, perq = evaluate_run(gold_map, run_map, ks_recall=ks_recall, eps=eps)
+    summary, perq = evaluate_run(gold_map, run_map, ks_recall=ks_recall or RECALL_KS, eps=eps)
     br = BatchResult(method=method, batch=batch_name, n_queries=len(topics_df), metrics=summary)
     return br, perq, run_map, res_df
 
@@ -179,6 +192,7 @@ def main():
     )
 
     ap.add_argument("--no_exclude_test_qids", action="store_true", help="Do not remove test qids from train set")
+    ap.add_argument("--no_eval", action="store_true", help="Skip evaluation; only run retrieval and write run TSVs")
     ap.add_argument("--save_runs", action="store_true", help="Save run TSVs (qid docno rank score)")
     ap.add_argument("--save_per_query", action="store_true", help="Save per-query metrics CSV")
     ap.add_argument("--save_zero_recall", action="store_true", help="Save zero-recall reports (default off)")
@@ -269,23 +283,25 @@ def main():
     config["index_path"] = str(args.index_path)
     (out_dir / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
 
-    def maybe_save(method: str, batch: str, res_run: Dict[str, List[str]], res_df: pd.DataFrame, perq: pd.DataFrame, gold: Dict[str, List[str]]):
-        if args.save_runs:
-            run_path = out_dir / "runs" / f"{method}__{batch}__top{args.k_eval}.tsv"
-            # ensure rank exists
-            if "rank" not in res_df.columns:
-                tmp = res_df.sort_values(["qid", "score"], ascending=[True, False]).copy()
-                tmp["rank"] = tmp.groupby("qid").cumcount() + 1
-            else:
-                tmp = res_df
-            tmp = tmp.loc[tmp["rank"] <= args.k_eval, ["qid", "docno", "rank", "score"]]
-            tmp.to_csv(run_path, sep="\t", index=False)
+    save_runs = args.save_runs or args.no_eval
 
-        if args.save_per_query:
+    def save_run_tsv(method: str, batch: str, res_df: pd.DataFrame) -> None:
+        run_path = out_dir / "runs" / f"{method}__{batch}__top{args.k_eval}.tsv"
+        if "rank" not in res_df.columns:
+            tmp = res_df.sort_values(["qid", "score"], ascending=[True, False]).copy()
+            tmp["rank"] = tmp.groupby("qid").cumcount() + 1
+        else:
+            tmp = res_df
+        tmp = tmp.loc[tmp["rank"] <= args.k_eval, ["qid", "docno", "rank", "score"]]
+        tmp.to_csv(run_path, sep="\t", index=False)
+
+    def maybe_save(method: str, batch: str, res_run: Dict[str, List[str]], res_df: pd.DataFrame, perq: pd.DataFrame, gold: Dict[str, List[str]]):
+        if save_runs:
+            save_run_tsv(method, batch, res_df)
+        if args.save_per_query and not args.no_eval:
             perq_path = out_dir / "per_query" / f"{method}__{batch}__perq.csv"
             perq.to_csv(perq_path, index=False)
-
-        if args.save_zero_recall:
+        if args.save_zero_recall and not args.no_eval:
             zr = zero_recall_qids(gold, res_run, k=args.k_eval)
             zr_path = out_dir / "zero_recall" / f"{method}__{batch}__zero_recall_at{args.k_eval}.txt"
             with open(zr_path, "w", encoding="utf-8") as f:
@@ -297,18 +313,29 @@ def main():
     if args.include_bm25:
         methods_to_run = [("BM25", pipe_bm25)] + methods_to_run
 
+    if args.no_eval:
+        for method, pipe in methods_to_run:
+            run_map, res_df = run_retrieval_only(train_topics, pipe, args.k_eval)
+            save_run_tsv(method, "train_subset", res_df)
+        for batch_name, questions in test_batches:
+            topics, _ = build_topics_and_gold(questions)
+            for method, pipe in methods_to_run:
+                run_map, res_df = run_retrieval_only(topics, pipe, args.k_eval)
+                save_run_tsv(method, batch_name, res_df)
+        print("No-eval mode: runs saved to", out_dir / "runs")
+        return
+
     # Train subset
     for method, pipe in methods_to_run:
-        br, perq, run_map, res_df = eval_one(method, "train_subset", train_topics, train_gold, pipe, args.k_eval)
+        br, perq, run_map, res_df = eval_one(method, "train_subset", train_topics, train_gold, pipe, args.k_eval, ks_recall=RECALL_KS)
         all_rows.append(br.to_row())
-
         maybe_save(method, "train_subset", run_map, res_df, perq, train_gold)
 
     # Test batches
     for batch_name, questions in test_batches:
         topics, gold = build_topics_and_gold(questions)
         for method, pipe in methods_to_run:
-            br, perq, run_map, res_df = eval_one(method, batch_name, topics, gold, pipe, args.k_eval)
+            br, perq, run_map, res_df = eval_one(method, batch_name, topics, gold, pipe, args.k_eval, ks_recall=RECALL_KS)
             all_rows.append(br.to_row())
             maybe_save(method, batch_name, run_map, res_df, perq, gold)
 

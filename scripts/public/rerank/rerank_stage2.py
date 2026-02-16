@@ -31,7 +31,7 @@ from retrieval_eval.common import (
     evaluate_run,
     load_questions,
     normalize_pmid,
-    recall_at_k,
+    RECALL_KS,
     run_df_to_run_map,
 )
 
@@ -41,7 +41,6 @@ class OutputConfig:
     output_dir: Path
     runs_dir: Path
     per_query_dir: Path
-    adaptive_dir: Path
     metrics_path: Path
     config_path: Path
 
@@ -100,14 +99,12 @@ def parse_args() -> argparse.Namespace:
     runtime.add_argument("--num-gpus", type=int, default=0, help="Max GPUs to use (0 = all).")
 
     evaluation = parser.add_argument_group("evaluation")
-    evaluation.add_argument("--disable-metrics", action="store_true", help="Skip metrics and adaptive cutoff.")
-    evaluation.add_argument("--adaptive-p", type=float, default=0.95, help="Target recall ratio for adaptive K.")
-    evaluation.add_argument("--adaptive-cap", type=int, default=300, help="Max adaptive cutoff K.")
+    evaluation.add_argument("--disable-metrics", action="store_true", help="Skip metrics (no ground truth).")
     evaluation.add_argument(
         "--ks-recall",
         type=str,
-        default="50,100,200,300,400,500,1000,2000",
-        help="Recall K values as a comma-separated list.",
+        default="50,100,200,300,400,500,1000,2000,5000",
+        help="Recall K values as a comma-separated list (default: RECALL_KS).",
     )
 
     output = parser.add_argument_group("output")
@@ -305,68 +302,19 @@ def rerank_run(
     return out
 
 
-def adaptive_k_for_query(gold: List[str], ranked: List[str], p: float, cap: int) -> int:
-    gold_set = set(map(str, gold))
-    if not gold_set:
-        return 0
-    max_recall = recall_at_k(gold_set, ranked, k=len(ranked))
-    target = p * max_recall
-    if target <= 0:
-        return 0
-    k_max = min(cap, len(ranked))
-    for k in range(1, k_max + 1):
-        if recall_at_k(gold_set, ranked, k=k) >= target:
-            return k
-    return k_max
-
-
-def evaluate_adaptive(
-    gold_map: Dict[str, List[str]],
-    run_map: Dict[str, List[str]],
-    p: float,
-    cap: int,
-) -> Tuple[Dict[str, float], pd.DataFrame]:
-    rows = []
-    recalls = []
-    keffs = []
-    shortfalls = []
-
-    for qid, gold in gold_map.items():
-        ranked = run_map.get(qid, [])
-        k_rec = adaptive_k_for_query(gold, ranked, p=p, cap=cap)
-        k_eff = min(k_rec, len(ranked))
-        shortfall = 1.0 if k_rec > len(ranked) else 0.0
-        r = recall_at_k(set(map(str, gold)), ranked, k=k_eff) if k_eff > 0 else 0.0
-
-        rows.append({"qid": qid, "K_rec": k_rec, "K_eff": k_eff, "R@Krec": r})
-        recalls.append(r)
-        keffs.append(k_eff)
-        shortfalls.append(shortfall)
-
-    metrics = {
-        "MeanR@Krec": float(np.mean(recalls)) if recalls else 0.0,
-        "MeanKeff@Krec": float(np.mean(keffs)) if keffs else 0.0,
-        "ShortfallRate@Krec": float(np.mean(shortfalls)) if shortfalls else 0.0,
-    }
-    return metrics, pd.DataFrame(rows)
-
-
 def _build_output_config(base_dir: Path) -> OutputConfig:
     output_dir = base_dir
     runs_dir = output_dir / "runs"
     per_query_dir = output_dir / "per_query"
-    adaptive_dir = output_dir / "adaptive"
 
     output_dir.mkdir(parents=True, exist_ok=True)
     runs_dir.mkdir(parents=True, exist_ok=True)
     per_query_dir.mkdir(parents=True, exist_ok=True)
-    adaptive_dir.mkdir(parents=True, exist_ok=True)
 
     return OutputConfig(
         output_dir=output_dir,
         runs_dir=runs_dir,
         per_query_dir=per_query_dir,
-        adaptive_dir=adaptive_dir,
         metrics_path=output_dir / "metrics.csv",
         config_path=output_dir / "config.json",
     )
@@ -403,7 +351,7 @@ def main() -> None:
     if not run_files:
         raise FileNotFoundError("No run files found. Provide --run-files or --runs-dir/--run-glob.")
 
-    ks_recall = _parse_ks_recall(args.ks_recall)
+    ks_recall = _parse_ks_recall(args.ks_recall) or RECALL_KS
 
     run_dfs: Dict[str, pd.DataFrame] = {}
     for path in run_files:
@@ -484,7 +432,6 @@ def main() -> None:
         out_path = output_cfg.runs_dir / f"{name}.tsv"
         run_df.to_csv(out_path, sep="\t", index=False)
 
-    adaptive_stats = {}
     summary_rows = []
 
     if not args.disable_metrics and gold_map_all:
@@ -498,15 +445,8 @@ def main() -> None:
             metrics, perq = evaluate_run(gold_for_run, reranked_map, ks_recall=ks_recall)
             perq.to_csv(output_cfg.per_query_dir / f"{name}.csv", index=False)
 
-            adaptive_metrics, adaptive_perq = evaluate_adaptive(
-                gold_for_run, reranked_map, p=args.adaptive_p, cap=args.adaptive_cap
-            )
-            adaptive_perq.to_csv(output_cfg.adaptive_dir / f"{name}.csv", index=False)
-            adaptive_stats[name] = adaptive_metrics
-
             row = {"split": name}
             row.update(metrics)
-            row.update(adaptive_metrics)
             summary_rows.append(row)
 
         if summary_rows:
@@ -532,8 +472,6 @@ def main() -> None:
         "train_subset_json": str(train_subset_json) if train_subset_json else "",
         "test_batch_jsons": [str(p) for p in test_batch_jsons],
         "ks_recall": list(ks_recall),
-        "adaptive_p": args.adaptive_p,
-        "adaptive_cap": args.adaptive_cap,
     }
     output_cfg.config_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
 

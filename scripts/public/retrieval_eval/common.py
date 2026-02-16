@@ -110,12 +110,18 @@ def recall_at_k(gold: set[str], ranked: List[str], k: int) -> float:
     return len(gold.intersection(ranked[:k])) / len(gold)
 
 
+# Canonical recall@K grid (same across BM25, Dense, Hybrid, Reranker for comparable curves)
+RECALL_KS: Tuple[int, ...] = (50, 100, 200, 300, 400, 500, 1000, 2000, 5000)
+
+
 def evaluate_run(
     gold_map: Dict[str, List[str]],
     run_map: Dict[str, List[str]],
-    ks_recall: Sequence[int] = (50, 100, 200, 500, 2000, 5000),
+    ks_recall: Optional[Sequence[int]] = None,
     eps: float = 1e-5,
 ) -> Tuple[Dict[str, float], pd.DataFrame]:
+    if ks_recall is None:
+        ks_recall = RECALL_KS
     qids = list(gold_map.keys())
 
     ap10s, rr10s, succ10s = [], [], []
