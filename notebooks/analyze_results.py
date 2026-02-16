@@ -447,6 +447,8 @@ import json
 import re
 from pathlib import Path
 
+from matplotlib.patches import Patch
+
 train_split = "train_subset"
 test_splits = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
 
@@ -462,6 +464,13 @@ run_dirs = {
     "Hybrid (RRF)": base_dir / "output" / "eval_hybird_production_test" / "runs",
     "Reranker MiniLM": base_dir / "output" / "eval_stage2_rerank_minitest" / "runs",
     "BGE v2 (len=512)": base_dir / "output" / "eval_stage2_rerank_bge_reranker_v2_m3_len512" / "runs",
+}
+
+method_order = list(run_dirs.keys())
+colors = {
+    "Hybrid (RRF)": "#444444",
+    "Reranker MiniLM": "#1f77b4",
+    "BGE v2 (len=512)": "#2ca02c",
 }
 
 run_template = "best_rrf_{split}_top2000.tsv"
@@ -586,8 +595,10 @@ per_query_df = pd.DataFrame(records)
 print("Per-query rows:", len(per_query_df))
 
 # ---- Type breakdown ----
-qtype_order = ["yesno", "factoid", "list", "summary", "unknown"]
-extra_types = sorted(t for t in per_query_df["type"].unique() if t not in qtype_order)
+base_types = ["yesno", "factoid", "list", "summary", "unknown"]
+type_counts = per_query_df["type"].value_counts().to_dict()
+extra_types = sorted(t for t in per_query_df["type"].unique() if t not in base_types)
+qtype_order = [t for t in base_types if type_counts.get(t, 0) > 0]
 qtype_order.extend(extra_types)
 
 
@@ -608,6 +619,8 @@ def _type_summary(df):
 def _plot_type_bars(summary_df, title_prefix, fig_path):
     metrics = ["Recall@200", "MAP@10"]
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    legend_handles = [Patch(color=colors[m], label=m) for m in method_order]
+
     for ax, metric in zip(axes, metrics):
         pivot = summary_df.pivot_table(
             index="type",
@@ -615,10 +628,13 @@ def _plot_type_bars(summary_df, title_prefix, fig_path):
             values=metric,
             aggfunc="mean",
         ).reindex(qtype_order)
-        pivot.plot(kind="bar", ax=ax)
+        pivot = pivot.reindex(columns=method_order).fillna(0.0)
+        pivot.plot(kind="bar", ax=ax, color=[colors[m] for m in method_order], legend=False)
         ax.set_ylabel(metric)
         ax.set_title(f"{title_prefix} {metric}")
         ax.tick_params(axis="x", rotation=25)
+
+    fig.legend(handles=legend_handles, loc="upper center", ncol=len(method_order), bbox_to_anchor=(0.5, 1.08))
     plt.tight_layout()
     plt.savefig(fig_path, dpi=150, bbox_inches="tight")
     print("Saved:", fig_path)
@@ -627,10 +643,10 @@ def _plot_type_bars(summary_df, title_prefix, fig_path):
 train_type = _type_summary(per_query_df[per_query_df["split"] == train_split])
 test_type = _type_summary(per_query_df[per_query_df["split"].isin(test_splits)])
 
-print("Train type summary (head):")
-print(train_type.head().round(3).to_string(index=False))
-print("Test type summary (head):")
-print(test_type.head().round(3).to_string(index=False))
+print("Train type counts by method:")
+print(train_type.pivot_table(index="type", columns="method", values="n", aggfunc="sum").reindex(qtype_order).fillna(0).astype(int))
+print("Test type counts by method:")
+print(test_type.pivot_table(index="type", columns="method", values="n", aggfunc="sum").reindex(qtype_order).fillna(0).astype(int))
 
 _plot_type_bars(
     train_type,
@@ -683,6 +699,8 @@ def _len_summary(df):
 def _plot_len_bars(summary_df, title_prefix, fig_path):
     metrics = ["Recall@200", "MAP@10"]
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    legend_handles = [Patch(color=colors[m], label=m) for m in method_order]
+
     for ax, metric in zip(axes, metrics):
         pivot = summary_df.pivot_table(
             index="len_bin",
@@ -690,10 +708,13 @@ def _plot_len_bars(summary_df, title_prefix, fig_path):
             values=metric,
             aggfunc="mean",
         ).reindex(len_order)
-        pivot.plot(kind="bar", ax=ax)
+        pivot = pivot.reindex(columns=method_order).fillna(0.0)
+        pivot.plot(kind="bar", ax=ax, color=[colors[m] for m in method_order], legend=False)
         ax.set_ylabel(metric)
         ax.set_title(f"{title_prefix} {metric}")
         ax.tick_params(axis="x", rotation=25)
+
+    fig.legend(handles=legend_handles, loc="upper center", ncol=len(method_order), bbox_to_anchor=(0.5, 1.08))
     plt.tight_layout()
     plt.savefig(fig_path, dpi=150, bbox_inches="tight")
     print("Saved:", fig_path)
