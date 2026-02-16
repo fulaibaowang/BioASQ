@@ -7,9 +7,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: .venv (3.14.2)
+#     display_name: dicty (Python 3.14 venv)
 #     language: python
-#     name: python3
+#     name: dicty-py314
 # ---
 
 # %% [markdown]
@@ -46,7 +46,7 @@ results = {
     "BM25+RM3": base_dir / "output/eval_bm25_rm3",
     "Dense (MedEmbed)": base_dir / "output/eval_dense_medembed_small",
     "Hybrid (RRF)": base_dir / "output/eval_hybird_production_test",
-    "Reranker MiniLM": base_dir / "output/eval_stage2_rerank",
+    "Reranker MiniLM": base_dir / "output/eval_stage2_rerank_miniLM",
     "BGE v2 (len=200)": base_dir / "output/eval_stage2_rerank_bge_reranker_v2_m3_len200",
     "BGE v2 (len=512)": base_dir / "output/eval_stage2_rerank_bge_reranker_v2_m3_len512",
 }
@@ -457,7 +457,7 @@ qrels_paths = {
 
 run_dirs = {
     "Hybrid (RRF)": base_dir / "output" / "eval_hybird_production_test" / "runs",
-    "Reranker MiniLM": base_dir / "output" / "eval_stage2_rerank" / "runs",
+    "Reranker MiniLM": base_dir / "output" / "eval_stage2_rerank_miniLM" / "runs",
     "BGE v2 (len=512)": base_dir / "output" / "eval_stage2_rerank_bge_reranker_v2_m3_len512" / "runs",
 }
 
@@ -774,10 +774,12 @@ from IPython.display import display
 
 # Focus settings
 focus_splits = test_splits
-focus_recall_col = "Recall@200"  # change to "Recall@500" if you prefer
-recall_thresh = 0.02             # "very low" recall threshold
-map_thresh = 0.02                # "very low" MAP@10 threshold (tune as needed)
+focus_recall_col = "Recall@200"  # switch to "Recall@500" if you prefer
+recall_thresh = 0.02             # "very low" recall threshold (for BGE-focused filtering)
 show_n = 40
+
+bge_method = "BGE v2 (len=512)"
+hybrid_method = "Hybrid (RRF)"
 
 # Load question text (body) so we can inspect failures
 def _load_questions_text(path: Path):
@@ -806,100 +808,130 @@ pq = per_query_df[per_query_df["split"].isin(focus_splits)].copy()
 pq["n_rel"] = pq.apply(lambda r: rel_count.get((r["split"], str(r["qid"])), np.nan), axis=1)
 pq["question"] = pq.apply(lambda r: question_text_by_split.get(r["split"], {}).get(str(r["qid"]), ""), axis=1)
 
-# ---- Overall hard queries (across methods) ----
-overall = (
-    pq.groupby(["split", "qid"], as_index=False)
+# Keep only the two methods we want to compare
+pq_cmp = pq[pq["method"].isin([hybrid_method, bge_method])].copy()
+
+# Wide table for interpretability (one row per question)
+wide = (
+    pq_cmp.pivot_table(
+        index=["split", "qid"],
+        columns="method",
+        values=["MAP@10", focus_recall_col],
+        aggfunc="first",
+    )
+    .reset_index()
+)
+
+# Flatten columns like ('Recall@200','BGE v2 (len=512)') -> 'Recall@200__BGE...'
+# After reset_index(), pandas often keeps ('split','') and ('qid','') in a MultiIndex.
+if isinstance(wide.columns, pd.MultiIndex):
+    flat_cols = []
+    for a, b in wide.columns.to_list():
+        if a in {"split", "qid"} and (b == "" or b is None):
+            flat_cols.append(a)
+        else:
+            flat_cols.append(f"{a}__{b}")
+    wide.columns = flat_cols
+else:
+    # Already flat
+    wide.columns = [str(c) for c in wide.columns]
+
+rec_bge_col = f"{focus_recall_col}__{bge_method}"
+rec_hyb_col = f"{focus_recall_col}__{hybrid_method}"
+map_bge_col = f"MAP@10__{bge_method}"
+map_hyb_col = f"MAP@10__{hybrid_method}"
+
+# Attach meta fields (type/len/rel count/text)
+meta = (
+    pq_cmp.groupby(["split", "qid"], as_index=False)
     .agg(
         type=("type", "first"),
         len_words=("len_words", "first"),
         n_rel=("n_rel", "first"),
         question=("question", "first"),
-        min_recall=(focus_recall_col, "min"),
-        mean_recall=(focus_recall_col, "mean"),
-        min_map=("MAP@10", "min"),
-        mean_map=("MAP@10", "mean"),
     )
 )
 
-# Quantile cutoffs as a sanity check (tail selection)
-q_recall = float(overall["mean_recall"].quantile(0.05))
-q_map = float(overall["mean_map"].quantile(0.05))
-print(f"mean_recall 5th pct: {q_recall:.4f} | mean_map 5th pct: {q_map:.4f}")
+cmp_df = meta.merge(wide, on=["split", "qid"], how="left")
 
-hard_overall = overall[
-    (overall["min_recall"] <= recall_thresh)
-    | (overall["mean_map"] <= map_thresh)
-    | (overall["mean_recall"] <= q_recall)
-].copy()
+# Deltas (BGE - Hybrid)
+cmp_df["delta_recall"] = cmp_df[rec_bge_col] - cmp_df[rec_hyb_col]
+cmp_df["delta_map"] = cmp_df[map_bge_col] - cmp_df[map_hyb_col]
 
-hard_overall = hard_overall.sort_values(["min_recall", "mean_recall", "mean_map"], ascending=[True, True, True])
+# Tail cutoff for BGE recall (more meaningful than cross-method min/mean)
+q_bge_recall = float(cmp_df[rec_bge_col].quantile(0.05))
+print(f"BGE {focus_recall_col} 5th pct: {q_bge_recall:.4f}")
 
-print("Hard queries (overall) rows:", len(hard_overall))
-
-# ---- Per-method failures (for quick drill-down) ----
-hard_by_method = pq[
-    (pq[focus_recall_col] <= recall_thresh)
-    | (pq["MAP@10"] <= map_thresh)
-].copy()
-
-# ---- Plots: tail distribution + counts ----
-fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-
-axes[0].hist(overall["mean_recall"].fillna(0), bins=30, color="#4c72b0", alpha=0.85, edgecolor="white")
-axes[0].axvline(recall_thresh, color="#c44e52", linestyle="--", label=f"recall_thresh={recall_thresh}")
-axes[0].axvline(q_recall, color="#55a868", linestyle=":", label=f"5th pct={q_recall:.3f}")
-axes[0].set_title(f"Test mean {focus_recall_col} distribution")
-axes[0].set_xlabel(f"mean {focus_recall_col} (across methods)")
-axes[0].set_ylabel("# queries")
-axes[0].legend(fontsize=9)
-
-bad_counts = (
-    pq.assign(is_bad=(pq[focus_recall_col] <= recall_thresh))
-    .groupby(["method"], as_index=False)
-    .agg(bad=("is_bad", "sum"), total=("qid", "count"))
-)
-bad_counts["bad_rate"] = bad_counts["bad"] / bad_counts["total"]
-
-axes[1].bar(bad_counts["method"], bad_counts["bad"], color=[colors.get(m, "#999999") for m in bad_counts["method"]])
-axes[1].set_title(f"# queries with {focus_recall_col} ≤ {recall_thresh}")
-axes[1].set_ylabel("count")
-axes[1].tick_params(axis="x", rotation=25)
-
+# Plot: distribution of BGE recall only (remove the confusing right plot)
+fig, ax = plt.subplots(figsize=(7, 4))
+ax.hist(cmp_df[rec_bge_col].fillna(0), bins=30, color="#2ca02c", alpha=0.85, edgecolor="white")
+ax.axvline(recall_thresh, color="#c44e52", linestyle="--", label=f"recall_thresh={recall_thresh}")
+ax.axvline(q_bge_recall, color="#55a868", linestyle=":", label=f"5th pct={q_bge_recall:.3f}")
+ax.set_title(f"Test {bge_method} {focus_recall_col} distribution")
+ax.set_xlabel(f"{focus_recall_col} ({bge_method})")
+ax.set_ylabel("# queries")
+ax.legend(fontsize=9)
 plt.tight_layout()
-fig_path = figures_dir / f"12_low_{focus_recall_col.lower().replace('@','_')}_tail.png"
+fig_path = figures_dir / f"12_{bge_method.lower().replace(' ', '_').replace('(', '').replace(')', '')}_{focus_recall_col.lower().replace('@','_')}_dist.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
 
-# ---- Summaries for inspection ----
 pd.set_option("display.max_colwidth", 140)
 
-print("\nWorst overall queries (across methods):")
+# Worst overall queries: sort by BGE recall (primary), then BGE MAP@10
+# Keep only queries where BGE is in the tail / very low.
+worst_bge = cmp_df[(cmp_df[rec_bge_col] <= recall_thresh) | (cmp_df[rec_bge_col] <= q_bge_recall)].copy()
+worst_bge = worst_bge.sort_values([rec_bge_col, map_bge_col], ascending=[True, True])
+
+print("\nWorst overall queries (sorted by BGE recall):")
 display(
-    hard_overall[["split", "qid", "type", "len_words", "n_rel", "min_recall", "mean_recall", "mean_map", "question"]]
-    .head(show_n)
+    worst_bge[[
+        "split",
+        "qid",
+        "type",
+        "len_words",
+        "n_rel",
+        rec_hyb_col,
+        rec_bge_col,
+        "delta_recall",
+        map_hyb_col,
+        map_bge_col,
+        "delta_map",
+        "question",
+    ]].head(show_n)
 )
 
-print("\nWorst LIST-type overall queries:")
-display(
-    hard_overall[hard_overall["type"].astype(str).str.lower().eq("list")][
-        ["split", "qid", "type", "len_words", "n_rel", "min_recall", "mean_recall", "mean_map", "question"]
-    ].head(show_n)
-)
+# Diagnostic: where BGE hurts MAP@10 vs Hybrid
+bge_map_worse = cmp_df[cmp_df["delta_map"] < 0].copy()
+bge_map_worse = bge_map_worse.sort_values(["delta_map", rec_bge_col], ascending=[True, True])
 
-print("\nPer-method failures (lowest recall first):")
+print(f"\nQueries where {bge_method} MAP@10 is worse than {hybrid_method} (delta_map < 0):")
 display(
-    hard_by_method.sort_values(["method", focus_recall_col, "MAP@10"], ascending=[True, True, True])[
-        ["method", "split", "qid", "type", "len_words", "n_rel", "MAP@10", focus_recall_col, "Recall@500", "question"]
-    ].head(show_n)
+    bge_map_worse[[
+        "split",
+        "qid",
+        "type",
+        "len_words",
+        "n_rel",
+        map_hyb_col,
+        map_bge_col,
+        "delta_map",
+        rec_hyb_col,
+        rec_bge_col,
+        "delta_recall",
+        "question",
+    ]].head(show_n)
 )
 
 # Export for offline inspection
-hard_overall_out = output_dir / f"low_recall_overall_test_{focus_recall_col.lower().replace('@','_')}.csv"
-hard_method_out = output_dir / f"low_recall_by_method_test_{focus_recall_col.lower().replace('@','_')}.csv"
+worst_out = output_dir / f"worst_queries_sorted_by_bge_{focus_recall_col.lower().replace('@','_')}.csv"
+map_worse_out = output_dir / "bge_map10_worse_than_hybrid.csv"
 
-hard_overall.to_csv(hard_overall_out, index=False)
-hard_by_method.to_csv(hard_method_out, index=False)
-print("Saved:", hard_overall_out)
-print("Saved:", hard_method_out)
+worst_bge.to_csv(worst_out, index=False)
+bge_map_worse.to_csv(map_worse_out, index=False)
+print("Saved:", worst_out)
+print("Saved:", map_worse_out)
 
+
+# %%
