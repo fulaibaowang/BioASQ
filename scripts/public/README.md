@@ -50,13 +50,14 @@ All stages write runs as TSV with columns: `qid`, `docno`, `rank`, `score`. No p
    - `workflow_config_full.env` – full parameter list and comments
    - `scripts/private_scripts/config.env` – local paths (edit `REPO_ROOT` and index paths)
 
-2. Source config and run (from repo root):
+2. Run with a config file (from repo root):
    ```bash
    cd /path/to/BioASQ
-   source scripts/public/workflow_config_small.env
-   ./scripts/public/run_retrieval_pipeline.sh
+   ./scripts/public/run_retrieval_pipeline.sh --config scripts/private_scripts/config.env
    ```
-   Or with local config: `source scripts/private_scripts/config.env && ./scripts/public/run_retrieval_pipeline.sh`
+   Or: `./scripts/public/run_retrieval_pipeline.sh -c scripts/public/workflow_config_small.env`
+
+   You can still source then run: `source scripts/public/workflow_config_small.env && ./scripts/public/run_retrieval_pipeline.sh`
 
 3. Outputs appear under `$WORKFLOW_OUTPUT_DIR/bm25/`, `dense/`, `hybrid/`. If `DOCS_JSONL` is set, the reranker step runs and writes to `rerank/`; set `RERANK_DISABLE_METRICS=1` when you have no ground truth.
 

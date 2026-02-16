@@ -1,28 +1,62 @@
 #!/usr/bin/env bash
 #
 # Run retrieval pipeline: BM25 -> Dense -> Hybrid (and optionally Reranker).
-# Source a workflow config (e.g. workflow_config_full.env) that sets:
-#   WORKFLOW_OUTPUT_DIR  - base output path
-#   TRAIN_JSON           - path to training questions JSON
-#   TEST_BATCH_JSONS     - space-separated paths to test batch JSONs
-#   TOP_K                - retrieval depth for all stages (default 5000)
-#   RECALL_KS            - comma-separated Ks for recall metrics
-#   BM25_INDEX_PATH      - Terrier index directory
-#   DENSE_INDEX_DIR      - Dense HNSW index directory
-#   DOCS_JSONL           - (optional) JSONL corpus for reranker
 #
-# Optional stage-specific overrides: BM25_*, DENSE_*, HYBRID_*, RERANK_*
-# See workflow_config_full.env for all parameters and naming.
+# Usage:
+#   ./run_retrieval_pipeline.sh --config <path/to/config.env>
+#   ./run_retrieval_pipeline.sh -c <path/to/config.env>
 #
-# Example: source workflow_config_full.env && ./run_retrieval_pipeline.sh
+# Or: source my.env && ./run_retrieval_pipeline.sh  (env already set)
+#
+# Config file sets: WORKFLOW_OUTPUT_DIR, TRAIN_JSON, TEST_BATCH_JSONS, TOP_K,
+# RECALL_KS, BM25_INDEX_PATH, DENSE_INDEX_DIR, DOCS_JSONL (optional), and
+# stage overrides (BM25_*, DENSE_*, HYBRID_*, RERANK_*). See workflow_config_full.env.
 #
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Parse -c / --config (and -h / --help)
+CONFIG_FILE=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -c|--config)
+      [ -z "${2:-}" ] && { echo "Error: --config requires a path." >&2; exit 1; }
+      CONFIG_FILE="$2"
+      shift 2
+      ;;
+    -h|--help)
+      echo "Usage: $0 [--config|-c <config.env>]"
+      echo "  -c, --config PATH   Source PATH as config (env vars) before running."
+      echo "  -h, --help          Show this help."
+      echo ""
+      echo "Example: $0 --config scripts/private_scripts/config.env"
+      echo "Example: source workflow_config_small.env && $0"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1 (use -h for help)" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [ -n "$CONFIG_FILE" ]; then
+  if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Error: config file not found: $CONFIG_FILE" >&2
+    exit 1
+  fi
+  set -a
+  # shellcheck source=/dev/null
+  source "$CONFIG_FILE"
+  set +a
+  echo "Loaded config: $CONFIG_FILE"
+fi
+
 cd "$REPO_ROOT"
 
-# Required env (set by sourcing workflow_config.env or export)
+# Required env (set by config file or by sourcing before run)
 : "${WORKFLOW_OUTPUT_DIR:?Set WORKFLOW_OUTPUT_DIR (e.g. output/workflow_run)}"
 : "${TRAIN_JSON:?Set TRAIN_JSON (path to training questions JSON)}"
 : "${TEST_BATCH_JSONS:?Set TEST_BATCH_JSONS (space-separated paths to test batch JSONs)}"
