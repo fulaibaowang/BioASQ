@@ -764,3 +764,142 @@ print("Length delta vs overall (test):")
 print(len_delta[["method", "len_bin", "delta_MAP@10", "delta_Recall@200", "delta_Recall@500"]].round(3).to_string(index=False))
 
 # %%
+
+# %% [markdown]
+# ## 12. Inspect Very Low Recall / MAP Queries
+# Inspect the hardest questions (overall and per-method), with question text + gold doc counts, so you can manually read/diagnose failure cases.
+
+# %%
+from IPython.display import display
+
+# Focus settings
+focus_splits = test_splits
+focus_recall_col = "Recall@200"  # change to "Recall@500" if you prefer
+recall_thresh = 0.02             # "very low" recall threshold
+map_thresh = 0.02                # "very low" MAP@10 threshold (tune as needed)
+show_n = 40
+
+# Load question text (body) so we can inspect failures
+def _load_questions_text(path: Path):
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    out = {}
+    for q in data.get("questions", []):
+        qid = str(q.get("id")) if q.get("id") is not None else None
+        if not qid:
+            continue
+        out[qid] = (q.get("body") or "").strip()
+    return out
+
+question_text_by_split = {s: _load_questions_text(p) for s, p in qrels_paths.items()}
+
+# Add gold doc counts keyed by (split, qid)
+rel_count = {}
+for s, qrels in qrels_by_split.items():
+    for qid, rels in qrels.items():
+        rel_count[(s, str(qid))] = len(rels)
+
+# Work on test splits only
+pq = per_query_df[per_query_df["split"].isin(focus_splits)].copy()
+
+# Attach counts + question text
+pq["n_rel"] = pq.apply(lambda r: rel_count.get((r["split"], str(r["qid"])), np.nan), axis=1)
+pq["question"] = pq.apply(lambda r: question_text_by_split.get(r["split"], {}).get(str(r["qid"]), ""), axis=1)
+
+# ---- Overall hard queries (across methods) ----
+overall = (
+    pq.groupby(["split", "qid"], as_index=False)
+    .agg(
+        type=("type", "first"),
+        len_words=("len_words", "first"),
+        n_rel=("n_rel", "first"),
+        question=("question", "first"),
+        min_recall=(focus_recall_col, "min"),
+        mean_recall=(focus_recall_col, "mean"),
+        min_map=("MAP@10", "min"),
+        mean_map=("MAP@10", "mean"),
+    )
+)
+
+# Quantile cutoffs as a sanity check (tail selection)
+q_recall = float(overall["mean_recall"].quantile(0.05))
+q_map = float(overall["mean_map"].quantile(0.05))
+print(f"mean_recall 5th pct: {q_recall:.4f} | mean_map 5th pct: {q_map:.4f}")
+
+hard_overall = overall[
+    (overall["min_recall"] <= recall_thresh)
+    | (overall["mean_map"] <= map_thresh)
+    | (overall["mean_recall"] <= q_recall)
+].copy()
+
+hard_overall = hard_overall.sort_values(["min_recall", "mean_recall", "mean_map"], ascending=[True, True, True])
+
+print("Hard queries (overall) rows:", len(hard_overall))
+
+# ---- Per-method failures (for quick drill-down) ----
+hard_by_method = pq[
+    (pq[focus_recall_col] <= recall_thresh)
+    | (pq["MAP@10"] <= map_thresh)
+].copy()
+
+# ---- Plots: tail distribution + counts ----
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+axes[0].hist(overall["mean_recall"].fillna(0), bins=30, color="#4c72b0", alpha=0.85, edgecolor="white")
+axes[0].axvline(recall_thresh, color="#c44e52", linestyle="--", label=f"recall_thresh={recall_thresh}")
+axes[0].axvline(q_recall, color="#55a868", linestyle=":", label=f"5th pct={q_recall:.3f}")
+axes[0].set_title(f"Test mean {focus_recall_col} distribution")
+axes[0].set_xlabel(f"mean {focus_recall_col} (across methods)")
+axes[0].set_ylabel("# queries")
+axes[0].legend(fontsize=9)
+
+bad_counts = (
+    pq.assign(is_bad=(pq[focus_recall_col] <= recall_thresh))
+    .groupby(["method"], as_index=False)
+    .agg(bad=("is_bad", "sum"), total=("qid", "count"))
+)
+bad_counts["bad_rate"] = bad_counts["bad"] / bad_counts["total"]
+
+axes[1].bar(bad_counts["method"], bad_counts["bad"], color=[colors.get(m, "#999999") for m in bad_counts["method"]])
+axes[1].set_title(f"# queries with {focus_recall_col} ≤ {recall_thresh}")
+axes[1].set_ylabel("count")
+axes[1].tick_params(axis="x", rotation=25)
+
+plt.tight_layout()
+fig_path = figures_dir / f"12_low_{focus_recall_col.lower().replace('@','_')}_tail.png"
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
+
+# ---- Summaries for inspection ----
+pd.set_option("display.max_colwidth", 140)
+
+print("\nWorst overall queries (across methods):")
+display(
+    hard_overall[["split", "qid", "type", "len_words", "n_rel", "min_recall", "mean_recall", "mean_map", "question"]]
+    .head(show_n)
+)
+
+print("\nWorst LIST-type overall queries:")
+display(
+    hard_overall[hard_overall["type"].astype(str).str.lower().eq("list")][
+        ["split", "qid", "type", "len_words", "n_rel", "min_recall", "mean_recall", "mean_map", "question"]
+    ].head(show_n)
+)
+
+print("\nPer-method failures (lowest recall first):")
+display(
+    hard_by_method.sort_values(["method", focus_recall_col, "MAP@10"], ascending=[True, True, True])[
+        ["method", "split", "qid", "type", "len_words", "n_rel", "MAP@10", focus_recall_col, "Recall@500", "question"]
+    ].head(show_n)
+)
+
+# Export for offline inspection
+hard_overall_out = output_dir / f"low_recall_overall_test_{focus_recall_col.lower().replace('@','_')}.csv"
+hard_method_out = output_dir / f"low_recall_by_method_test_{focus_recall_col.lower().replace('@','_')}.csv"
+
+hard_overall.to_csv(hard_overall_out, index=False)
+hard_by_method.to_csv(hard_method_out, index=False)
+print("Saved:", hard_overall_out)
+print("Saved:", hard_method_out)
+
