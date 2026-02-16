@@ -443,3 +443,286 @@ for metric in ["MeanR@200", "MeanR@500"]:
 # Compute per-query Recall@200/500 and MAP@10 by question type and length (word count) for train vs test.
 
 # %%
+import json
+import re
+from pathlib import Path
+
+train_split = "train_subset"
+test_splits = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
+
+qrels_paths = {
+    "train_subset": base_dir / "example" / "training14b_10pct_sample.json",
+    "13B1_golden": base_dir / "bioasq_data" / "Task13BGoldenEnriched" / "13B1_golden.json",
+    "13B2_golden": base_dir / "bioasq_data" / "Task13BGoldenEnriched" / "13B2_golden.json",
+    "13B3_golden": base_dir / "bioasq_data" / "Task13BGoldenEnriched" / "13B3_golden.json",
+    "13B4_golden": base_dir / "bioasq_data" / "Task13BGoldenEnriched" / "13B4_golden.json",
+}
+
+run_dirs = {
+    "Hybrid (RRF)": base_dir / "output" / "eval_hybird_production_test" / "runs",
+    "Reranker MiniLM": base_dir / "output" / "eval_stage2_rerank_minitest" / "runs",
+    "BGE v2 (len=512)": base_dir / "output" / "eval_stage2_rerank_bge_reranker_v2_m3_len512" / "runs",
+}
+
+run_template = "best_rrf_{split}_top2000.tsv"
+
+
+def _extract_pmid(doc_entry):
+    if isinstance(doc_entry, dict):
+        doc_entry = doc_entry.get("document", "")
+    if not isinstance(doc_entry, str):
+        return None
+    if "/" in doc_entry:
+        return doc_entry.rsplit("/", 1)[-1]
+    return doc_entry
+
+
+def _load_questions_meta(path):
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    meta = {}
+    for q in data.get("questions", []):
+        qid = q.get("id")
+        body = q.get("body") or ""
+        qtype = (q.get("type") or "unknown").lower()
+        word_count = len(re.findall(r"\w+", body))
+        meta[qid] = {"type": qtype, "len_words": word_count}
+    return meta
+
+
+def _load_qrels(path):
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    qrels = {}
+    for q in data.get("questions", []):
+        qid = q.get("id")
+        docs = q.get("documents", [])
+        pmids = {
+            _extract_pmid(d)
+            for d in docs
+            if _extract_pmid(d)
+        }
+        if qid:
+            qrels[qid] = pmids
+    return qrels
+
+
+def _load_run(path):
+    df = pd.read_csv(path, sep="\t")
+    cols = {c.lower(): c for c in df.columns}
+    qid_col = cols.get("qid")
+    doc_col = cols.get("docno") or cols.get("docid") or cols.get("doc")
+    rank_col = cols.get("rank")
+    if qid_col is None or doc_col is None:
+        raise ValueError(f"Missing qid/doc columns in {path}")
+    df[qid_col] = df[qid_col].astype(str)
+    df[doc_col] = df[doc_col].astype(str)
+    if rank_col:
+        df = df.sort_values([qid_col, rank_col])
+    return df[[qid_col, doc_col]]
+
+
+def _ap_at_k(docs, rels, k=10):
+    if not rels:
+        return 0.0
+    hits = 0
+    score = 0.0
+    for i, doc in enumerate(docs[:k], start=1):
+        if doc in rels:
+            hits += 1
+            score += hits / i
+    return score / len(rels)
+
+
+def _compute_metrics(run_df, qrels, k_values=(200, 500), ap_k=10):
+    qid_col, doc_col = run_df.columns.tolist()
+    metrics = []
+    for qid, group in run_df.groupby(qid_col, sort=False):
+        rels = qrels.get(qid, set())
+        if not rels:
+            continue
+        docs = group[doc_col].tolist()
+        row = {"qid": qid, "MAP@10": _ap_at_k(docs, rels, ap_k)}
+        for k in k_values:
+            top_docs = docs[:k]
+            hit = len(set(top_docs) & rels)
+            row[f"Recall@{k}"] = hit / len(rels)
+        metrics.append(row)
+    return metrics
+
+
+meta_by_split = {s: _load_questions_meta(p) for s, p in qrels_paths.items()}
+qrels_by_split = {s: _load_qrels(p) for s, p in qrels_paths.items()}
+
+records = []
+for split, qrels in qrels_by_split.items():
+    meta = meta_by_split.get(split, {})
+    for method, run_dir in run_dirs.items():
+        run_path = run_dir / run_template.format(split=split)
+        if not run_path.exists():
+            print(f"Missing run: {run_path}")
+            continue
+        run_df = _load_run(run_path)
+        metrics = _compute_metrics(run_df, qrels)
+        for row in metrics:
+            info = meta.get(row["qid"], {"type": "unknown", "len_words": np.nan})
+            records.append(
+                {
+                    "split": split,
+                    "method": method,
+                    "qid": row["qid"],
+                    "type": info.get("type", "unknown"),
+                    "len_words": info.get("len_words", np.nan),
+                    "MAP@10": row["MAP@10"],
+                    "Recall@200": row.get("Recall@200"),
+                    "Recall@500": row.get("Recall@500"),
+                }
+            )
+
+if not records:
+    raise ValueError("No per-query records created. Check run paths and qrels.")
+
+per_query_df = pd.DataFrame(records)
+print("Per-query rows:", len(per_query_df))
+
+# ---- Type breakdown ----
+qtype_order = ["yesno", "factoid", "list", "summary", "unknown"]
+extra_types = sorted(t for t in per_query_df["type"].unique() if t not in qtype_order)
+qtype_order.extend(extra_types)
+
+
+def _type_summary(df):
+    return (
+        df.groupby(["method", "type"], as_index=False)
+        .agg(
+            n=("qid", "count"),
+            MAP@10=("MAP@10", "mean"),
+            Recall@200=("Recall@200", "mean"),
+            Recall@500=("Recall@500", "mean"),
+        )
+    )
+
+
+def _plot_type_bars(summary_df, title_prefix, fig_path):
+    metrics = ["Recall@200", "MAP@10"]
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    for ax, metric in zip(axes, metrics):
+        pivot = summary_df.pivot_table(
+            index="type",
+            columns="method",
+            values=metric,
+            aggfunc="mean",
+        ).reindex(qtype_order)
+        pivot.plot(kind="bar", ax=ax)
+        ax.set_ylabel(metric)
+        ax.set_title(f"{title_prefix} {metric}")
+        ax.tick_params(axis="x", rotation=25)
+    plt.tight_layout()
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    print("Saved:", fig_path)
+    plt.show()
+
+train_type = _type_summary(per_query_df[per_query_df["split"] == train_split])
+test_type = _type_summary(per_query_df[per_query_df["split"].isin(test_splits)])
+
+print("Train type summary (head):")
+print(train_type.head().round(3).to_string(index=False))
+print("Test type summary (head):")
+print(test_type.head().round(3).to_string(index=False))
+
+_plot_type_bars(
+    train_type,
+    "Train",
+    figures_dir / "05_type_train_recall_map10.png",
+)
+_plot_type_bars(
+    test_type,
+    "Test Avg",
+    figures_dir / "05_type_test_recall_map10.png",
+)
+
+# ---- Length breakdown ----
+len_values = per_query_df["len_words"].dropna().astype(int)
+if len_values.empty:
+    raise ValueError("No length values available.")
+
+fig, ax = plt.subplots(figsize=(7, 4))
+ax.hist(len_values, bins=40, color="#4c72b0", alpha=0.8)
+ax.set_xlabel("Question length (words)")
+ax.set_ylabel("Count")
+ax.set_title("Question Length Distribution")
+fig_path = figures_dir / "05_length_distribution.png"
+plt.tight_layout()
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
+
+per_query_df = per_query_df.copy()
+per_query_df["len_bin"] = pd.qcut(per_query_df["len_words"], q=4, duplicates="drop")
+per_query_df["len_bin"] = per_query_df["len_bin"].astype(str)
+
+len_order = sorted(per_query_df["len_bin"].unique())
+
+
+def _len_summary(df):
+    return (
+        df.groupby(["method", "len_bin"], as_index=False)
+        .agg(
+            n=("qid", "count"),
+            MAP@10=("MAP@10", "mean"),
+            Recall@200=("Recall@200", "mean"),
+            Recall@500=("Recall@500", "mean"),
+        )
+    )
+
+
+def _plot_len_bars(summary_df, title_prefix, fig_path):
+    metrics = ["Recall@200", "MAP@10"]
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    for ax, metric in zip(axes, metrics):
+        pivot = summary_df.pivot_table(
+            index="len_bin",
+            columns="method",
+            values=metric,
+            aggfunc="mean",
+        ).reindex(len_order)
+        pivot.plot(kind="bar", ax=ax)
+        ax.set_ylabel(metric)
+        ax.set_title(f"{title_prefix} {metric}")
+        ax.tick_params(axis="x", rotation=25)
+    plt.tight_layout()
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    print("Saved:", fig_path)
+    plt.show()
+
+train_len = _len_summary(per_query_df[per_query_df["split"] == train_split])
+test_len = _len_summary(per_query_df[per_query_df["split"].isin(test_splits)])
+
+_plot_len_bars(
+    train_len,
+    "Train",
+    figures_dir / "05_length_train_recall_map10.png",
+)
+_plot_len_bars(
+    test_len,
+    "Test Avg",
+    figures_dir / "05_length_test_recall_map10.png",
+)
+
+# Delta table vs overall mean (test only).
+overall_test = (
+    per_query_df[per_query_df["split"].isin(test_splits)]
+    .groupby("method", as_index=False)
+    .agg(
+        MAP@10=("MAP@10", "mean"),
+        Recall@200=("Recall@200", "mean"),
+        Recall@500=("Recall@500", "mean"),
+    )
+)
+
+len_delta = test_len.merge(overall_test, on="method", suffixes=("", "_overall"))
+for metric in ["MAP@10", "Recall@200", "Recall@500"]:
+    len_delta[f"delta_{metric}"] = len_delta[metric] - len_delta[f"{metric}_overall"]
+
+print("Length delta vs overall (test):")
+print(len_delta[["method", "len_bin", "delta_MAP@10", "delta_Recall@200", "delta_Recall@500"]].round(3).to_string(index=False))
