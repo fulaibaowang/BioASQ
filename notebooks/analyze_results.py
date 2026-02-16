@@ -7,9 +7,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: dicty (Python 3.14 venv)
+#     display_name: .venv (3.14.2)
 #     language: python
-#     name: dicty-py314
+#     name: python3
 # ---
 
 # %% [markdown]
@@ -443,11 +443,6 @@ for metric in ["MeanR@200", "MeanR@500"]:
 # Compute per-query Recall@200/500 and MAP@10 by question type and length (word count) for train vs test.
 
 # %%
-import json
-import re
-from pathlib import Path
-
-from matplotlib.patches import Patch
 
 train_split = "train_subset"
 test_splits = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
