@@ -462,7 +462,7 @@ qrels_paths = {
 
 run_dirs = {
     "Hybrid (RRF)": base_dir / "output" / "eval_hybird_production_test" / "runs",
-    "Reranker MiniLM": base_dir / "output" / "eval_stage2_rerank_minitest" / "runs",
+    "Reranker MiniLM": base_dir / "output" / "eval_stage2_rerank" / "runs",
     "BGE v2 (len=512)": base_dir / "output" / "eval_stage2_rerank_bge_reranker_v2_m3_len512" / "runs",
 }
 
@@ -664,6 +664,22 @@ len_values = per_query_df["len_words"].dropna().astype(int)
 if len_values.empty:
     raise ValueError("No length values available.")
 
+# Custom bins: 0-5, 6-8, 9-11, >11
+def assign_len_bin(x):
+    if x <= 5:
+        return "0-5"
+    elif x <= 8:
+        return "6-8"
+    elif x <= 11:
+        return "9-11"
+    else:
+        return ">11"
+
+per_query_df = per_query_df.copy()
+per_query_df["len_bin"] = per_query_df["len_words"].apply(assign_len_bin)
+len_order = ["0-5", "6-8", "9-11", ">11"]
+
+# Plot histogram with integer bins for reference
 min_len = int(len_values.min())
 max_len = int(len_values.max())
 step = max(1, int(np.ceil((max_len - min_len) / 10)))
@@ -681,13 +697,6 @@ plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
 
-per_query_df = per_query_df.copy()
-per_query_df["len_bin"] = pd.qcut(per_query_df["len_words"], q=4, duplicates="drop")
-per_query_df["len_bin"] = per_query_df["len_bin"].astype(str)
-
-len_order = sorted(per_query_df["len_bin"].unique())
-
-
 def _len_summary(df):
     return (
         df.groupby(["method", "len_bin"], as_index=False)
@@ -700,7 +709,6 @@ def _len_summary(df):
             },
         )
     )
-
 
 def _plot_len_bars(summary_df, title_prefix, fig_path):
     metrics = ["Recall@200", "MAP@10"]
