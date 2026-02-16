@@ -2,7 +2,7 @@
 #SBATCH -J stage2_rerank_public
 #SBATCH -p dev
 #SBATCH --time=12:00:00
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:A100_80GB:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=200G
 #SBATCH -o logs/%x_%j.out
@@ -44,7 +44,7 @@ OUT_DIR="output/eval_stage2_rerank_miniLM"
 MODEL_NAME="cross-encoder/ms-marco-MiniLM-L-12-v2"
 USE_MULTI_GPU=false
 NUM_GPUS=1
-BATCH_SIZE=128
+BATCH_SIZE=256
 MODEL_MAX_LENGTH=512
 CANDIDATE_LIMIT=2000
 ADAPTIVE_P=0.95
