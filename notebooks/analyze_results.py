@@ -443,6 +443,10 @@ for metric in ["MeanR@200", "MeanR@500"]:
 # Compute per-query Recall@200/500 and MAP@10 by question type and length (word count) for train vs test.
 
 # %%
+import json
+import re
+from pathlib import Path
+
 train_split = "train_subset"
 test_splits = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
 
@@ -592,9 +596,11 @@ def _type_summary(df):
         df.groupby(["method", "type"], as_index=False)
         .agg(
             n=("qid", "count"),
-            MAP@10=("MAP@10", "mean"),
-            Recall@200=("Recall@200", "mean"),
-            Recall@500=("Recall@500", "mean"),
+            **{
+                "MAP@10": ("MAP@10", "mean"),
+                "Recall@200": ("Recall@200", "mean"),
+                "Recall@500": ("Recall@500", "mean"),
+            },
         )
     )
 
@@ -665,9 +671,11 @@ def _len_summary(df):
         df.groupby(["method", "len_bin"], as_index=False)
         .agg(
             n=("qid", "count"),
-            MAP@10=("MAP@10", "mean"),
-            Recall@200=("Recall@200", "mean"),
-            Recall@500=("Recall@500", "mean"),
+            **{
+                "MAP@10": ("MAP@10", "mean"),
+                "Recall@200": ("Recall@200", "mean"),
+                "Recall@500": ("Recall@500", "mean"),
+            },
         )
     )
 
@@ -710,9 +718,11 @@ overall_test = (
     per_query_df[per_query_df["split"].isin(test_splits)]
     .groupby("method", as_index=False)
     .agg(
-        MAP@10("MAP@10", "mean"),
-        Recall@200=("Recall@200", "mean"),
-        Recall@500=("Recall@500", "mean"),
+        **{
+            "MAP@10": ("MAP@10", "mean"),
+            "Recall@200": ("Recall@200", "mean"),
+            "Recall@500": ("Recall@500", "mean"),
+        }
     )
 )
 
