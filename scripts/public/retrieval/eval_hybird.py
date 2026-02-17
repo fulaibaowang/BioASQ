@@ -319,42 +319,44 @@ def plot_recall_curves(
         plt.savefig(output_dir / f"recall_curve_{split}.png", dpi=150, bbox_inches="tight")
         plt.close()
 
-    mean_best: Dict[str, float] = {}
-    mean_bm25: Dict[str, float] = {}
-    mean_dense: Dict[str, float] = {}
-    for k in ks_eval:
-        mean_best[f"MeanR@{k}"] = (
-            results_df[
-                (results_df["split"].isin(test_splits))
-                & (results_df["k_rrf"] == k_rrf)
-                & (results_df["w_bm25"] == w_bm25)
-                & (results_df["w_dense"] == w_dense)
-            ][f"MeanR@{k}"]
-            .mean()
-        )
-        mean_bm25[f"MeanR@{k}"] = float(
-            np.mean([baseline_metrics_for_split(s, "BM25").get(f"MeanR@{k}", np.nan) for s in test_splits])
-        )
-        mean_dense[f"MeanR@{k}"] = float(
-            np.mean([baseline_metrics_for_split(s, "Dense").get(f"MeanR@{k}", np.nan) for s in test_splits])
-        )
+    # Only generate test_avg plot when there are 2+ test splits (no need for "average" with one)
+    if len(test_splits) >= 2:
+        mean_best = {}
+        mean_bm25 = {}
+        mean_dense = {}
+        for k in ks_eval:
+            mean_best[f"MeanR@{k}"] = (
+                results_df[
+                    (results_df["split"].isin(test_splits))
+                    & (results_df["k_rrf"] == k_rrf)
+                    & (results_df["w_bm25"] == w_bm25)
+                    & (results_df["w_dense"] == w_dense)
+                ][f"MeanR@{k}"]
+                .mean()
+            )
+            mean_bm25[f"MeanR@{k}"] = float(
+                np.mean([baseline_metrics_for_split(s, "BM25").get(f"MeanR@{k}", np.nan) for s in test_splits])
+            )
+            mean_dense[f"MeanR@{k}"] = float(
+                np.mean([baseline_metrics_for_split(s, "Dense").get(f"MeanR@{k}", np.nan) for s in test_splits])
+            )
 
-    plt.figure()
-    plt.plot(ks, [mean_best.get(f"MeanR@{k}", np.nan) for k in ks], marker="o", label="Best RRF")
-    plt.plot(ks, [mean_bm25.get(f"MeanR@{k}", np.nan) for k in ks], marker="o", label="BM25")
-    plt.plot(ks, [mean_dense.get(f"MeanR@{k}", np.nan) for k in ks], marker="o", label="Dense")
+        plt.figure()
+        plt.plot(ks, [mean_best.get(f"MeanR@{k}", np.nan) for k in ks], marker="o", label="Best RRF")
+        plt.plot(ks, [mean_bm25.get(f"MeanR@{k}", np.nan) for k in ks], marker="o", label="BM25")
+        plt.plot(ks, [mean_dense.get(f"MeanR@{k}", np.nan) for k in ks], marker="o", label="Dense")
 
-    rmax = mean_best.get(f"MeanR@{k_max_eval_eff}", np.nan)
-    target = p * rmax if np.isfinite(rmax) else np.nan
-    if np.isfinite(target):
-        plt.axhline(target, linestyle="--", label=f"p*Rmax (p={p})")
+        rmax = mean_best.get(f"MeanR@{k_max_eval_eff}", np.nan)
+        target = p * rmax if np.isfinite(rmax) else np.nan
+        if np.isfinite(target):
+            plt.axhline(target, linestyle="--", label=f"p*Rmax (p={p})")
 
-    plt.xlabel("K")
-    plt.ylabel("Mean Recall@K (k_eff per query)")
-    plt.title("Recall curves (avg over test splits)")
-    plt.legend(fontsize="small")
-    plt.savefig(output_dir / "recall_curve_test_avg.png", dpi=150, bbox_inches="tight")
-    plt.close()
+        plt.xlabel("K")
+        plt.ylabel("Mean Recall@K (k_eff per query)")
+        plt.title("Recall curves (avg over test splits)")
+        plt.legend(fontsize="small")
+        plt.savefig(output_dir / "recall_curve_test_avg.png", dpi=150, bbox_inches="tight")
+        plt.close()
 
 
 def plot_shortfall(df_cfg: pd.DataFrame, cap: int, topn: int, save_path: Path) -> None:
