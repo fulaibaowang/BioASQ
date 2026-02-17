@@ -352,6 +352,12 @@ def main() -> None:
         raise FileNotFoundError("No run files found. Provide --run-files or --runs-dir/--run-glob.")
 
     ks_recall = _parse_ks_recall(args.ks_recall) or RECALL_KS
+    # Only report MeanR@K for K <= candidate_limit (above cap it equals MeanR@cap)
+    cap = int(args.candidate_limit) if args.candidate_limit else None
+    if cap is not None and cap > 0:
+        ks_recall = tuple(k for k in ks_recall if k <= cap)
+        if not ks_recall:
+            ks_recall = (cap,)
 
     run_dfs: Dict[str, pd.DataFrame] = {}
     for path in run_files:
