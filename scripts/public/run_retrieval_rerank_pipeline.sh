@@ -104,6 +104,13 @@ RERANK_OUT="$WORKFLOW_OUTPUT_DIR/rerank"
 
 mkdir -p "$BM25_OUT" "$DENSE_OUT" "$HYBRID_OUT"
 
+# Step count for progress (3 = retrieval only, 4 = retrieval + reranker)
+if [ -n "${DOCS_JSONL:-}" ] && [ "$RUN_RERANK" = "1" ]; then
+  TOTAL_STEPS=4
+else
+  TOTAL_STEPS=3
+fi
+
 export PYTHONPATH="$SCRIPT_DIR${PYTHONPATH:+:$PYTHONPATH}"
 
 # ----- BM25 -----
@@ -128,9 +135,9 @@ BM25_ARGS=(
 [ "${BM25_NO_EXCLUDE_TEST_QIDS:-0}" = "1" ] && BM25_ARGS+=(--no_exclude_test_qids)
 
 if [ -f "$BM25_OUT/metrics.csv" ] || [ -n "$(find "$BM25_OUT/runs" -maxdepth 1 -name '*.tsv' 2>/dev/null | head -1)" ]; then
-  echo "[1/3] BM25... (skip: output exists)"
+  echo "[1/$TOTAL_STEPS] BM25... (skip: output exists)"
 else
-  echo "[1/3] BM25..."
+  echo "[1/$TOTAL_STEPS] BM25..."
   python "$SCRIPT_DIR/retrieval/eval_bm25_rm3.py" "${BM25_ARGS[@]}"
 fi
 
@@ -152,9 +159,9 @@ DENSE_ARGS=(
 [ "${DENSE_SAVE_PER_QUERY:-0}" = "1" ] && DENSE_ARGS+=(--save_per_query)
 
 if [ -f "$DENSE_OUT/metrics.csv" ] || [ -n "$(find "$DENSE_OUT/runs" -maxdepth 1 -name '*.tsv' 2>/dev/null | head -1)" ]; then
-  echo "[2/3] Dense... (skip: output exists)"
+  echo "[2/$TOTAL_STEPS] Dense... (skip: output exists)"
 else
-  echo "[2/3] Dense..."
+  echo "[2/$TOTAL_STEPS] Dense..."
   python "$SCRIPT_DIR/retrieval/eval_dense.py" "${DENSE_ARGS[@]}"
 fi
 
@@ -181,18 +188,18 @@ HYBRID_ARGS=(
 [ "${HYBRID_SAVE_PLOTS:-0}" = "1" ] && HYBRID_ARGS+=(--save_plots)
 
 if [ -f "$HYBRID_OUT/ranked_test_avg.csv" ] || [ -f "$HYBRID_OUT/results_all.csv" ]; then
-  echo "[3/3] Hybrid... (skip: output exists)"
+  echo "[3/$TOTAL_STEPS] Hybrid... (skip: output exists)"
 else
-  echo "[3/3] Hybrid..."
+  echo "[3/$TOTAL_STEPS] Hybrid..."
   python "$SCRIPT_DIR/retrieval/eval_hybird.py" "${HYBRID_ARGS[@]}"
 fi
 
 # ----- Reranker (optional: only if DOCS_JSONL set and not --no-rerank) -----
 if [ -n "${DOCS_JSONL:-}" ] && [ "$RUN_RERANK" = "1" ]; then
   if [ -f "$RERANK_OUT/metrics.csv" ] || [ -n "$(find "$RERANK_OUT" -maxdepth 2 -name '*.tsv' 2>/dev/null | head -1)" ]; then
-    echo "[4/4] Reranker... (skip: output exists)"
+    echo "[4/$TOTAL_STEPS] Reranker... (skip: output exists)"
   else
-    echo "[4/4] Reranker..."
+    echo "[4/$TOTAL_STEPS] Reranker..."
     mkdir -p "$RERANK_OUT"
     RERANK_ARGS=(
       --runs-dir "$HYBRID_OUT/runs"
