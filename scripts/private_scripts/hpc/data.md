@@ -93,8 +93,7 @@ sbatch scripts/private_scripts/hpc/sbatch_rerank_stage2.sh
 
 
 # pipeline
-
-srun -p dev --time=12:00:00 -c 4 --mem=32G --gres=gpu:1 \
+srun -p dev --time=8:00:00 -c 4 --mem=32G --gres=gpu:A100:1 \
   --container-image=/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs \
   --container-mount-home \
   --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
