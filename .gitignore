@@ -1,6 +1,8 @@
 example/*
 !example/
 !example/training14b_10pct_sample.json
+!example/training14b_3pct_sample.json
+!example/13b_golden_50q_sample.json
 tmp/
 .DS_Store
 **/.ipynb_checkpoints

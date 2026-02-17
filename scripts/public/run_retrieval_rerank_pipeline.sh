@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 #
-# Run retrieval pipeline: BM25 -> Dense -> Hybrid (and optionally Reranker).
+# Run retrieval + rerank pipeline: BM25 -> Dense -> Hybrid (and optionally Reranker).
 #
 # Usage:
-#   ./run_retrieval_pipeline.sh --config <path/to/config.env>
-#   ./run_retrieval_pipeline.sh -c <path/to/config.env>
+#   ./run_retrieval_rerank_pipeline.sh --config <path/to/config.env>
+#   ./run_retrieval_rerank_pipeline.sh -c <path/to/config.env>
+#   ./run_retrieval_rerank_pipeline.sh -c config.env --no-rerank   # stop at hybrid
 #
-# Or: source my.env && ./run_retrieval_pipeline.sh  (env already set)
+# Or: source my.env && ./run_retrieval_rerank_pipeline.sh  (env already set)
 #
 # Config file sets: WORKFLOW_OUTPUT_DIR, TRAIN_JSON, TEST_BATCH_JSONS, TOP_K,
 # RECALL_KS, BM25_INDEX_PATH, DENSE_INDEX_DIR, DOCS_JSONL (optional), and
@@ -17,8 +18,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Parse -c / --config (and -h / --help)
+# Parse -c / --config, --no-rerank, -h / --help
 CONFIG_FILE=""
+RUN_RERANK=1
 while [ $# -gt 0 ]; do
   case "$1" in
     -c|--config)
@@ -26,12 +28,18 @@ while [ $# -gt 0 ]; do
       CONFIG_FILE="$2"
       shift 2
       ;;
+    --no-rerank)
+      RUN_RERANK=0
+      shift
+      ;;
     -h|--help)
-      echo "Usage: $0 [--config|-c <config.env>]"
+      echo "Usage: $0 [--config|-c <config.env>] [--no-rerank]"
       echo "  -c, --config PATH   Source PATH as config (env vars) before running."
-      echo "  -h, --help          Show this help."
+      echo "  --no-rerank        Run only BM25, Dense, Hybrid; skip reranker even if DOCS_JSONL is set."
+      echo "  -h, --help         Show this help."
       echo ""
       echo "Example: $0 --config scripts/private_scripts/config.env"
+      echo "Example: $0 -c config.env --no-rerank"
       echo "Example: source workflow_config_small.env && $0"
       exit 0
       ;;
@@ -73,6 +81,22 @@ HYBRID_CAP="${HYBRID_CAP:-$TOP_K}"
 HYBRID_K_MAX_EVAL="${HYBRID_K_MAX_EVAL:-$TOP_K}"
 RERANK_CANDIDATE_LIMIT="${RERANK_CANDIDATE_LIMIT:-$TOP_K}"
 
+# Reranker takes top K from hybrid; must be <= hybrid output, clamped to [100, 2000]
+if [ "$RERANK_CANDIDATE_LIMIT" -le "$HYBRID_CAP" ]; then
+  RERANK_RAW=$RERANK_CANDIDATE_LIMIT
+else
+  RERANK_RAW=$HYBRID_CAP
+fi
+if [ "$RERANK_RAW" -lt 100 ]; then
+  RERANK_EFFECTIVE=100
+  echo "Reranker candidate-limit clamped to minimum 100"
+elif [ "$RERANK_RAW" -gt 2000 ]; then
+  RERANK_EFFECTIVE=2000
+  echo "Reranker candidate-limit clamped to maximum 2000"
+else
+  RERANK_EFFECTIVE=$RERANK_RAW
+fi
+
 BM25_OUT="$WORKFLOW_OUTPUT_DIR/bm25"
 DENSE_OUT="$WORKFLOW_OUTPUT_DIR/dense"
 HYBRID_OUT="$WORKFLOW_OUTPUT_DIR/hybrid"
@@ -103,8 +127,12 @@ BM25_ARGS=(
 [ "${BM25_SAVE_ZERO_RECALL:-0}" = "1" ] && BM25_ARGS+=(--save_zero_recall)
 [ "${BM25_NO_EXCLUDE_TEST_QIDS:-0}" = "1" ] && BM25_ARGS+=(--no_exclude_test_qids)
 
-echo "[1/3] BM25..."
-python "$SCRIPT_DIR/retrieval/eval_bm25_rm3.py" "${BM25_ARGS[@]}"
+if [ -f "$BM25_OUT/metrics.csv" ] || [ -n "$(find "$BM25_OUT/runs" -maxdepth 1 -name '*.tsv' 2>/dev/null | head -1)" ]; then
+  echo "[1/3] BM25... (skip: output exists)"
+else
+  echo "[1/3] BM25..."
+  python "$SCRIPT_DIR/retrieval/eval_bm25_rm3.py" "${BM25_ARGS[@]}"
+fi
 
 # ----- Dense -----
 DENSE_ARGS=(
@@ -123,8 +151,12 @@ DENSE_ARGS=(
 [ "${DENSE_NO_EVAL:-0}" = "1" ] && DENSE_ARGS+=(--no_eval)
 [ "${DENSE_SAVE_PER_QUERY:-0}" = "1" ] && DENSE_ARGS+=(--save_per_query)
 
-echo "[2/3] Dense..."
-python "$SCRIPT_DIR/retrieval/eval_dense.py" "${DENSE_ARGS[@]}"
+if [ -f "$DENSE_OUT/metrics.csv" ] || [ -n "$(find "$DENSE_OUT/runs" -maxdepth 1 -name '*.tsv' 2>/dev/null | head -1)" ]; then
+  echo "[2/3] Dense... (skip: output exists)"
+else
+  echo "[2/3] Dense..."
+  python "$SCRIPT_DIR/retrieval/eval_dense.py" "${DENSE_ARGS[@]}"
+fi
 
 # ----- Hybrid -----
 HYBRID_ARGS=(
@@ -148,32 +180,44 @@ HYBRID_ARGS=(
 [ "${HYBRID_NO_PLOTS:-0}" = "1" ] && HYBRID_ARGS+=(--no_plots)
 [ "${HYBRID_SAVE_PLOTS:-0}" = "1" ] && HYBRID_ARGS+=(--save_plots)
 
-echo "[3/3] Hybrid..."
-python "$SCRIPT_DIR/retrieval/eval_hybird.py" "${HYBRID_ARGS[@]}"
+if [ -f "$HYBRID_OUT/ranked_test_avg.csv" ] || [ -f "$HYBRID_OUT/results_all.csv" ]; then
+  echo "[3/3] Hybrid... (skip: output exists)"
+else
+  echo "[3/3] Hybrid..."
+  python "$SCRIPT_DIR/retrieval/eval_hybird.py" "${HYBRID_ARGS[@]}"
+fi
 
-# ----- Reranker (optional) -----
-if [ -n "${DOCS_JSONL:-}" ]; then
-  echo "[4/4] Reranker..."
-  mkdir -p "$RERANK_OUT"
-  RERANK_ARGS=(
-    --runs-dir "$HYBRID_OUT/runs"
-    --output-dir "$RERANK_OUT"
-    --docs-jsonl "$DOCS_JSONL"
-    --candidate_limit "$RERANK_CANDIDATE_LIMIT"
-    --ks-recall "${RERANK_KS_RECALL:-$RECALL_KS}"
-  )
-  [ -n "${TRAIN_JSON:-}" ] && RERANK_ARGS+=(--train_subset_json "$TRAIN_JSON")
-  [ -n "${TEST_BATCH_JSONS:-}" ] && RERANK_ARGS+=(--test_batch_jsons $TEST_BATCH_JSONS)
-  [ -n "${RERANK_MODEL:-}" ] && RERANK_ARGS+=(--model "$RERANK_MODEL")
-  [ -n "${RERANK_MODEL_DEVICE:-}" ] && RERANK_ARGS+=(--model-device "$RERANK_MODEL_DEVICE")
-  [ -n "${RERANK_MODEL_BATCH:-}" ] && RERANK_ARGS+=(--model-batch "$RERANK_MODEL_BATCH")
-  [ -n "${RERANK_MODEL_MAX_LENGTH:-}" ] && RERANK_ARGS+=(--model-max-length "$RERANK_MODEL_MAX_LENGTH")
-  [ "${RERANK_DISABLE_METRICS:-0}" = "1" ] && RERANK_ARGS+=(--disable-metrics)
-  [ "${RERANK_USE_MULTI_GPU:-0}" = "1" ] && RERANK_ARGS+=(--use-multi-gpu)
-  [ -n "${RERANK_NUM_GPUS:-}" ] && RERANK_ARGS+=(--num-gpus "$RERANK_NUM_GPUS")
-  python "$SCRIPT_DIR/rerank/rerank_stage2.py" "${RERANK_ARGS[@]}"
+# ----- Reranker (optional: only if DOCS_JSONL set and not --no-rerank) -----
+if [ -n "${DOCS_JSONL:-}" ] && [ "$RUN_RERANK" = "1" ]; then
+  if [ -f "$RERANK_OUT/metrics.csv" ] || [ -n "$(find "$RERANK_OUT" -maxdepth 2 -name '*.tsv' 2>/dev/null | head -1)" ]; then
+    echo "[4/4] Reranker... (skip: output exists)"
+  else
+    echo "[4/4] Reranker..."
+    mkdir -p "$RERANK_OUT"
+    RERANK_ARGS=(
+      --runs-dir "$HYBRID_OUT/runs"
+      --output-dir "$RERANK_OUT"
+      --docs-jsonl "$DOCS_JSONL"
+      --candidate-limit "$RERANK_EFFECTIVE"
+      --ks-recall "${RERANK_KS_RECALL:-$RECALL_KS}"
+    )
+    [ -n "${TRAIN_JSON:-}" ] && RERANK_ARGS+=(--train_subset_json "$TRAIN_JSON")
+    [ -n "${TEST_BATCH_JSONS:-}" ] && RERANK_ARGS+=(--test_batch_jsons $TEST_BATCH_JSONS)
+    [ -n "${RERANK_MODEL:-}" ] && RERANK_ARGS+=(--model "$RERANK_MODEL")
+    [ -n "${RERANK_MODEL_DEVICE:-}" ] && RERANK_ARGS+=(--model-device "$RERANK_MODEL_DEVICE")
+    [ -n "${RERANK_MODEL_BATCH:-}" ] && RERANK_ARGS+=(--model-batch "$RERANK_MODEL_BATCH")
+    [ -n "${RERANK_MODEL_MAX_LENGTH:-}" ] && RERANK_ARGS+=(--model-max-length "$RERANK_MODEL_MAX_LENGTH")
+    [ "${RERANK_DISABLE_METRICS:-0}" = "1" ] && RERANK_ARGS+=(--disable-metrics)
+    [ "${RERANK_USE_MULTI_GPU:-0}" = "1" ] && RERANK_ARGS+=(--use-multi-gpu)
+    [ -n "${RERANK_NUM_GPUS:-}" ] && RERANK_ARGS+=(--num-gpus "$RERANK_NUM_GPUS")
+    python "$SCRIPT_DIR/rerank/rerank_stage2.py" "${RERANK_ARGS[@]}"
+  fi
   echo "Done. Outputs: $WORKFLOW_OUTPUT_DIR (bm25/, dense/, hybrid/, rerank/)"
 else
   echo "Done. Outputs: $WORKFLOW_OUTPUT_DIR (bm25/, dense/, hybrid/)"
-  echo "Optional: set DOCS_JSONL and re-run to add reranker step."
+  if [ -n "${DOCS_JSONL:-}" ] && [ "$RUN_RERANK" = "0" ]; then
+    echo "Reranker skipped (--no-rerank). Re-run without --no-rerank to run reranker."
+  elif [ -z "${DOCS_JSONL:-}" ]; then
+    echo "Optional: set DOCS_JSONL and re-run to add reranker step."
+  fi
 fi

@@ -35,9 +35,9 @@ Required and common env (set by sourcing a config):
 | BM25 | `k_eval` | `TOP_K` or `BM25_TOP_K` |
 | Dense | `topk` | `TOP_K` or `DENSE_TOP_K` |
 | Hybrid | `bm25_topk`, `cap`, `k_max_eval` | `TOP_K` or `HYBRID_*` |
-| Reranker | `candidate_limit` | `TOP_K` or `RERANK_CANDIDATE_LIMIT` |
+| Reranker | `candidate_limit` | Derived from `min(RERANK_CANDIDATE_LIMIT, HYBRID_CAP)`, then clamped to 100–2000 |
 
-For small corpora (e.g. &lt; 5k docs), set `TOP_K` lower (e.g. 1000) and a smaller `RECALL_KS` so metrics stay valid.
+Reranker can only use as many docs as hybrid produces; the pipeline clamps the value to at least 100 and at most 2000. For small corpora (e.g. &lt; 5k docs), set `TOP_K` lower (e.g. 1000) and a smaller `RECALL_KS` so metrics stay valid.
 
 ## Run format (TSV only)
 
@@ -53,13 +53,18 @@ All stages write runs as TSV with columns: `qid`, `docno`, `rank`, `score`. No p
 2. Run with a config file (from repo root):
    ```bash
    cd /path/to/BioASQ
-   ./scripts/public/run_retrieval_pipeline.sh --config scripts/private_scripts/config.env
+   ./scripts/public/run_retrieval_rerank_pipeline.sh --config scripts/private_scripts/config.env
    ```
-   Or: `./scripts/public/run_retrieval_pipeline.sh -c scripts/public/workflow_config_small.env`
+   Or: `./scripts/public/run_retrieval_rerank_pipeline.sh -c scripts/public/workflow_config_small.env`
 
-   You can still source then run: `source scripts/public/workflow_config_small.env && ./scripts/public/run_retrieval_pipeline.sh`
+   To run only retrieval (BM25, Dense, Hybrid) and skip the reranker: add `--no-rerank`:
+   ```bash
+   ./scripts/public/run_retrieval_rerank_pipeline.sh -c config.env --no-rerank
+   ```
 
-3. Outputs appear under `$WORKFLOW_OUTPUT_DIR/bm25/`, `dense/`, `hybrid/`. If `DOCS_JSONL` is set, the reranker step runs and writes to `rerank/`; set `RERANK_DISABLE_METRICS=1` when you have no ground truth.
+   You can still source then run: `source scripts/public/workflow_config_small.env && ./scripts/public/run_retrieval_rerank_pipeline.sh`
+
+3. Outputs appear under `$WORKFLOW_OUTPUT_DIR/bm25/`, `dense/`, `hybrid/`. If `DOCS_JSONL` is set and you do not pass `--no-rerank`, the reranker step runs and writes to `rerank/`. Set `RERANK_DISABLE_METRICS=1` when you have no ground truth. If a stage’s key output already exists (e.g. hybrid’s `ranked_test_avg.csv`), that stage is skipped; when hybrid is done, the reranker uses hybrid results and does not rerun earlier stages.
 
 ## Prerequisites
 

@@ -267,6 +267,7 @@ def plot_recall_curves(
     dense_runs: Dict[str, pd.DataFrame],
     gold_maps: Dict[str, Dict[str, List[str]]],
     output_dir: Path,
+    curve_splits: List[str],
     test_splits: List[str],
     ks_cap: Tuple[int, ...],
     ks_eval: Tuple[int, ...],
@@ -277,6 +278,7 @@ def plot_recall_curves(
     w_dense: float,
     p: float,
 ):
+    """Plot recall curves per split (curve_splits: train + test) and avg over test_splits."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     def baseline_metrics_for_split(split: str, method: str) -> Dict[str, float]:
@@ -290,7 +292,7 @@ def plot_recall_curves(
 
     ks = list(ks_cap) + [k_max_eval_eff]
 
-    for split in test_splits:
+    for split in curve_splits:
         row = results_df[
             (results_df["split"] == split)
             & (results_df["k_rrf"] == k_rrf)
@@ -359,10 +361,18 @@ def plot_shortfall(df_cfg: pd.DataFrame, cap: int, topn: int, save_path: Path) -
     d = df_cfg.copy()
     d = d.sort_values(by=f"ShortfallRate@{cap}", ascending=False).head(topn)
     plt.figure()
-    plt.bar(range(len(d)), d[f"ShortfallRate@{cap}"].values)
-    plt.xticks(range(len(d)), [f"krrf={int(r)}" for r in d["k_rrf"].values], rotation=45, ha="right")
-    plt.ylabel(f"ShortfallRate@{cap}")
-    plt.title("Top shortfall configs")
+    if len(d) == 0 or d[f"ShortfallRate@{cap}"].max() == 0:
+        # Show zero explicitly instead of empty plot
+        plt.bar([0], [0], width=0.5)
+        plt.xticks([0], ["all configs"])
+        plt.ylabel(f"ShortfallRate@{cap}")
+        plt.title("Top shortfall configs (rate = 0)")
+        plt.ylim(0, 0.1)
+    else:
+        plt.bar(range(len(d)), d[f"ShortfallRate@{cap}"].values)
+        plt.xticks(range(len(d)), [f"krrf={int(r)}" for r in d["k_rrf"].values], rotation=45, ha="right")
+        plt.ylabel(f"ShortfallRate@{cap}")
+        plt.title("Top shortfall configs")
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
@@ -377,20 +387,6 @@ def plot_keff(df_cfg: pd.DataFrame, cap: int, topn: int, save_path: Path) -> Non
     plt.ylabel(f"MeanKeff@{cap}")
     plt.title("Top low-k_eff configs")
     plt.tight_layout()
-    plt.savefig(save_path, dpi=150, bbox_inches="tight")
-    plt.close()
-
-
-def plot_scatter_krec(df_cfg: pd.DataFrame, cap: int, save_path: Path) -> None:
-    d = df_cfg.copy()
-    if f"MeanR@{cap}" not in d.columns:
-        return
-    plt.figure()
-    plt.scatter(d["k_rrf"], d[f"MeanR@{cap}"], s=40)
-    plt.xlabel("k_rrf")
-    plt.ylabel(f"MeanR@{cap}")
-    plt.title("Configs: k_rrf vs MeanR@CAP")
-    plt.ticklabel_format(axis="x", style="plain", useOffset=False)
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
 
@@ -732,12 +728,14 @@ def main() -> None:
     save_plots = bool((not args.no_plots) or args.save_plots)
     if save_plots:
         best_cfg = ranked.iloc[0]
+        curve_splits_list = ["train_subset"] + test_splits
         plot_recall_curves(
             results_df=results_df,
             bm25_runs=bm25_runs,
             dense_runs=dense_runs,
             gold_maps=gold_maps,
             output_dir=figs_dir,
+            curve_splits=curve_splits_list,
             test_splits=test_splits,
             ks_cap=ks_cap,
             ks_eval=ks_eval,
@@ -749,7 +747,6 @@ def main() -> None:
             p=float(args.p),
         )
 
-        plot_scatter_krec(ranked, cap=cap_eff, save_path=figs_dir / "krec_vs_recall.png")
         plot_shortfall(ranked, cap=cap_eff, topn=10, save_path=figs_dir / "shortfall_top10.png")
         plot_keff(ranked, cap=cap_eff, topn=10, save_path=figs_dir / "keff_top10.png")
 
