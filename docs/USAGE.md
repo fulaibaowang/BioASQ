@@ -74,6 +74,16 @@ python scripts/public/data/build_dense_hnsw_index_from_jsonl_shards.py \
 
 ## Evaluation
 
+### Full pipeline (BM25 → Dense → Hybrid → Reranker)
+
+Run all stages with one script and a config file. The script skips any stage whose output already exists (e.g. if hybrid is done, only reranker runs). Use `--no-rerank` to run only retrieval (BM25, Dense, Hybrid).
+
+```bash
+./scripts/public/run_retrieval_rerank_pipeline.sh --config scripts/public/workflow_config_small.env
+```
+
+**Config files:** [workflow_config_small.env](../scripts/public/workflow_config_small.env), [workflow_config_full.env](../scripts/public/workflow_config_full.env). For all options and env→script mapping see [scripts/public/README.md](../scripts/public/README.md).
+
 ### BM25 + RM3
 
 Evaluate BM25 and BM25+RM3 on training and test sets:
