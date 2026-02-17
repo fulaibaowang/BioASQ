@@ -81,15 +81,15 @@ HYBRID_CAP="${HYBRID_CAP:-$TOP_K}"
 HYBRID_K_MAX_EVAL="${HYBRID_K_MAX_EVAL:-$TOP_K}"
 RERANK_CANDIDATE_LIMIT="${RERANK_CANDIDATE_LIMIT:-$TOP_K}"
 
-# Reranker takes top K from hybrid; must be <= hybrid output, clamped to [100, 2000]
+# Reranker takes top K from hybrid; must be <= hybrid output, clamped to [30, 2000]
 if [ "$RERANK_CANDIDATE_LIMIT" -le "$HYBRID_CAP" ]; then
   RERANK_RAW=$RERANK_CANDIDATE_LIMIT
 else
   RERANK_RAW=$HYBRID_CAP
 fi
-if [ "$RERANK_RAW" -lt 100 ]; then
-  RERANK_EFFECTIVE=100
-  echo "Reranker candidate-limit clamped to minimum 100"
+if [ "$RERANK_RAW" -lt 30 ]; then
+  RERANK_EFFECTIVE=30
+  echo "Reranker candidate-limit clamped to minimum 30"
 elif [ "$RERANK_RAW" -gt 2000 ]; then
   RERANK_EFFECTIVE=2000
   echo "Reranker candidate-limit clamped to maximum 2000"
@@ -201,6 +201,14 @@ if [ -n "${DOCS_JSONL:-}" ] && [ "$RUN_RERANK" = "1" ]; then
   else
     echo "[4/$TOTAL_STEPS] Reranker..."
     mkdir -p "$RERANK_OUT"
+    # If DOCS_JSONL has fewer than 2000 docs, cap candidate-limit to that count
+    if [ -f "$DOCS_JSONL" ]; then
+      DOCS_JSONL_LINES=$(wc -l < "$DOCS_JSONL" 2>/dev/null || echo 0)
+      if [ "$DOCS_JSONL_LINES" -gt 0 ] && [ "$DOCS_JSONL_LINES" -lt 2000 ] && [ "$DOCS_JSONL_LINES" -lt "$RERANK_EFFECTIVE" ]; then
+        RERANK_EFFECTIVE=$DOCS_JSONL_LINES
+        echo "Reranker candidate-limit capped to doc count in DOCS_JSONL ($DOCS_JSONL_LINES)"
+      fi
+    fi
     RERANK_ARGS=(
       --runs-dir "$HYBRID_OUT/runs"
       --output-dir "$RERANK_OUT"
