@@ -1,5 +1,7 @@
 # Tunable Parameters
 
+Pipeline config (env vars and script mapping): [scripts/public/README.md](../scripts/public/README.md).
+
 ## BM25 + RM3
 
 | Parameter | Range | Notes |

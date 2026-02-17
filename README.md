@@ -47,7 +47,8 @@ Hybrid details: [notebooks/hybird.ipynb](notebooks/hybird.ipynb)
 
 ## Detailed commands
 
-See [docs/USAGE.md](docs/USAGE.md) for detailed setup and evaluation commands.
+See [docs/USAGE.md](docs/USAGE.md) for detailed setup and evaluation commands.  
+Pipeline config and options (env vars and how they map to each script): [scripts/public/README.md](scripts/public/README.md).
 
 ## Environment
 
