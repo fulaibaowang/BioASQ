@@ -100,7 +100,7 @@ srun -p dev --time=8:00:00 -c 4 --mem=32G --gres=gpu:A100:1 \
   --container-workdir /work \
   --pty bash
 
-
+./scripts/public/run_retrieval_rerank_pipeline.sh --config scripts/private_scripts/hpc/config_3pct.env
 
 
 
