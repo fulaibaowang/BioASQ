@@ -59,7 +59,7 @@ def load_dense_runtime(
     model_name_override: str | None = None,
     ef_search_override: int | None = None,
 ) -> tuple[SentenceTransformer, hnswlib.Index, list[str], dict[str, Any]]:
-    """Load SentenceTransformer + HNSW index + rowid->PMID mapping from a build_dense_hnsw_index output dir."""
+    """Load SentenceTransformer + HNSW index + rowid->PMID mapping from an index/build_dense_hnsw_index_from_jsonl_shards output dir."""
     meta_path = index_dir / "meta.json"
     idx_path = index_dir / "hnsw_index.bin"
     map_path = index_dir / "rowid_to_pmid.tsv"

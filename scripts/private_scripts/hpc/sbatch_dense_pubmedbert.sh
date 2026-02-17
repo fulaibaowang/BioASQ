@@ -71,7 +71,7 @@ srun \
     echo \"[paths] OUT_FINAL=${OUT_FINAL}\"
 
     # Unbuffered python for clean logs
-    python -u scripts/public/data/build_dense_hnsw_index_from_jsonl_shards.py \
+    python -u scripts/public/index/build_dense_hnsw_index_from_jsonl_shards.py \
       --jsonl_glob '${JSONL_GLOB}' \
       --model_name '${MODEL_NAME}' \
       --out_dir \"\$OUT_LOCAL\" \

@@ -11,6 +11,15 @@ This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A 
 
 ## Methods
 
+### Index preparation (before running the pipeline)
+
+The pipeline expects a **BM25 (Terrier) index** and a **Dense (HNSW) index**. Build them once from JSONL document shards (e.g. PubMed baseline):
+
+- **BM25:** [scripts/public/index/build_bm25_index_from_jsonl_shards.py](scripts/public/index/build_bm25_index_from_jsonl_shards.py)
+- **Dense:** [scripts/public/index/build_dense_hnsw_index_from_jsonl_shards.py](scripts/public/index/build_dense_hnsw_index_from_jsonl_shards.py)
+
+Point `BM25_INDEX_PATH` and `DENSE_INDEX_DIR` in your pipeline config to these outputs. For data prep (parse XML to JSONL, subset) and full indexing commands see [docs/USAGE.md](docs/USAGE.md).
+
 ### Run the full pipeline (recommended)
 
 The easiest way to run retrieval and reranking is the pipeline script with a config file. It runs BM25 → Dense → Hybrid (and optionally Reranker), skips stages whose output already exists, and uses one config for all options.

@@ -13,7 +13,7 @@ srun -p dev --time=12:00:00 -c 4 \
   --container-workdir /work \
   --pty bash
 
-python scripts/public/data/build_bm25_index_from_jsonl_shards.py   --jsonl_glob "/work/output/subset_pubmed.jsonl"   --index_path "/work/output/pubmed_bm25_2026_subset_index"   --threads 4   --overwrite
+python scripts/public/index/build_bm25_index_from_jsonl_shards.py   --jsonl_glob "/work/output/subset_pubmed.jsonl"   --index_path "/work/output/pubmed_bm25_2026_subset_index"   --threads 4   --overwrite
 
 ## dense
 ### small model medembed
@@ -27,7 +27,7 @@ srun -p dev --time=12:00:00 --gres=gpu:L4:1 -c 4 --mem=64G\
   --container-workdir /work \
   --pty bash
 
-python scripts/public/data/build_dense_hnsw_index_from_jsonl_shards.py \
+python scripts/public/index/build_dense_hnsw_index_from_jsonl_shards.py \
   --jsonl_glob "/work/output/subset_pubmed.jsonl" \
   --out_dir "/pubmed/pubmed_medembed_2026_subset_index" \
   --device "cuda" \
@@ -121,7 +121,7 @@ python scripts/public/data/parse_pubmed_local.py \
     --skip_existing
 
 
-python scripts/public/data/build_bm25_index_from_jsonl_shards.py \
+python scripts/public/index/build_bm25_index_from_jsonl_shards.py \
   --jsonl_glob "/pubmed/jsonl_2026/*.jsonl" \
   --index_path "/pubmed/pubmed_bm25_2026_index" \
   --threads 4 \
@@ -136,7 +136,7 @@ srun -p dev --time=12:00:00 --gres=gpu:A100_80GB:1 -c 4 --mem=64G\
   --container-workdir /work \
   --pty bash
 
-python scripts/public/data/build_dense_hnsw_index_from_jsonl_shards.py \
+python scripts/public/index/build_dense_hnsw_index_from_jsonl_shards.py \
   --jsonl_glob "/pubmed/jsonl_2026/*.jsonl" \
   --out_dir "/pubmed/pubmed_medembed_2026_index" \
   --device "cuda" \

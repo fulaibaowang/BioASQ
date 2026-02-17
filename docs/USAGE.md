@@ -33,7 +33,7 @@ See the notebook section **Build 10% Subset with Gold + zero recall ids + Retrie
 Build a Terrier-based BM25 index from JSONL shards:
 
 ```bash
-python scripts/public/data/build_bm25_index_from_jsonl_shards.py \
+python scripts/public/index/build_bm25_index_from_jsonl_shards.py \
   --jsonl_glob "/path/to/pubmed/jsonl_2026/*.jsonl" \
   --index_path "/path/to/indexes/pubmed_bm25_2026" \
   --threads 4 \
@@ -51,7 +51,7 @@ python scripts/public/data/build_bm25_index_from_jsonl_shards.py \
 Build an HNSW dense vector index using SentenceTransformer embeddings:
 
 ```bash
-python scripts/public/data/build_dense_hnsw_index_from_jsonl_shards.py \
+python scripts/public/index/build_dense_hnsw_index_from_jsonl_shards.py \
   --jsonl_glob "/path/to/pubmed/jsonl_2026/*.jsonl" \
   --out_dir /path/to/indexes/pubmed_medembed_2026 \
   --model_name "abhinand/MedEmbed-small-v0.1" \

@@ -72,5 +72,5 @@ All stages write runs as TSV with columns: `qid`, `docno`, `rank`, `score`. No p
 
 - Python env with dependencies (pyterrier, hnswlib, sentence-transformers, pandas, etc.)
 - Terrier index (BM25)
-- Dense HNSW index (from `data/build_dense_hnsw_index_from_jsonl_shards.py`)
+- Dense HNSW index (from `index/build_dense_hnsw_index_from_jsonl_shards.py`)
 - Question JSONs with `questions` and optional `documents` (for evaluation)
