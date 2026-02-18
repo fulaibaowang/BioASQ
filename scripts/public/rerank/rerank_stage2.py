@@ -461,8 +461,10 @@ def main() -> None:
             # Eval plots (Hybrid vs Reranker) when running with ground truth
             try:
                 from rerank.plot_rerank_eval import build_and_save_hybrid_reranker_plots
+                cap = int(args.candidate_limit) if args.candidate_limit else None
                 build_and_save_hybrid_reranker_plots(
-                    summary_df, run_maps, gold_map_all, output_cfg.output_dir
+                    summary_df, run_maps, gold_map_all, output_cfg.output_dir,
+                    candidate_limit=cap,
                 )
             except Exception as e:
                 print("warning: could not generate eval plots:", e)

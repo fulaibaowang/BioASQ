@@ -7,8 +7,9 @@ files are missing. No model load, no reranking.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -75,13 +76,18 @@ def build_and_save_hybrid_reranker_plots(
     run_maps: Dict[str, Dict[str, List[str]]],
     gold_map_all: Dict[str, List[str]],
     output_dir: Path,
+    candidate_limit: Optional[int] = None,
 ) -> None:
-    """Build Hybrid + Reranker combined table, aggregate train/test, save two figures."""
+    """Build Hybrid + Reranker combined table, aggregate train/test, save two figures.
+    Recall curve is plotted only up to candidate_limit (reranker cap) when provided.
+    """
     if plt is None:
         print("warning: matplotlib not available; skipping eval plots")
         return
 
     k_list = _meanr_columns_to_k_list(reranker_metrics_df)
+    if candidate_limit is not None and candidate_limit > 0:
+        k_list = [k for k in k_list if k <= candidate_limit]
     if not k_list:
         print("warning: no MeanR@* columns in reranker metrics; skipping eval plots")
         return
@@ -203,11 +209,21 @@ def main() -> None:
     if not gold_map_all:
         raise ValueError("No gold loaded; provide --train_subset_json and/or --test_batch_jsons")
 
+    candidate_limit = None
+    config_path = args.output_dir / "config.json"
+    if config_path.exists():
+        try:
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            candidate_limit = config.get("candidate_limit")
+        except Exception:
+            pass
+
     build_and_save_hybrid_reranker_plots(
         reranker_metrics_df,
         run_maps,
         gold_map_all,
         args.output_dir,
+        candidate_limit=candidate_limit,
     )
 
 
