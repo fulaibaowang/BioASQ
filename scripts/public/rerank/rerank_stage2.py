@@ -458,6 +458,14 @@ def main() -> None:
         if summary_rows:
             summary_df = pd.DataFrame(summary_rows)
             summary_df.to_csv(output_cfg.metrics_path, index=False)
+            # Eval plots (Hybrid vs Reranker) when running with ground truth
+            try:
+                from rerank.plot_rerank_eval import build_and_save_hybrid_reranker_plots
+                build_and_save_hybrid_reranker_plots(
+                    summary_df, run_maps, gold_map_all, output_cfg.output_dir
+                )
+            except Exception as e:
+                print("warning: could not generate eval plots:", e)
     elif args.disable_metrics:
         print("metrics disabled")
     else:
