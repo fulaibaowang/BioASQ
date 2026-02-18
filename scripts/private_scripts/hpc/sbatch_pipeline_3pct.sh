@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J pipeline_3pct
-#SBATCH -p frida
-#SBATCH --time=24:00:00
+#SBATCH -p dev
+#SBATCH --time=12:00:00
 #SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128G
