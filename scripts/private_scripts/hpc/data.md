@@ -13,7 +13,7 @@ srun -p dev --time=12:00:00 -c 4 \
   --container-workdir /work \
   --pty bash
 
-python scripts/public/index/build_bm25_index_from_jsonl_shards.py   --jsonl_glob "/work/output/subset_pubmed.jsonl"   --index_path "/work/output/pubmed_bm25_2026_subset_index"   --threads 4   --overwrite
+python scripts/public/shared_scripts/index/build_bm25_index_from_jsonl_shards.py   --jsonl_glob "/work/output/subset_pubmed.jsonl"   --index_path "/work/output/pubmed_bm25_2026_subset_index"   --threads 4   --overwrite
 
 ## dense
 ### small model medembed
@@ -27,7 +27,7 @@ srun -p dev --time=12:00:00 --gres=gpu:L4:1 -c 4 --mem=64G\
   --container-workdir /work \
   --pty bash
 
-python scripts/public/index/build_dense_hnsw_index_from_jsonl_shards.py \
+python scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_shards.py \
   --jsonl_glob "/work/output/subset_pubmed.jsonl" \
   --out_dir "/pubmed/pubmed_medembed_2026_subset_index" \
   --device "cuda" \
@@ -47,7 +47,7 @@ srun -p dev --time=12:00:00 -c 4 --mem=64G\
   --container-workdir /work \
   --pty bash
 
-python scripts/public/retrieval/eval_dense.py \
+python scripts/public/shared_scripts/retrieval/eval_dense.py \
   --train_subset_json example/training14b_10pct_sample.json \
   --index_dir /pubmed/pubmed_pubmedbert_2026_subset_index/pubmedbert_hnsw_69667 \
   --test_batch_jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
@@ -71,7 +71,7 @@ srun -p dev --time=1:00:00 -c 4 --mem=32G --gres=gpu:1 \
   --container-workdir /work \
   --pty bash
   
-python scripts/public/rerank/rerank_stage2.py \
+python scripts/public/shared_scripts/rerank/rerank_stage2.py \
   --output-dir output/eval_stage2_rerank_hpc_minitest \
   --runs-dir output/eval_hybird_production_test/runs \
   --docs-jsonl output/subset_pubmed.jsonl \
@@ -100,7 +100,7 @@ srun -p dev --time=8:00:00 -c 4 --mem=32G --gres=gpu:A100:1 \
   --container-workdir /work \
   --pty bash
 
-./scripts/public/run_retrieval_rerank_pipeline.sh --config scripts/private_scripts/hpc/config_3pct.env
+./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config scripts/private_scripts/hpc/config_3pct.env
 
 
 
@@ -121,7 +121,7 @@ python scripts/public/data/parse_pubmed_local.py \
     --skip_existing
 
 
-python scripts/public/index/build_bm25_index_from_jsonl_shards.py \
+python scripts/public/shared_scripts/index/build_bm25_index_from_jsonl_shards.py \
   --jsonl_glob "/pubmed/jsonl_2026/*.jsonl" \
   --index_path "/pubmed/pubmed_bm25_2026_index" \
   --threads 4 \
@@ -136,7 +136,7 @@ srun -p dev --time=12:00:00 --gres=gpu:A100_80GB:1 -c 4 --mem=64G\
   --container-workdir /work \
   --pty bash
 
-python scripts/public/index/build_dense_hnsw_index_from_jsonl_shards.py \
+python scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_shards.py \
   --jsonl_glob "/pubmed/jsonl_2026/*.jsonl" \
   --out_dir "/pubmed/pubmed_medembed_2026_index" \
   --device "cuda" \
@@ -152,7 +152,7 @@ max_elements 42000000
 
 # eval (inside container, repo mounted at /work)
 
-python scripts/public/retrieval/eval_bm25_rm3.py \
+python scripts/public/shared_scripts/retrieval/eval_bm25_rm3.py \
   --index_path "output/pubmed_bm25_2026_subset_index" \
   --train_json "example/training14b_10pct_sample.json" \
   --test_batch_jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
@@ -166,7 +166,7 @@ python scripts/public/retrieval/eval_bm25_rm3.py \
 # Add this if you also want BM25 baseline numbers:
 #   --include_bm25
 
-python scripts/public/retrieval/eval_dense.py \
+python scripts/public/shared_scripts/retrieval/eval_dense.py \
   --train_subset_json example/training14b_10pct_sample.json \
   --index_dir /pubmed/pubmed_medembed_2026_subset_index \
   --test_batch_jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \

@@ -33,7 +33,7 @@ See the notebook section **Build 10% Subset with Gold + zero recall ids + Retrie
 Build a Terrier-based BM25 index from JSONL shards:
 
 ```bash
-python scripts/public/index/build_bm25_index_from_jsonl_shards.py \
+python scripts/public/shared_scripts/index/build_bm25_index_from_jsonl_shards.py \
   --jsonl_glob "/path/to/pubmed/jsonl_2026/*.jsonl" \
   --index_path "/path/to/indexes/pubmed_bm25_2026" \
   --threads 4 \
@@ -51,7 +51,7 @@ python scripts/public/index/build_bm25_index_from_jsonl_shards.py \
 Build an HNSW dense vector index using SentenceTransformer embeddings:
 
 ```bash
-python scripts/public/index/build_dense_hnsw_index_from_jsonl_shards.py \
+python scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_shards.py \
   --jsonl_glob "/path/to/pubmed/jsonl_2026/*.jsonl" \
   --out_dir /path/to/indexes/pubmed_medembed_2026 \
   --model_name "abhinand/MedEmbed-small-v0.1" \
@@ -79,7 +79,7 @@ python scripts/public/index/build_dense_hnsw_index_from_jsonl_shards.py \
 Run all stages with one script and a config file. The script skips any stage whose output already exists (e.g. if hybrid is done, only reranker runs). Use `--no-rerank` to run only retrieval (BM25, Dense, Hybrid).
 
 ```bash
-./scripts/public/run_retrieval_rerank_pipeline.sh --config scripts/public/workflow_config_small.env
+./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config scripts/public/workflow_config_small.env
 ```
 
 **Config files:** [workflow_config_small.env](../scripts/public/workflow_config_small.env), [workflow_config_full.env](../scripts/public/workflow_config_full.env). For all options and env→script mapping see [scripts/public/README.md](../scripts/public/README.md).
@@ -89,7 +89,7 @@ Run all stages with one script and a config file. The script skips any stage who
 Evaluate BM25 and BM25+RM3 on training and test sets:
 
 ```bash
-python scripts/public/retrieval/eval_bm25_rm3.py \
+python scripts/public/shared_scripts/retrieval/eval_bm25_rm3.py \
   --index_path "/path/to/indexes/pubmed_bm25_2026/data.properties" \
   --train_json "example/training14b_10pct_sample.json" \
   --test_batch_jsons \
@@ -123,7 +123,7 @@ python scripts/public/retrieval/eval_bm25_rm3.py \
 Evaluate dense retrieval using pre-built HNSW index:
 
 ```bash
-python scripts/public/retrieval/eval_dense.py \
+python scripts/public/shared_scripts/retrieval/eval_dense.py \
   --index_dir "/path/to/indexes/pubmed_medembed_2026" \
   --train_subset_json "example/training14b_10pct_sample.json" \
   --test_batch_jsons \
@@ -151,7 +151,7 @@ python scripts/public/retrieval/eval_dense.py \
 Fuse BM25 and dense runs with reciprocal rank fusion (RRF):
 
 ```bash
-python scripts/public/retrieval/eval_hybird.py \
+python scripts/public/shared_scripts/retrieval/eval_hybird.py \
   --bm25_runs_dir "output/eval_bm25_rm3/runs" \
   --dense_root "output/eval_dense" \
   --train_subset_json "example/training14b_10pct_sample.json" \
@@ -179,7 +179,7 @@ python scripts/public/retrieval/eval_hybird.py \
 Re-rank stage-1 runs with a cross-encoder using query + doc text pairs:
 
 ```bash
-python scripts/public/rerank/rerank_stage2.py \
+python scripts/public/shared_scripts/rerank/rerank_stage2.py \
   --runs-dir "output/eval_hybird/runs" \
   --docs-jsonl "output/subset_pubmed.jsonl" \
   --train_subset_json "example/training14b_10pct_sample.json" \

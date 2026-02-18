@@ -55,16 +55,16 @@ All stages write runs as TSV with columns: `qid`, `docno`, `rank`, `score`. No p
 2. Run with a config file (from repo root):
    ```bash
    cd /path/to/BioASQ
-   ./scripts/public/run_retrieval_rerank_pipeline.sh --config scripts/private_scripts/config.env
+   ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config scripts/private_scripts/config.env
    ```
-   Or: `./scripts/public/run_retrieval_rerank_pipeline.sh -c scripts/public/workflow_config_small.env`
+   Or: `./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh -c scripts/public/workflow_config_small.env`
 
    To run only retrieval (BM25, Dense, Hybrid) and skip the reranker: add `--no-rerank`:
    ```bash
-   ./scripts/public/run_retrieval_rerank_pipeline.sh -c config.env --no-rerank
+   ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh -c config.env --no-rerank
    ```
 
-   You can still source then run: `source scripts/public/workflow_config_small.env && ./scripts/public/run_retrieval_rerank_pipeline.sh`
+   You can still source then run: `source scripts/public/workflow_config_small.env && ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh`
 
 3. Outputs appear under `$WORKFLOW_OUTPUT_DIR/bm25/`, `dense/`, `hybrid/`. If `DOCS_JSONL` is set and you do not pass `--no-rerank`, the reranker step runs and writes to `rerank/`. Set `RERANK_DISABLE_METRICS=1` when you have no ground truth. If a stage’s key output already exists (e.g. hybrid’s `ranked_test_avg.csv`), that stage is skipped; when hybrid is done, the reranker uses hybrid results and does not rerun earlier stages.
 
@@ -72,5 +72,5 @@ All stages write runs as TSV with columns: `qid`, `docno`, `rank`, `score`. No p
 
 - Python env with dependencies (pyterrier, hnswlib, sentence-transformers, pandas, etc.)
 - Terrier index (BM25)
-- Dense HNSW index (from `index/build_dense_hnsw_index_from_jsonl_shards.py`)
+- Dense HNSW index (from `shared_scripts/index/build_dense_hnsw_index_from_jsonl_shards.py`)
 - Question JSONs with `questions` and optional `documents` (for evaluation)

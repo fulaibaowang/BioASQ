@@ -230,7 +230,7 @@ print("emb ok:", emb.shape)
 
 
 # %% [markdown]
-# # run scripts/public/index/build_dense_hnsw_index_from_jsonl_shards.py to build vector database (10% data first)
+# # run scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_shards.py to build vector database (10% data first)
 #
 # we first use abhinand/MedEmbed-small-v0.1
 

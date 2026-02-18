@@ -513,7 +513,7 @@ print(f"\nSaved subset PMIDs to: {subset_pmids_path}")
 # %% [markdown]
 # python3 scripts/public/data/extract_jsonl_subset_by_pmids.py  --jsonl_glob "../biolab/pubmed/jsonl_2026/*.jsonl" --pmid_list "example/subset_pmids.txt" --output_jsonl "output/subset_pubmed.jsonl" --dedup --stop_when_complete
 #
-# python scripts/public/index/build_bm25_index_from_jsonl_shards.py   --jsonl_glob "/work/output/subset_pubmed.jsonl"   --index_path "/work/output/pubmed_bm25_2026_subset_index"   --threads 4   --overwrite
+# python scripts/public/shared_scripts/index/build_bm25_index_from_jsonl_shards.py   --jsonl_glob "/work/output/subset_pubmed.jsonl"   --index_path "/work/output/pubmed_bm25_2026_subset_index"   --threads 4   --overwrite
 #
 # in this step, build_bm25_index_from_jsonl_shards.py was changed slightly for handle digitals longer than 4 (cases like crt0066101)
 

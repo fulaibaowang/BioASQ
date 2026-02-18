@@ -53,4 +53,4 @@ See [notebooks/hybird.ipynb](../notebooks/hybird.ipynb) for the RRF grid search.
 | `--adaptive-cap` | 100 – 500 | Max adaptive cutoff K |
 | `--ks-recall` | 50 – 2000 | Recall K values (comma-separated) |
 
-See [scripts/public/rerank/rerank_stage2.py](../scripts/public/rerank/rerank_stage2.py) for full arguments.
+See [scripts/public/shared_scripts/rerank/rerank_stage2.py](../scripts/public/shared_scripts/rerank/rerank_stage2.py) for full arguments.

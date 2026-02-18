@@ -37,9 +37,9 @@ import pandas as pd
 from tqdm import tqdm
 
 # %%
-# Allow importing from scripts/public
+# Allow importing from scripts/public/shared_scripts
 import sys
-sys.path.insert(0, str(Path("..") / "scripts" / "public"))
+sys.path.insert(0, str(Path("..") / "scripts" / "public" / "shared_scripts"))
 
 from retrieval_eval.common import (
     build_topics_and_gold,

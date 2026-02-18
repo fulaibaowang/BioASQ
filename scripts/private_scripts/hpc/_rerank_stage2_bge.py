@@ -42,10 +42,10 @@ except ImportError:
     torch = None
 
 # %%
-# Allow importing from scripts/public
+# Allow importing from scripts/public/shared_scripts
 import sys
 _ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(_ROOT / "scripts" / "public"))
+sys.path.insert(0, str(_ROOT / "scripts" / "public" / "shared_scripts"))
 
 from retrieval_eval.common import (
     build_topics_and_gold,
