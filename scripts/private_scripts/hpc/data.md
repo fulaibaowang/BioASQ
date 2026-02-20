@@ -1,13 +1,9 @@
-cd /shared/home/yun.wang/biolab/yun
-srun -p dev --container-image=fulaibaowang/bioasq:28.01.26 --container-save=./bioasq_28.01.26.sqfs true
-
-
 # subset
 ## bm25
 python3 scripts/public/data/extract_jsonl_subset_by_pmids.py  --jsonl_glob "../biolab/pubmed/jsonl_2026" --pmid_list "example/subset_pmids.txt" --output_jsonl "output/subset_pubmed.jsonl" --dedup --stop_when_complete 
 
 srun -p dev --time=12:00:00 -c 4 \
-  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_28.01.26.sqfs \
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_20.02.26.sqfs \
   --container-mount-home \
   --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
   --container-workdir /work \
@@ -18,10 +14,10 @@ python scripts/public/shared_scripts/index/build_bm25_index_from_jsonl_shards.py
 ## dense
 ### small model medembed
 cd /shared/home/yun.wang/biolab/yun
-srun -p dev --container-image=fulaibaowang/bioasq:04.02.26 --container-save=./bioasq_04.02.26.sqfs  true
+srun -p dev --container-image=fulaibaowang/bioasq:20.02.26 --container-save=./bioasq_20.02.26.sqfs  true
 
 srun -p dev --time=12:00:00 --gres=gpu:L4:1 -c 4 --mem=64G\
-  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs \
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_20.02.26.sqfs \
   --container-mount-home \
   --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
   --container-workdir /work \
@@ -41,7 +37,7 @@ python scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_sha
 sbatch sbatch_dense_pubmedbert.sh  #<--  change max_elements accordingly
 
 srun -p dev --time=12:00:00 -c 4 --mem=64G\
-  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs \
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_20.02.26.sqfs \
   --container-mount-home \
   --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
   --container-workdir /work \
@@ -57,7 +53,7 @@ python scripts/public/shared_scripts/retrieval/eval_dense.py \
 
 # reranker
 stunnel -c16 --time=12:00:00 --mem=64G --gres=gpu:A100_80GB:1 \
-  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs \
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_20.02.26.sqfs \
   --job-name reranker \
   --container-mount-home \
   --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
@@ -65,7 +61,7 @@ stunnel -c16 --time=12:00:00 --mem=64G --gres=gpu:A100_80GB:1 \
 
 
 srun -p dev --time=1:00:00 -c 4 --mem=32G --gres=gpu:1 \
-  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs \
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_20.02.26.sqfs \
   --container-mount-home \
   --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
   --container-workdir /work \
@@ -94,7 +90,7 @@ sbatch scripts/private_scripts/hpc/sbatch_rerank_stage2.sh
 
 # pipeline
 srun -p dev --time=8:00:00 -c 4 --mem=32G --gres=gpu:A100:1 \
-  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs \
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_20.02.26.sqfs \
   --container-mount-home \
   --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
   --container-workdir /work \
@@ -126,25 +122,21 @@ python scripts/public/shared_scripts/rerank/rerank_stage3_sentence.py \
 
 
 
-
-
 ##############################!##############################################################
 # whole dataset
 ## parse xlm and build bm25
 cd ~/BioASQ
 srun -p dev --time=12:00:00 -c 4 \
-  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_28.01.26.sqfs \
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_20.02.26.sqfs \
   --container-mount-home \
   --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
   --container-workdir /work \
   --pty bash
 
-
 python scripts/public/data/parse_pubmed_local.py \
     --input_dir /pubmed/baseline2026 \
     --output_dir /pubmed/jsonl_2026/ \
     --skip_existing
-
 
 python scripts/public/shared_scripts/index/build_bm25_index_from_jsonl_shards.py \
   --jsonl_glob "/pubmed/jsonl_2026/*.jsonl" \
@@ -152,10 +144,8 @@ python scripts/public/shared_scripts/index/build_bm25_index_from_jsonl_shards.py
   --threads 4 \
   --overwrite
 
-
-
 srun -p dev --time=12:00:00 --gres=gpu:A100_80GB:1 -c 4 --mem=64G\
-  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs \
+  --container-image=/shared/home/yun.wang/biolab/yun/bioasq_20.02.26.sqfs \
   --container-mount-home \
   --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
   --container-workdir /work \
@@ -173,28 +163,3 @@ python scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_sha
   
 max_elements 39994988
 max_elements 42000000
-
-
-# eval (inside container, repo mounted at /work)
-
-python scripts/public/shared_scripts/retrieval/eval_bm25_rm3.py \
-  --index_path "output/pubmed_bm25_2026_subset_index" \
-  --train_json "example/training14b_10pct_sample.json" \
-  --test_batch_jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
-  --out_dir "output/eval_bm25_rm3" \
-  --threads 4 \
-  --k_eval 5000 \
-  --k_feedback 50 \
-  --rm3_fb_docs 20 --rm3_fb_terms 30 --rm3_lambda 0.6 \
-  --save_runs --save_per_query
-
-# Add this if you also want BM25 baseline numbers:
-#   --include_bm25
-
-python scripts/public/shared_scripts/retrieval/eval_dense.py \
-  --train_subset_json example/training14b_10pct_sample.json \
-  --index_dir /pubmed/pubmed_medembed_2026_subset_index \
-  --test_batch_jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
-  --out_dir output/eval_dense_medembed_small \
-  --topk 5000 \
-  --ef_cap 2000
