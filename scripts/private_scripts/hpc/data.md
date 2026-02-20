@@ -112,7 +112,7 @@ python scripts/public/shared_scripts/rerank/rerank_stage3_sentence.py \
   --train-subset-json example/training14b_3pct_sample.json \
   --test-batch-jsons example/13b_golden_50q_sample.json \
   --candidate-limit 1000 \
-  --dense-index-dir /path/to/dense_index \
+  --dense-model abhinand/MedEmbed-small-v0.1 \
   --model BAAI/bge-reranker-v2-m3 \
   --model-batch 56 \
   --model-max-length 512 \

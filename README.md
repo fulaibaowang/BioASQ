@@ -78,7 +78,7 @@ For stage-3 sentence reranking (sentence_pick + rerank_stage3_sentence):
 
  `pip install rank_bm25 nltk`
 
- (Then `python -c "import nltk; nltk.download('punkt')"` if needed.)
+ (The script will auto-download NLTK data on first use; or run `python -c "import nltk; nltk.download('punkt_tab'); nltk.download('punkt')"` once.)
 
 ## TODO
 
