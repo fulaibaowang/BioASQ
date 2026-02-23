@@ -5,8 +5,8 @@ This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A 
 ## Plan and Goals
 
 - Stage 1 retrieval: combine retrievers (BM25+RM3, dense, hybrid) , fetch ~500-2000 docs per query, .
-- Stage 2 retrieval: cross-encoder model, fetch ~50-200 to keep recall while narrowing candidates.
-- Stage 3 reranking: focus on precision at top ranks (MAP@10, MRR@10).
+- Stage 2 reranking: cross-encoder model, focus on precision at top ranks (MAP@10, MRR@10).
+- Stage 3: snippet extraction (planned).
 - Metrics: use MeanR@K for stages 1-2 and MAP@10/MRR@10 for stage 3 (BioASQ official metrics).
 
 ## Methods
