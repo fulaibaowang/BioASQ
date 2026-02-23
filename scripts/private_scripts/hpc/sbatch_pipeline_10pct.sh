@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH -J pipeline_3pct
+#SBATCH -J pipeline_10pct
 #SBATCH -p dev
-#SBATCH --time=36:00:00
+#SBATCH --time=12:00:00
 #SBATCH --gres=gpu:A100_80GB:3
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128G
