@@ -76,6 +76,5 @@ Pipeline config and options (env vars and how they map to each script): [scripts
 
 ## TODO
 
-- in production we don't know the recall so adaptive eval method needs to be changed in hybird and reranker
 - look at zero or low recall quries manaully after 1.st retrieval
 - snippet extraction
