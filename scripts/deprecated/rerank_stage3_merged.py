@@ -6,6 +6,8 @@ then one CE call per doc (query, merged_passage). No pooling.
 Reuse: If sentence picks exist but merged reranking is missing, re-run with
 --sentence-picks-dir pointing at the sentence_picks folder; no dense model needed.
 Otherwise set --dense-model or --dense-index-dir to compute picks in-process.
+
+DEPRECATED: Not used in production. See scripts/deprecated/README.md.
 """
 from __future__ import annotations
 
@@ -21,17 +23,25 @@ import pandas as pd
 import sys
 _THIS_FILE = Path(__file__).resolve()
 _SCRIPT_DIR = _THIS_FILE.parent
-_SHARED_SCRIPTS = _SCRIPT_DIR.parents[1]
-for _p in [_SHARED_SCRIPTS] + list(_SCRIPT_DIR.parents):
-    if (_p / "retrieval_eval").exists():
-        if str(_p) not in sys.path:
-            sys.path.insert(0, str(_p))
-        _SHARED_SCRIPTS = _p
-        break
+_REPO_ROOT = _THIS_FILE.parents[2]
+_SHARED_SCRIPTS = _REPO_ROOT / "scripts" / "public" / "shared_scripts"
+if _SHARED_SCRIPTS.exists():
+    if str(_SHARED_SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(_SHARED_SCRIPTS))
+    _RERANK = _SHARED_SCRIPTS / "rerank"
+    if _RERANK.exists() and str(_RERANK) not in sys.path:
+        sys.path.insert(0, str(_RERANK))
 else:
-    sys.path.insert(0, str(_SHARED_SCRIPTS))
-if str(_SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(_SCRIPT_DIR))
+    for _p in [_SCRIPT_DIR.parents[1]] + list(_SCRIPT_DIR.parents):
+        if (_p / "retrieval_eval").exists():
+            if str(_p) not in sys.path:
+                sys.path.insert(0, str(_p))
+            _SHARED_SCRIPTS = _p
+            break
+    else:
+        sys.path.insert(0, str(_SCRIPT_DIR.parents[1]))
+    if str(_SCRIPT_DIR) not in sys.path:
+        sys.path.insert(0, str(_SCRIPT_DIR))
 
 try:
     import torch
@@ -120,7 +130,7 @@ def rerank_run_merged(
 
 
 def _resolve_repo_root() -> Path:
-    return Path(__file__).resolve().parents[3]
+    return _REPO_ROOT if (_SCRIPT_DIR.parent.name == "deprecated") else _THIS_FILE.parents[3]
 
 
 def parse_args() -> argparse.Namespace:

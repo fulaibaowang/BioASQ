@@ -74,12 +74,6 @@ Pipeline config and options (env vars and how they map to each script): [scripts
 
  `pip install pyterrier sentence-transformers hnswlib pyarrow pandas numpy scipy`
 
-For stage-3 sentence reranking (sentence_pick + rerank_stage3_sentence):
-
- `pip install rank_bm25 nltk`
-
- (The script will auto-download NLTK data on first use; or run `python -c "import nltk; nltk.download('punkt_tab'); nltk.download('punkt')"` once.)
-
 ## TODO
 
 - in production we don't know the recall so adaptive eval method needs to be changed in hybird and reranker

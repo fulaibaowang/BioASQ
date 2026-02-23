@@ -76,3 +76,12 @@ python scripts/public/shared_scripts/rerank/rerank_stage2.py \
   --model-device cpu \
   --model-batch 16 \
   --max-queries 5 
+
+python scripts/public/shared_scripts/compare_result_dirs.py \
+  --dirs output/workflow_local_3pct_hpc_bge/rerank_merged output/workflow_local_3pct_hpc_bge/rerank_sentence \
+  --labels "Stage 3 merged" "Stage 3 sentence" \
+  --plot both \
+  --map-ks 10,20,50,100,200 \
+  --train-json example/training14b_3pct_sample.json \
+  --test-batch-jsons example/13b_golden_50q_sample.json \
+  --output-dir output/workflow_local_3pct_hpc_bge/compare_plots_mergedtest

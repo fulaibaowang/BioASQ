@@ -98,8 +98,8 @@ srun -p dev --time=8:00:00 -c 4 --mem=32G --gres=gpu:A100:1 \
 
 ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config scripts/private_scripts/hpc/config_3pct.env
 
-#test stage3
-python scripts/public/shared_scripts/rerank/rerank_stage3_sentence.py \
+#test stage3 (deprecated; scripts moved to scripts/deprecated/)
+python scripts/deprecated/rerank_stage3_sentence.py \
   --runs-dir output/workflow_local_3pct_hpc_bge/hybrid/runs \
   --run-files \
     output/workflow_local_3pct_hpc_bge/hybrid/runs/best_rrf_13b_golden_50q_sample_top5000.tsv \
@@ -116,7 +116,21 @@ python scripts/public/shared_scripts/rerank/rerank_stage3_sentence.py \
   --output-dir output/workflow_local_3pct_hpc_bge/rerank_sentence
 
 
-
+python scripts/deprecated/rerank_stage3_merged.py \
+  --runs-dir output/workflow_local_3pct_hpc_bge/hybrid/runs \
+  --run-files \
+    output/workflow_local_3pct_hpc_bge/hybrid/runs/best_rrf_13b_golden_50q_sample_top5000.tsv \
+    output/workflow_local_3pct_hpc_bge/hybrid/runs/best_rrf_training14b_3pct_sample_top5000.tsv \
+  --docs-jsonl output/subset_pubmed.jsonl \
+  --train-subset-json example/training14b_3pct_sample.json \
+  --test-batch-jsons example/13b_golden_50q_sample.json \
+  --candidate-limit 1000 \
+  --sentence-picks-dir output/workflow_local_3pct_hpc_bge/rerank_sentence/sentence_picks \
+  --model BAAI/bge-reranker-v2-m3 \
+  --model-batch 56 \
+  --model-max-length 512 \
+  --model-device cuda \
+  --output-dir output/workflow_local_3pct_hpc_bge/rerank_merged
 
 
 

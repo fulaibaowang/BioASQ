@@ -65,3 +65,7 @@
 | 13B3_golden (n=85) | 0.394 | 0.173 | 0.677 | 0.953 | 0.613 | 0.710 | 0.784 | 0.829 | 0.853 | 0.869 | 0.905 | 0.926 | 0.826 | 184.0 |
 | 13B4_golden (n=85) | 0.333 | 0.118 | 0.644 | 0.929 | 0.427 | 0.552 | 0.667 | 0.729 | 0.764 | 0.791 | 0.848 | 0.873 | 0.726 | 251.1 |
 | **Test avg (13B1–4)** | **0.418** | **0.175** | **0.689** | **0.947** | **0.574** | **0.671** | **0.759** | **0.803** | **0.827** | **0.847** | **0.888** | **0.907** | **0.801** | **193.4** |
+
+---
+
+**Note:** Sentence-level reranking variants (CE on title+selected sentences, or on title+top-3 merged) were tried experimentally; in our setup they did not improve over stage-2 full-document CE and are not used in production. Scripts are kept under [scripts/deprecated/](../scripts/deprecated/) for reference (see that folder’s README).
