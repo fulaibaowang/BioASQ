@@ -125,7 +125,7 @@ Evaluate dense retrieval using pre-built HNSW index:
 ```bash
 python scripts/public/shared_scripts/retrieval/eval_dense.py \
   --index_dir "/path/to/indexes/pubmed_medembed_2026" \
-  --train_subset_json "example/training14b_10pct_sample.json" \
+  --train-json "example/training14b_10pct_sample.json" \
   --test_batch_jsons \
     bioasq_data/Task13BGoldenEnriched/13B1_golden.json \
     bioasq_data/Task13BGoldenEnriched/13B2_golden.json \
@@ -154,7 +154,7 @@ Fuse BM25 and dense runs with reciprocal rank fusion (RRF):
 python scripts/public/shared_scripts/retrieval/eval_hybird.py \
   --bm25_runs_dir "output/eval_bm25_rm3/runs" \
   --dense_root "output/eval_dense" \
-  --train_subset_json "example/training14b_10pct_sample.json" \
+  --train-json "example/training14b_10pct_sample.json" \
   --test_batch_jsons \
     bioasq_data/Task13BGoldenEnriched/13B1_golden.json \
     bioasq_data/Task13BGoldenEnriched/13B2_golden.json \
@@ -182,7 +182,7 @@ Re-rank stage-1 runs with a cross-encoder using query + doc text pairs:
 python scripts/public/shared_scripts/rerank/rerank_stage2.py \
   --runs-dir "output/eval_hybird/runs" \
   --docs-jsonl "output/subset_pubmed.jsonl" \
-  --train_subset_json "example/training14b_10pct_sample.json" \
+  --train-json "example/training14b_10pct_sample.json" \
   --test_batch_jsons \
     bioasq_data/Task13BGoldenEnriched/13B1_golden.json \
     bioasq_data/Task13BGoldenEnriched/13B2_golden.json \

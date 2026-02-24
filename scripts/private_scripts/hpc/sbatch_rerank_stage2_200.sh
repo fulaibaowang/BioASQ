@@ -94,7 +94,7 @@ srun \
       --runs-dir '${RUNS_DIR}' \
       --run-glob '${RUN_GLOB}' \
       --docs-jsonl '${DOCS_JSONL}' \
-      --train-subset-json '${TRAIN_SUBSET_JSON}' \
+      --train-json '${TRAIN_SUBSET_JSON}' \
       --test-batch-jsons \${TEST_BATCH_JSONS[@]} \
       --candidate-limit ${CANDIDATE_LIMIT} \
       --model '${MODEL_NAME}' \

@@ -44,7 +44,7 @@ srun -p dev --time=12:00:00 -c 4 --mem=64G\
   --pty bash
 
 python scripts/public/shared_scripts/retrieval/eval_dense.py \
-  --train_subset_json example/training14b_10pct_sample.json \
+  --train-json example/training14b_10pct_sample.json \
   --index_dir /pubmed/pubmed_pubmedbert_2026_subset_index/pubmedbert_hnsw_69667 \
   --test_batch_jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
   --out_dir output/eval_dense_pubmedbert_small \
@@ -71,7 +71,7 @@ python scripts/public/shared_scripts/rerank/rerank_stage2.py \
   --output-dir output/eval_stage2_rerank_hpc_minitest \
   --runs-dir output/eval_hybird_production_test/runs \
   --docs-jsonl output/subset_pubmed.jsonl \
-  --train_subset_json example/training14b_10pct_sample.json \
+  --train-json example/training14b_10pct_sample.json \
   --test_batch_jsons \
     bioasq_data/Task13BGoldenEnriched/13B1_golden.json \
     bioasq_data/Task13BGoldenEnriched/13B2_golden.json \
@@ -105,7 +105,7 @@ python scripts/deprecated/rerank_stage3_sentence.py \
     output/workflow_local_3pct_hpc_bge/hybrid/runs/best_rrf_13b_golden_50q_sample_top5000.tsv \
     output/workflow_local_3pct_hpc_bge/hybrid/runs/best_rrf_training14b_3pct_sample_top5000.tsv \
   --docs-jsonl output/subset_pubmed.jsonl \
-  --train-subset-json example/training14b_3pct_sample.json \
+  --train-json example/training14b_3pct_sample.json \
   --test-batch-jsons example/13b_golden_50q_sample.json \
   --candidate-limit 1000 \
   --dense-model abhinand/MedEmbed-small-v0.1 \
@@ -122,7 +122,7 @@ python scripts/deprecated/rerank_stage3_merged.py \
     output/workflow_local_3pct_hpc_bge/hybrid/runs/best_rrf_13b_golden_50q_sample_top5000.tsv \
     output/workflow_local_3pct_hpc_bge/hybrid/runs/best_rrf_training14b_3pct_sample_top5000.tsv \
   --docs-jsonl output/subset_pubmed.jsonl \
-  --train-subset-json example/training14b_3pct_sample.json \
+  --train-json example/training14b_3pct_sample.json \
   --test-batch-jsons example/13b_golden_50q_sample.json \
   --candidate-limit 1000 \
   --sentence-picks-dir output/workflow_local_3pct_hpc_bge/rerank_sentence/sentence_picks \
@@ -138,9 +138,28 @@ python scripts/public/shared_scripts/rerank/rerank_guard_rail_topk.py \
   --hybrid-runs-dir output/workflow_local_10pct_hpc_bge/hybrid/runs \
   --rerank-runs-dir output/workflow_local_10pct_hpc_bge/rerank/runs \
   --output-dir output/workflow_local_10pct_hpc_bge/rerank/guard_rail_topk \
-  --train-subset-json example/training14b_10pct_sample.json \
+  --train-json example/training14b_10pct_sample.json \
   --test-batch-jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
   --k-top 10 --m-bge 8
+
+python scripts/public/shared_scripts/rerank/rerank_guard_rail_topk.py \
+  --hybrid-runs-dir output/workflow_local_3pct_hpc_bge/hybrid/runs \
+  --rerank-runs-dir output/workflow_local_3pct_hpc_bge/rerank/runs \
+  --output-dir output/workflow_local_3pct_hpc_bge/rerank/guard_rail_topk \
+  --train-json example/training14b_3pct_sample.json \
+  --test-batch-jsons example/13b_golden_50q_sample.json \
+  --k-top 10 --m-bge 8
+
+python scripts/public/shared_scripts/compare_result_dirs.py \
+  --dirs output/workflow_local_10pct_hpc_bge/rerank output/workflow_local_10pct_hpc_bge/rerank/guard_rail_topk \
+  --labels "rerank" "rerank with guard_rail" \
+  --plot both \
+  --map-ks 10 \
+  --train-json example/training14b_10pct_sample.json \
+  --test-batch-jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
+  --log-x --plots-by-split \
+  --output-dir output/workflow_local_10pct_hpc_bge/rerank/guard_rail_topk/compare_plots
+
 
 
 ##############################!##############################################################
