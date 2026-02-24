@@ -133,7 +133,14 @@ python scripts/deprecated/rerank_stage3_merged.py \
   --output-dir output/workflow_local_3pct_hpc_bge/rerank_merged
 
 
-
+#Re-run guard‑rail offline on  finished workflow:
+python scripts/public/shared_scripts/rerank/rerank_guard_rail_topk.py \
+  --hybrid-runs-dir output/workflow_local_10pct_hpc_bge/hybrid/runs \
+  --rerank-runs-dir output/workflow_local_10pct_hpc_bge/rerank/runs \
+  --output-dir output/workflow_local_10pct_hpc_bge/rerank/guard_rail_topk \
+  --train-subset-json example/training14b_10pct_sample.json \
+  --test-batch-jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
+  --k-top 10 --m-bge 8
 
 
 ##############################!##############################################################
