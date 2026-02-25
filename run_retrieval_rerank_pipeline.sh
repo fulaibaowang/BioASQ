@@ -19,9 +19,11 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Parse -c / --config, --no-rerank, --bm25-query-field, --dense-query-field, --rerank-query-field, -h / --help
+# Parse -c / --config, --no-rerank, --bm25-query-field, --dense-query-field, --rerank-query-field,
+# optional --no-rrf-fusion, -h / --help
 CONFIG_FILE=""
 RUN_RERANK=1
+RUN_RRF_FUSION=1
 BM25_QUERY_FIELD_ARG=""
 DENSE_QUERY_FIELD_ARG=""
 RERANK_QUERY_FIELD_ARG=""
@@ -51,10 +53,15 @@ while [ $# -gt 0 ]; do
       RERANK_QUERY_FIELD_ARG="$2"
       shift 2
       ;;
+    --no-rrf-fusion)
+      RUN_RRF_FUSION=0
+      shift
+      ;;
     -h|--help)
-      echo "Usage: $0 [--config|-c <config.env>] [--no-rerank] [--bm25-query-field F] [--dense-query-field F] [--rerank-query-field F]"
+      echo "Usage: $0 [--config|-c <config.env>] [--no-rerank] [--no-rrf-fusion] [--bm25-query-field F] [--dense-query-field F] [--rerank-query-field F]"
       echo "  -c, --config PATH       Source PATH as config (env vars) before running."
       echo "  --no-rerank             Run only BM25, Dense, Hybrid; skip reranker even if DOCS_JSONL is set."
+      echo "  --no-rrf-fusion         Disable RRF fusion (Hybrid + Rerank) step after reranker."
       echo "  --bm25-query-field F    Use F as query text for BM25 (overrides env; e.g. body, body_expansion_long)."
       echo "  --dense-query-field F   Use F as query text for Dense (overrides env)."
       echo "  --rerank-query-field F  Use F as query text for reranker (overrides env; e.g. body, body_expansion_long)."
@@ -128,6 +135,7 @@ BM25_OUT="$WORKFLOW_OUTPUT_DIR/bm25"
 DENSE_OUT="$WORKFLOW_OUTPUT_DIR/dense"
 HYBRID_OUT="$WORKFLOW_OUTPUT_DIR/hybrid"
 RERANK_OUT="$WORKFLOW_OUTPUT_DIR/rerank"
+RERANK_HYBRID_OUT="$WORKFLOW_OUTPUT_DIR/rerank_hybrid"
 
 mkdir -p "$BM25_OUT" "$DENSE_OUT" "$HYBRID_OUT"
 
@@ -174,7 +182,7 @@ fi
 DENSE_ARGS=(
   --index_dir "$DENSE_INDEX_DIR"
   --out_dir "$DENSE_OUT"
-  --train_subset_json "$TRAIN_JSON"
+  --train-json "$TRAIN_JSON"
   --test_batch_jsons $TEST_BATCH_JSONS
   --topk "$DENSE_TOP_K"
   --ks "$RECALL_KS"
@@ -200,7 +208,7 @@ HYBRID_ARGS=(
   --bm25_runs_dir "$BM25_OUT/runs"
   --bm25_topk "$BM25_TOP_K"
   --dense_root "$DENSE_OUT"
-  --train_subset_json "$TRAIN_JSON"
+  --train-json "$TRAIN_JSON"
   --test_batch_jsons $TEST_BATCH_JSONS
   --out_dir "$HYBRID_OUT"
   --k_max_eval "$HYBRID_K_MAX_EVAL"
@@ -241,7 +249,7 @@ if [ -n "${DOCS_JSONL:-}" ] && [ "$RUN_RERANK" = "1" ]; then
     else
       echo "[4/$TOTAL_STEPS] Reranker... (generating eval plots from existing results)"
       PLOT_ARGS=(--output-dir "$RERANK_OUT" --runs-dir "$HYBRID_OUT/runs")
-      [ -n "${TRAIN_JSON:-}" ] && PLOT_ARGS+=(--train_subset_json "$TRAIN_JSON")
+      [ -n "${TRAIN_JSON:-}" ] && PLOT_ARGS+=(--train-json "$TRAIN_JSON")
       [ -n "${TEST_BATCH_JSONS:-}" ] && PLOT_ARGS+=(--test_batch_jsons $TEST_BATCH_JSONS)
       python "$SCRIPT_DIR/rerank/plot_rerank_eval.py" "${PLOT_ARGS[@]}"
     fi
@@ -263,7 +271,7 @@ if [ -n "${DOCS_JSONL:-}" ] && [ "$RUN_RERANK" = "1" ]; then
       --candidate-limit "$RERANK_EFFECTIVE"
       --ks-recall "${RERANK_KS_RECALL:-$RECALL_KS}"
     )
-    [ -n "${TRAIN_JSON:-}" ] && RERANK_ARGS+=(--train_subset_json "$TRAIN_JSON")
+    [ -n "${TRAIN_JSON:-}" ] && RERANK_ARGS+=(--train-json "$TRAIN_JSON")
     [ -n "${TEST_BATCH_JSONS:-}" ] && RERANK_ARGS+=(--test_batch_jsons $TEST_BATCH_JSONS)
     [ -n "${RERANK_MODEL:-}" ] && RERANK_ARGS+=(--model "$RERANK_MODEL")
     [ -n "${RERANK_MODEL_DEVICE:-}" ] && RERANK_ARGS+=(--model-device "$RERANK_MODEL_DEVICE")
@@ -274,8 +282,44 @@ if [ -n "${DOCS_JSONL:-}" ] && [ "$RUN_RERANK" = "1" ]; then
     [ -n "${RERANK_NUM_GPUS:-}" ] && RERANK_ARGS+=(--num-gpus "$RERANK_NUM_GPUS")
     [ -n "${RERANK_QUERY_FIELD:-}" ] && RERANK_ARGS+=(--query-field "$RERANK_QUERY_FIELD")
     python "$SCRIPT_DIR/rerank/rerank_stage2.py" "${RERANK_ARGS[@]}"
+    # Optional: apply RRF fusion (Hybrid + BGE rerank) on existing rerank runs (no extra model calls).
+    if [ "$RUN_RRF_FUSION" = "1" ]; then
+      if [ -f "$RERANK_HYBRID_OUT/metrics.csv" ] || [ -n "$(find "$RERANK_HYBRID_OUT/runs" -maxdepth 1 -name '*.tsv' 2>/dev/null | head -1)" ]; then
+        echo "[4/$TOTAL_STEPS] RRF fusion (Hybrid + Rerank, top-10)... (skip: output exists)"
+        :
+      else
+        echo "[4/$TOTAL_STEPS] RRF fusion (Hybrid + Rerank, top-10)..."
+      RRF_POOL_TOP="${RRF_POOL_TOP:-50}"
+      RRF_K_RRF="${RRF_K_RRF:-60}"
+      RRF_W_BGE="${RRF_W_BGE:-0.85}"
+      # If only RRF_W_BGE is set, derive Hybrid weight as 1 - RRF_W_BGE
+      if [ -z "${RRF_W_HYBRID:-}" ]; then
+        RRF_W_HYBRID=$(python - <<'EOF'
+import os
+w_bge = float(os.environ.get("RRF_W_BGE", "0.8"))
+print(max(0.0, min(1.0, 1.0 - w_bge)))
+EOF
+)
+      else
+        RRF_W_HYBRID="${RRF_W_HYBRID}"
+      fi
+      RRF_ARGS=(
+        --hybrid-runs-dir "$HYBRID_OUT/runs"
+        --rerank-runs-dir "$RERANK_OUT/runs"
+        --output-dir "$RERANK_HYBRID_OUT"
+        --pool-top "$RRF_POOL_TOP"
+        --k-rrf "$RRF_K_RRF"
+        --w-bge "$RRF_W_BGE"
+        --w-hybrid "$RRF_W_HYBRID"
+      )
+      [ -n "${TRAIN_JSON:-}" ] && RRF_ARGS+=(--train-json "$TRAIN_JSON")
+      [ -n "${TEST_BATCH_JSONS:-}" ] && RRF_ARGS+=(--test-batch-jsons $TEST_BATCH_JSONS)
+      [ -n "${RERANK_KS_RECALL:-}" ] && RRF_ARGS+=(--ks-recall "$RERANK_KS_RECALL")
+      python "$SCRIPT_DIR/rerank/rerank_rrf_hybrid.py" "${RRF_ARGS[@]}"
+      fi
+    fi
   fi
-  echo "Done. Outputs: $WORKFLOW_OUTPUT_DIR (bm25/, dense/, hybrid/, rerank/)"
+  echo "Done. Outputs: $WORKFLOW_OUTPUT_DIR (bm25/, dense/, hybrid/, rerank/, rerank_hybrid/)"
 else
   echo "Done. Outputs: $WORKFLOW_OUTPUT_DIR (bm25/, dense/, hybrid/)"
   if [ -n "${DOCS_JSONL:-}" ] && [ "$RUN_RERANK" = "0" ]; then
