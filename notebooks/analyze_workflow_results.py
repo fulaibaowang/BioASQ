@@ -274,6 +274,11 @@ if len(SELECTED_DATASETS) > 1:
 print()
 display(ceiling_zero)
 
+analysis_dir = base_dir / "output" / "analysis_output"
+analysis_dir.mkdir(parents=True, exist_ok=True)
+ceiling_zero_path = analysis_dir / "ceiling_zero.csv"
+ceiling_zero.to_csv(ceiling_zero_path, index=False)
+
 # %% [markdown]
 # ---
 # ## 2.1 Is n_rel driving the low-recall tail?
@@ -661,8 +666,6 @@ print("Small-n_rel regression summary (per split and overall):")
 display(regression_summary)
 
 # Save audit table to disk
-analysis_dir = base_dir / "output" / "analysis_output"
-analysis_dir.mkdir(parents=True, exist_ok=True)
 audit_path = analysis_dir / "regression_audit_small_n_rel.csv"
 audit_table.to_csv(audit_path, index=False)
 print(f"Saved regression audit table to: {audit_path}")
@@ -694,7 +697,8 @@ print("Failure-type breakdown within regression set S (per split):")
 display(failure_breakdown)
 
 # %% [markdown]
-# Next move (one step): Add a top-k guard rail for BGE
+# ---
+# ## 5. RRF fusion: Hybrid + BGE (top-50 union → weighted RRF → top-10)
 #
 # This is the cleanest way to reduce Type A without re-engineering models.
 #
@@ -709,5 +713,184 @@ display(failure_breakdown)
 # top 10−m docs by Hybrid (or BM25) that are not already included.
 #
 # Start with m = 8 (so you keep 2 “anchors” from hybrid).
+
+# %%
+# RRF fusion: union of top-50 BGE + top-50 Hybrid, weighted RRF, output top-10
+# Sweep k in (60, 100, 140) and weights (w_bge, w_hybrid) in [(1,0), (0.9,0.1), (0.8,0.2), (0.7,0.3), (0.5,0.5)]
+
+RUN_TOP = 50
+OUTPUT_TOP = 10
+RRF_KS = (60, 100, 140)
+RRF_WEIGHTS = [(1.0, 0.0), (0.9, 0.1), (0.8, 0.2), (0.7, 0.3), (0.6, 0.4)]  # (w_bge, w_hybrid)
+
+def run_to_qid_docs(run_path: Path, top_k: int) -> dict:
+    """Return dict qid -> list of docids (top_k, order preserved)."""
+    if not run_path.exists():
+        return {}
+    df = load_run(run_path)
+    qid_col, doc_col = df.columns.tolist()
+    out = {}
+    for qid, grp in df.groupby(qid_col, sort=False):
+        out[str(qid)] = grp[doc_col].tolist()[:top_k]
+    return out
+
+def rrf_fuse_top10(bge_docs: list, hybrid_docs: list, k: int, w_bge: float, w_hybrid: float) -> list:
+    """Union of top RUN_TOP from each list; RRF score; return top OUTPUT_TOP."""
+    bge_top = bge_docs[:RUN_TOP]
+    hyb_top = hybrid_docs[:RUN_TOP]
+    rank_bge = {d: i + 1 for i, d in enumerate(bge_top)}
+    rank_hyb = {d: i + 1 for i, d in enumerate(hyb_top)}
+    union = list(dict.fromkeys(bge_top + hyb_top))
+    scores = []
+    for d in union:
+        s = 0.0
+        if d in rank_bge:
+            s += w_bge / (k + rank_bge[d])
+        if d in rank_hyb:
+            s += w_hybrid / (k + rank_hyb[d])
+        scores.append((d, s))
+    scores.sort(key=lambda x: -x[1])
+    return [d for d, _ in scores[:OUTPUT_TOP]]
+
+run_template = "best_rrf_{split}_top5000.tsv"
+results_rows = []
+
+for name in SELECTED_DATASETS:
+    cfg = DATASET_CONFIG[name]
+    hybrid_dir = cfg["workflow_dir"] / "hybrid" / "runs"
+    rerank_dir = cfg["workflow_dir"] / "rerank" / "runs"
+    qrels = qrels_by_dataset[name]
+    for split in cfg["splits"]:
+        h_path = hybrid_dir / run_template.format(split=split)
+        r_path = rerank_dir / run_template.format(split=split)
+        if not h_path.exists() or not r_path.exists():
+            print(f"Skip {name}/{split}: missing run file")
+            continue
+        hybrid_qid_docs = run_to_qid_docs(h_path, RUN_TOP)
+        bge_qid_docs = run_to_qid_docs(r_path, RUN_TOP)
+        split_qrels = qrels.get(split, {})
+        qids = [q for q in hybrid_qid_docs if q in bge_qid_docs and q in split_qrels and split_qrels.get(q)]
+        if not qids:
+            continue
+        for k in RRF_KS:
+            for w_bge, w_hybrid in RRF_WEIGHTS:
+                ap10_list = []
+                for qid in qids:
+                    fused = rrf_fuse_top10(
+                        bge_qid_docs[qid], hybrid_qid_docs[qid], k, w_bge, w_hybrid
+                    )
+                    ap10_list.append(ap_at_k(fused, set(split_qrels[qid]), OUTPUT_TOP))
+                map10 = float(np.mean(ap10_list))
+                results_rows.append({
+                    "dataset": name,
+                    "split": split,
+                    "k": k,
+                    "w_bge": w_bge,
+                    "w_hybrid": w_hybrid,
+                    "MAP@10": map10,
+                    "n_queries": len(qids),
+                })
+
+rrf_results = pd.DataFrame(results_rows)
+print("RRF fusion: MAP@10 per (dataset, split, k, weights)")
+display(rrf_results)
+
+# Pivot table per split: rows = k, columns = weight config
+rrf_results["weight_label"] = rrf_results.apply(
+    lambda r: f"({r['w_bge']:.1f},{r['w_hybrid']:.1f})", axis=1
+)
+for (ds, sp), grp in rrf_results.groupby(["dataset", "split"], sort=False):
+    pivot = grp.pivot_table(index="k", columns="weight_label", values="MAP@10", aggfunc="first")
+    print(f"\n{ds} / {sp}")
+    display(pivot)
+
+# Visualization: MAP@10 vs weight config, one line per k, one panel per (dataset, split)
+weight_order = [f"({w[0]:.1f},{w[1]:.1f})" for w in RRF_WEIGHTS]
+n_splits = rrf_results.groupby(["dataset", "split"]).ngroups
+n_cols = min(3, n_splits)
+n_rows = (n_splits + n_cols - 1) // n_cols
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows))
+if n_splits == 1:
+    axes = np.array([axes])
+axes = axes.flat
+for ax, ((ds, sp), grp) in zip(axes, rrf_results.groupby(["dataset", "split"], sort=False)):
+    for k in RRF_KS:
+        sub = grp[grp["k"] == k].set_index("weight_label").reindex(weight_order)
+        vals = sub["MAP@10"].values
+        ax.plot(range(len(weight_order)), vals, marker="o", label=f"k={k}", markersize=6)
+    ax.set_xticks(range(len(weight_order)))
+    ax.set_xticklabels(weight_order, rotation=45, ha="right")
+    ax.set_ylabel("MAP@10")
+    ax.set_xlabel("(w_bge, w_hybrid)")
+    ax.set_title(f"{ds} / {sp}")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+for j in range(n_splits, len(axes)):
+    axes[j].set_visible(False)
+plt.suptitle("RRF fusion: MAP@10 vs weight config (BGE vs Hybrid), by k", y=1.02)
+plt.tight_layout()
+plt.show()
+
+# Heatmap per split: rows = k, columns = (w_bge, w_hybrid), color = MAP@10
+for (ds, sp), grp in rrf_results.groupby(["dataset", "split"], sort=False):
+    pivot = grp.pivot_table(index="k", columns="weight_label", values="MAP@10", aggfunc="first")
+    pivot = pivot.reindex(index=RRF_KS, columns=weight_order)
+    fig, ax = plt.subplots(figsize=(6, 3))
+    im = ax.imshow(pivot.values, aspect="auto", cmap="viridis")
+    ax.set_xticks(range(len(weight_order)))
+    ax.set_xticklabels(weight_order, rotation=45, ha="right")
+    ax.set_yticks(range(len(RRF_KS)))
+    ax.set_yticklabels(RRF_KS)
+    ax.set_xlabel("(w_bge, w_hybrid)")
+    ax.set_ylabel("k")
+    ax.set_title(f"MAP@10 heatmap — {ds} / {sp}")
+    plt.colorbar(im, ax=ax, label="MAP@10")
+    plt.tight_layout()
+    plt.show()
+
+# %% [markdown]
+# **Pick best k and weights using 10pct only:** (1) **10pct train** = split `training14b_10pct_sample`; (2) **10pct test (merged)** = all test batches (13B1–13B4) merged (MAP@10 = query-weighted average). Decide best config from these two metrics (e.g. mean of train and test MAP@10).
+
+# %%
+# Restrict to 10pct; aggregate train and merged-test MAP@10; pick best (k, weights)
+TENPCT_TRAIN_SPLIT = "training14b_10pct_sample"
+TENPCT_TEST_SPLITS = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
+
+rrf_10 = rrf_results[rrf_results["dataset"] == "10pct"].copy()
+if rrf_10.empty:
+    print("No 10pct results in rrf_results; run the RRF fusion cell first.")
+else:
+    # Train: single split
+    train_rows = rrf_10[rrf_10["split"] == TENPCT_TRAIN_SPLIT][["k", "w_bge", "w_hybrid", "MAP@10", "n_queries"]].copy()
+    train_rows = train_rows.rename(columns={"MAP@10": "MAP@10_train", "n_queries": "n_train"})
+
+    # Test merged: query-weighted average of MAP@10 over 13B1–13B4
+    test_df = rrf_10[rrf_10["split"].isin(TENPCT_TEST_SPLITS)]
+    test_merged = (
+        test_df.groupby(["k", "w_bge", "w_hybrid"])
+        .apply(lambda g: np.average(g["MAP@10"], weights=g["n_queries"]))
+        .reset_index(name="MAP@10_test_merged")
+    )
+    test_n = test_df.groupby(["k", "w_bge", "w_hybrid"])["n_queries"].sum().reset_index(name="n_test")
+
+    summary = train_rows.merge(test_merged, on=["k", "w_bge", "w_hybrid"], how="inner")
+    summary = summary.merge(test_n, on=["k", "w_bge", "w_hybrid"], how="inner")
+    summary["MAP@10_mean"] = (summary["MAP@10_train"] + summary["MAP@10_test_merged"]) / 2
+    summary["weight_label"] = summary.apply(lambda r: f"({r['w_bge']:.1f},{r['w_hybrid']:.1f})", axis=1)
+
+    print("10pct: MAP@10 train (single split) and test (merged 13B1–13B4); MAP@10_mean = (train + test)/2")
+    display(summary[["k", "weight_label", "MAP@10_train", "MAP@10_test_merged", "MAP@10_mean", "n_train", "n_test"]])
+
+    best_row = summary.loc[summary["MAP@10_mean"].idxmax()]
+    print("\nBest config (by MAP@10_mean):")
+    print(f"  k = {int(best_row['k'])}, (w_bge, w_hybrid) = ({best_row['w_bge']:.1f}, {best_row['w_hybrid']:.1f})")
+    print(f"  MAP@10_train = {best_row['MAP@10_train']:.4f}, MAP@10_test_merged = {best_row['MAP@10_test_merged']:.4f}, MAP@10_mean = {best_row['MAP@10_mean']:.4f}")
+
+# %% [markdown]
+# two optimal config is 
+#
+# k = 60, (w_bge, w_hybrid) = (0.8, 0.2)
+#
+# k = 60, (w_bge, w_hybrid) = (0.9, 0.1)
 
 # %%
