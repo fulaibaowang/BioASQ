@@ -2,6 +2,7 @@
 
 These scripts are **not used in production**. They are kept for reference or one-off comparisons.
 
+- **`rerank_guard_rail_topk.py`** — Guard-rail fusion: BGE top-m + Hybrid anchors for a fixed top-k prefix. Superseded by RRF fusion (Hybrid + Rerank) in the main pipeline.
 - **`rerank_stage3_sentence.py`** — Stage-3 reranking with CE on (query, title + sentence) and max/top2mean pooling.
 - **`rerank_stage3_merged.py`** — Stage-3 variant: one CE call per doc on (query, title + top-3 sentences merged).
 
