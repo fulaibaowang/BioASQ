@@ -744,6 +744,199 @@ failure_breakdown = pd.DataFrame(rows)
 print("Failure-type breakdown within regression set S (per split):")
 display(failure_breakdown)
 
+
+# %% [markdown]
+# ---
+# ## Delta MAP@10 by question type (train vs test kept separate)
+#
+# **Goal:** Compare delta = MAP_rerank − MAP_hybrid (i.e. AP@10_rerank − AP@10_hybrid per query) across the four BioASQ question types: **yesno**, **factoid**, **list**, **summary**. **Train and test are not merged:** we show results for **test** only (and optionally **train** in a separate panel if train splits have question type in the JSON).
+#
+# - **Plot:** Distribution of delta by type (boxplot and bar with mean ± CI), per role (test, and train if available).
+# - **Sanity:** Per-type % zero, % positive, % negative so median=0 is interpretable (e.g. many ties).
+# - **Statistics:** Per-type one-sample test (delta ≠ 0) with **multiple-testing correction** (Benjamini–Hochberg); Kruskal–Wallis across types.
+
+# %%
+# --- Question types: load from golden JSONs (test splits only) ---
+def load_question_types(path: Path) -> dict:
+    """Return qid -> type (str) for questions that have 'type' in the JSON."""
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    out = {}
+    for q in data.get("questions", []):
+        qid = q.get("id")
+        if not qid:
+            continue
+        qid = str(qid)
+        t = q.get("type")
+        if t:
+            out[qid] = str(t).lower()
+    return out
+
+# Define test vs train: only test splits have type in golden JSONs; keep them separate
+test_split_names = {"13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden", "13b_golden_50q_sample"}
+test_splits_for_type = []
+train_splits_for_type = []
+qid_to_type_test = {}
+qid_to_type_train = {}
+for name in SELECTED_DATASETS:
+    cfg = DATASET_CONFIG[name]
+    for split in cfg["splits"]:
+        if split not in cfg["qrels_paths"]:
+            continue
+        path = cfg["qrels_paths"][split]
+        types = load_question_types(path)
+        if not types:
+            continue
+        if split in test_split_names:
+            test_splits_for_type.append((name, split))
+            qid_to_type_test.update(types)
+        else:
+            train_splits_for_type.append((name, split))
+            qid_to_type_train.update(types)
+
+test_splits_set = set(test_splits_for_type)
+train_splits_set = set(train_splits_for_type)
+# Test only (do not merge train and test)
+delta_test = delta_df[delta_df.apply(lambda r: (r["dataset"], r["split"]) in test_splits_set, axis=1)].copy()
+delta_test["qtype"] = delta_test["qid"].map(qid_to_type_test)
+delta_test = delta_test.dropna(subset=["qtype"]).copy()
+delta_test["role"] = "test"
+# Train only (separate)
+delta_train = delta_df[delta_df.apply(lambda r: (r["dataset"], r["split"]) in train_splits_set, axis=1)].copy()
+delta_train["qtype"] = delta_train["qid"].map(qid_to_type_train)
+delta_train = delta_train.dropna(subset=["qtype"]).copy()
+delta_train["role"] = "train"
+
+def _type_order_from_df(df):
+    type_order = ["yesno", "factoid", "list", "summary"]
+    extra = [t for t in df["qtype"].unique() if t not in type_order]
+    return [t for t in type_order if (df["qtype"] == t).any()] + sorted(extra)
+
+type_order = _type_order_from_df(delta_test) if len(delta_test) > 0 else []
+
+print("Test only (train excluded). n =", len(delta_test))
+print("Test splits:", [s for _, s in test_splits_for_type])
+if len(delta_train) > 0:
+    print("Train only. n =", len(delta_train))
+    print("Train splits:", [s for _, s in train_splits_for_type])
+
+# Per-type summary with % zero / positive / negative so median=0 is interpretable
+if len(delta_test) == 0 or len(type_order) == 0:
+    print("No test rows with question type found; skip plot and stats.")
+else:
+    def _summary_with_pct(d):
+        n = d["delta_AP10"].count()
+        zeros = (d["delta_AP10"] == 0).sum()
+        pos = (d["delta_AP10"] > 0).sum()
+        neg = (d["delta_AP10"] < 0).sum()
+        return pd.Series({
+            "n": n,
+            "mean_delta": d["delta_AP10"].mean(),
+            "median_delta": d["delta_AP10"].median(),
+            "pct_zero": 100 * zeros / n if n else 0,
+            "pct_positive": 100 * pos / n if n else 0,
+            "pct_negative": 100 * neg / n if n else 0,
+        })
+    summary_test = delta_test.groupby("qtype", observed=True).apply(_summary_with_pct).reindex(type_order)
+    print("Test: per-type summary (median=0 can occur when many ties or symmetric distribution):")
+    display(summary_test)
+    if len(delta_train) > 0:
+        type_order_train = _type_order_from_df(delta_train)
+        summary_train = delta_train.groupby("qtype", observed=True).apply(_summary_with_pct).reindex(type_order_train)
+        print("Train: per-type summary (separate from test):")
+        display(summary_train)
+
+# --- Plot and stats only when we have types ---
+if len(type_order) > 0:
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+    # Left: boxplot
+    ax = axes[0]
+    data_by_type = [delta_test.loc[delta_test["qtype"] == t, "delta_AP10"].values for t in type_order]
+    bp = ax.boxplot(data_by_type, patch_artist=True)
+    ax.set_xticks(np.arange(1, len(type_order) + 1))
+    ax.set_xticklabels(type_order, rotation=15)
+    for patch in bp["boxes"]:
+        patch.set_facecolor("lightsteelblue")
+    ax.axhline(0, color="gray", linestyle="--", linewidth=0.8)
+    ax.set_ylabel("delta MAP@10 (rerank − hybrid)")
+    ax.set_title("Distribution by question type")
+
+    # Right: bar plot (mean ± 95% CI)
+    ax = axes[1]
+    means = delta_test.groupby("qtype", observed=True)["delta_AP10"].mean().reindex(type_order)
+    counts = delta_test.groupby("qtype", observed=True)["delta_AP10"].count().reindex(type_order)
+    stds = delta_test.groupby("qtype", observed=True)["delta_AP10"].std().reindex(type_order)
+    se = stds / np.sqrt(counts)
+    ci95 = (1.96 * se).fillna(0)
+    x_pos = np.arange(len(type_order))
+    ax.bar(x_pos, means, yerr=ci95, capsize=5, color="steelblue", edgecolor="navy")
+    ax.axhline(0, color="gray", linestyle="--", linewidth=0.8)
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(type_order, rotation=15)
+    ax.set_ylabel("Mean delta MAP@10 (rerank − hybrid)")
+    ax.set_title("Mean ± 95% CI by question type")
+    plt.tight_layout()
+    plt.suptitle("Delta MAP@10 by question type — Test only (train excluded)", y=1.02)
+    plt.show()
+
+    # Optional: same plot for train if available
+    if len(delta_train) > 0:
+        type_order_train = _type_order_from_df(delta_train)
+        if len(type_order_train) > 0:
+            fig2, axes2 = plt.subplots(1, 2, figsize=(12, 4))
+            data_by_type_t = [delta_train.loc[delta_train["qtype"] == t, "delta_AP10"].values for t in type_order_train]
+            bp2 = axes2[0].boxplot(data_by_type_t, patch_artist=True)
+            axes2[0].set_xticks(np.arange(1, len(type_order_train) + 1))
+            axes2[0].set_xticklabels(type_order_train, rotation=15)
+            for patch in bp2["boxes"]:
+                patch.set_facecolor("lightgreen")
+            axes2[0].axhline(0, color="gray", linestyle="--", linewidth=0.8)
+            axes2[0].set_ylabel("delta MAP@10 (rerank − hybrid)")
+            axes2[0].set_title("Distribution by question type")
+            means_t = delta_train.groupby("qtype", observed=True)["delta_AP10"].mean().reindex(type_order_train)
+            counts_t = delta_train.groupby("qtype", observed=True)["delta_AP10"].count().reindex(type_order_train)
+            stds_t = delta_train.groupby("qtype", observed=True)["delta_AP10"].std().reindex(type_order_train)
+            se_t = stds_t / np.sqrt(counts_t)
+            ci95_t = (1.96 * se_t).fillna(0)
+            axes2[1].bar(np.arange(len(type_order_train)), means_t, yerr=ci95_t, capsize=5, color="seagreen", edgecolor="darkgreen")
+            axes2[1].axhline(0, color="gray", linestyle="--", linewidth=0.8)
+            axes2[1].set_xticks(np.arange(len(type_order_train)))
+            axes2[1].set_xticklabels(type_order_train, rotation=15)
+            axes2[1].set_ylabel("Mean delta MAP@10")
+            axes2[1].set_title("Mean ± 95% CI by question type")
+            plt.suptitle("Delta MAP@10 by question type — Train only", y=1.02)
+            plt.tight_layout()
+            plt.show()
+
+    # --- Statistics: one-sample test per type + multiple-testing correction ---
+    from scipy.stats import wilcoxon, kruskal, false_discovery_control
+
+    results = []
+    for qtype in type_order:
+        vals = delta_test.loc[delta_test["qtype"] == qtype, "delta_AP10"].values
+        if len(vals) < 3:
+            results.append({"type": qtype, "n": len(vals), "statistic": np.nan, "p_onesample": np.nan})
+            continue
+        stat, p = wilcoxon(vals, alternative="two-sided")
+        results.append({"type": qtype, "n": len(vals), "statistic": stat, "p_onesample": p})
+
+    stats_df = pd.DataFrame(results)
+    if stats_df["p_onesample"].notna().any():
+        p_vals = stats_df["p_onesample"].fillna(1).values
+        stats_df["p_onesample_adj"] = false_discovery_control(p_vals, method="bh")
+    else:
+        stats_df["p_onesample_adj"] = np.nan
+
+    print("Per-type Wilcoxon (delta ≠ 0) with Benjamini–Hochberg correction:")
+    display(stats_df)
+
+    # Kruskal–Wallis across types (do types differ?)
+    groups_kw = [delta_test.loc[delta_test["qtype"] == t, "delta_AP10"].values for t in type_order]
+    if all(len(g) >= 2 for g in groups_kw):
+        stat_kw, p_kw = kruskal(*groups_kw)
+        print(f"\nKruskal–Wallis across types: H = {stat_kw:.4f}, p = {p_kw:.4f}")
+
 # %% [markdown]
 # ---
 # ## 5. RRF fusion: Hybrid + BGE (top-50 union → weighted RRF → top-10)
@@ -940,5 +1133,122 @@ else:
 # k = 60, (w_bge, w_hybrid) = (0.8, 0.2)
 #
 # k = 60, (w_bge, w_hybrid) = (0.9, 0.1)
+
+# %%
+
+# %% [markdown]
+# ---
+# ## Exploration: RRF weight sweep by question type (train vs test merged separately)
+#
+# Same weight sweep as above (Hybrid + BGE rerank, top-50 union → weighted RRF → top-10), but:
+#
+# - **Weights:** from (1, 0) to (0.5, 0.5) — i.e. **(1.0, 0.0), (0.9, 0.1), (0.8, 0.2), (0.7, 0.3), (0.6, 0.4), (0.5, 0.5)** (including 50–50).
+# - **k fixed to 60.**
+# - **Merge:** all **train** splits → one train pool; all **test** batches → one test pool. Report MAP@10 per (role, question type, weight).
+# - **By question type:** yesno, factoid, list, summary — so we see how each type responds to the weight sweep.
+#
+# Requires the RRF fusion cell above (run_to_qid_docs, rrf_fuse_top10, load_run, ap_at_k, qrels_by_dataset) and question-type loading from the "Delta MAP@10 by question type" section.
+
+# %%
+# Exploration: RRF weight sweep by question type (k=60, train and test merged separately)
+# Requires: run_to_qid_docs, rrf_fuse_top10, load_run, ap_at_k, qrels_by_dataset, load_question_types
+
+K_EXPLORE = 60
+RRF_WEIGHTS_SWEEP = [(1.0, 0.0), (0.9, 0.1), (0.8, 0.2), (0.7, 0.3), (0.6, 0.4), (0.5, 0.5)]  # (w_bge, w_hybrid)
+run_template = "best_rrf_{split}_top5000.tsv"
+
+# Splits that count as train vs test (for merging)
+def _role_for_split(split: str) -> str:
+    if "golden" in split.lower() and ("13B" in split or "13b" in split):
+        return "test"
+    return "train"
+
+# Load question type for all qids (train + test) from golden/train JSONs
+qid_to_type_all = {}
+for name in SELECTED_DATASETS:
+    cfg = DATASET_CONFIG[name]
+    for split, path in cfg["qrels_paths"].items():
+        types = load_question_types(path)
+        qid_to_type_all.update(types)
+
+# Per-query AP@10 for each (dataset, split, w_bge, w_hybrid), k=60
+per_query_rows = []
+for name in SELECTED_DATASETS:
+    cfg = DATASET_CONFIG[name]
+    hybrid_dir = cfg["workflow_dir"] / "hybrid" / "runs"
+    rerank_dir = cfg["workflow_dir"] / "rerank" / "runs"
+    qrels = qrels_by_dataset[name]
+    for split in cfg["splits"]:
+        h_path = hybrid_dir / run_template.format(split=split)
+        r_path = rerank_dir / run_template.format(split=split)
+        if not h_path.exists() or not r_path.exists():
+            continue
+        hybrid_qid_docs = run_to_qid_docs(h_path, RUN_TOP)
+        bge_qid_docs = run_to_qid_docs(r_path, RUN_TOP)
+        split_qrels = qrels.get(split, {})
+        qids = [q for q in hybrid_qid_docs if q in bge_qid_docs and q in split_qrels and split_qrels.get(q)]
+        if not qids:
+            continue
+        for w_bge, w_hybrid in RRF_WEIGHTS_SWEEP:
+            for qid in qids:
+                fused = rrf_fuse_top10(
+                    bge_qid_docs[qid], hybrid_qid_docs[qid], K_EXPLORE, w_bge, w_hybrid
+                )
+                rels = set(map(str, split_qrels.get(qid, [])))
+                fused_str = [str(d) for d in fused]
+                ap10 = ap_at_k(fused_str, rels, OUTPUT_TOP)
+                per_query_rows.append({
+                    "dataset": name,
+                    "split": split,
+                    "qid": qid,
+                    "w_bge": w_bge,
+                    "w_hybrid": w_hybrid,
+                    "AP@10": ap10,
+                })
+
+if not per_query_rows:
+    print("No per-query RRF results; check run paths and run the RRF fusion cell first.")
+else:
+    pq = pd.DataFrame(per_query_rows)
+    pq["role"] = pq["split"].map(_role_for_split)
+    pq["qtype"] = pq["qid"].map(qid_to_type_all)
+    pq = pq.dropna(subset=["qtype"]).copy()
+
+    # Aggregate: MAP@10 per (role, qtype, w_bge, w_hybrid)
+    by_type = pq.groupby(["role", "qtype", "w_bge", "w_hybrid"], as_index=False).agg(
+        MAP10=("AP@10", "mean"),
+        n=("AP@10", "count"),
+    )
+    by_type["weight_label"] = by_type.apply(
+        lambda r: f"({r['w_bge']:.1f},{r['w_hybrid']:.1f})", axis=1
+    )
+    weight_order = [f"({w[0]:.1f},{w[1]:.1f})" for w in RRF_WEIGHTS_SWEEP]
+    type_order = ["yesno", "factoid", "list", "summary"]
+
+    print("MAP@10 by (role, question type, weight); k=60, train and test merged separately")
+    display(by_type.pivot_table(index=["role", "qtype"], columns="weight_label", values="MAP10", aggfunc="first").reindex(columns=weight_order))
+
+    # Plot: two panels (Train, Test), x = weight, y = MAP@10, lines = question types
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    colors = {"yesno": "C0", "factoid": "C1", "list": "C2", "summary": "C3"}
+    for ax, role in zip(axes, ["train", "test"]):
+        sub = by_type[by_type["role"] == role]
+        if sub.empty:
+            ax.set_title(f"{role} (no data)")
+            continue
+        for qtype in type_order:
+            row = sub[sub["qtype"] == qtype].set_index("weight_label").reindex(weight_order)
+            if row["MAP10"].notna().any():
+                ax.plot(range(len(weight_order)), row["MAP10"].values, marker="o", label=qtype, color=colors.get(qtype, "gray"), markersize=6)
+        ax.set_xticks(range(len(weight_order)))
+        ax.set_xticklabels(weight_order, rotation=45, ha="right")
+        ax.set_ylabel("MAP@10")
+        ax.set_xlabel("(w_bge, w_hybrid)")
+        ax.set_title(f"k=60 — {role} (all {role} splits merged)")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+    plt.suptitle("RRF weight sweep by question type (k=60)", y=1.02)
+    plt.tight_layout()
+    plt.show()
 
 # %%
