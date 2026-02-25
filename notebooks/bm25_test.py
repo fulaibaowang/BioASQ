@@ -1371,3 +1371,55 @@ df_ttt
 415003/5000
 
 # %%
+
+# %% [markdown]
+# ## Single-query tests: gold rank check (exact rank)
+#
+# BM25 against `output/pubmed_bm25_2026_subset_index`. For each gold PMID we report **exact rank** (1-based) and score; if not in the retrieved set we report `rank > TOP_K`.
+#
+# 1. **"What is a miR?"** (id `58f0b1d670f9fc6f0f000007`). Gold: 27814624, 27924483, 27734397, 27586262. Original vs expanded query (+ microRNA miRNA small non-coding RNA).
+# 2. **"What is targeted by Palbociclib?"** (id `56c1f01cef6e394741000044`). Gold: 21815704, 21679088, 20197484, 25701171, 25636162, 21806477, 21109448, 24216225, 26045340, 23300028. Original vs expanded query (+ CDK4 CDK6 cyclin-dependent kinase target).
+
+# %%
+# Single-query test: "What is a miR?" — gold ranks on subset index
+INDEX_SUBSET = "../output/pubmed_bm25_2026_subset_index/data.properties"
+QID = "58f0b1d670f9fc6f0f000007"
+QUERY = "What is a miR?"
+GOLD_PMIDS = {"27814624", "27924483", "27734397", "27586262"}
+EXPANDED_QUERY = QUERY + " microRNA miRNA MicroRNAs miRs"
+TOP_K = 50000  # retrieve enough to report exact rank for most gold docs
+
+# Load index and retriever (use pt.terrier.Retriever to avoid deprecation)
+idx = pt.IndexFactory.of(INDEX_SUBSET)
+retriever = pt.terrier.Retriever(idx, wmodel="BM25", num_results=TOP_K)
+
+def run_and_report_ranks(qid: str, query_text: str, gold_pmids: set, label: str):
+    topics = pd.DataFrame([{"qid": qid, "query": query_text}])
+    res = retriever(topics)
+    res = res.sort_values(["qid", "score"], ascending=[True, False]).reset_index(drop=True)
+    res["rank"] = res.groupby("qid").cumcount() + 1
+    docnos = res["docno"].astype(str).tolist()
+    print(f"--- {label} ---")
+    print(f"Query: {query_text[:80]}{'...' if len(query_text) > 80 else ''}")
+    for pmid in sorted(gold_pmids):
+        try:
+            r = docnos.index(pmid) + 1
+            score = res.loc[res["docno"].astype(str) == pmid, "score"].iloc[0]
+            print(f"  PMID {pmid}: rank {r}, score={score:.4f}")
+        except ValueError:
+            print(f"  PMID {pmid}: rank > {TOP_K} (not in retrieved set)")
+    print()
+    return res
+
+# ----- "What is a miR?" (id 58f0b1d670f9fc6f0f000007) -----
+run_and_report_ranks(QID, QUERY, GOLD_PMIDS, "miR — original query")
+run_and_report_ranks(QID, EXPANDED_QUERY, GOLD_PMIDS, "miR — expanded query")
+
+# ----- "What is targeted by Palbociclib?" (id 56c1f01cef6e394741000044) -----
+QID_PAL = "56c1f01cef6e394741000044"
+QUERY_PAL = "What is targeted by Palbociclib?"
+GOLD_PAL = {"21815704", "21679088", "20197484", "25701171", "25636162", "21806477", "21109448", "24216225", "26045340", "23300028"}
+run_and_report_ranks(QID_PAL, QUERY_PAL, GOLD_PAL, "Palbociclib — original query")
+run_and_report_ranks(QID_PAL, QUERY_PAL + " Ibrance CDK4 CDK6 cyclin-dependent kinase target", GOLD_PAL, "Palbociclib — expanded query")
+
+# %%

@@ -301,8 +301,31 @@ def lexicon_has(term: str):
     print("NOT found in lexicon:", term)
     return False
 
-lexicon_has("xalnesiran")
-lexicon_has("zanidatamab")
+
+lexicon_has("rg7992")
+lexicon_has("pd1")
+lexicon_has("tocilizumab")
+
+# %%
+from pyterrier.java import autoclass
+
+Tokeniser = autoclass("org.terrier.indexing.tokenisation.Tokeniser")
+StringReader = autoclass("java.io.StringReader")
+
+tok = Tokeniser.getTokeniser()
+
+def terrier_tokenize(text: str):
+    reader = StringReader(text)
+    stream = tok.tokenise(reader)
+    out = []
+    while stream.hasNext():
+        out.append(stream.next())
+    return out
+
+for s in ["RG-7992", "CYP2C19*2", "RG7992", "RG79923"]:
+    print(s, "->", terrier_tokenize(s))
+
+# %%
 
 # %% [markdown]
 # ---
