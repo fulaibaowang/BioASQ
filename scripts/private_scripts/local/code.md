@@ -85,3 +85,18 @@ python scripts/public/shared_scripts/compare_result_dirs.py \
   --train-json example/training14b_3pct_sample.json \
   --test-batch-jsons example/13b_golden_50q_sample.json \
   --output-dir output/workflow_local_3pct_hpc_bge/compare_plots_mergedtest
+
+python scripts/public/shared_scripts/rerank/rerank_rrf_hybrid.py \
+  --hybrid-runs-dir output/workflow_local_10pct_hpc_bge/hybrid/runs \
+  --rerank-runs-dir output/workflow_local_10pct_hpc_bge/rerank/runs \
+  --output-dir output/workflow_local_10pct_hpc_bge/rerank_hybrid \
+  --train-json example/training14b_10pct_sample.json \
+  --test-batch-jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
+  --pool-top 50 --k-rrf 60 --w-bge 0.8 --w-hybrid 0.2
+
+python scripts/public/shared_scripts/compare_result_dirs.py \
+  --dirs output/workflow_local_10pct_hpc_bge/rerank output/workflow_local_10pct_hpc_bge/rerank_hybrid \
+  --labels "rerank" "rerank_rrf_hybrid" \
+  --output-dir output/workflow_local_10pct_hpc_bge/rerank_hybrid \
+  --train-json example/training14b_10pct_sample.json \
+  --test-batch-jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json 

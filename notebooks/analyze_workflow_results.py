@@ -190,25 +190,27 @@ def load_run(path: Path):
 def recall_at_k(docs: list, rels: set, k: int) -> float:
     if not rels:
         return np.nan
-    top = docs[:k]
-    hit = len(set(top) & rels)
-    return hit / len(rels)
+    top = [str(d) for d in docs[:k]]
+    rels_str = {str(r) for r in rels}
+    hit = len(set(top) & rels_str)
+    return hit / len(rels_str)
 
 
 def ap_at_k(docs: list, rels: set, k: int = 10) -> float:
     """Average precision at k (per-query AP@10)."""
     if not rels:
         return np.nan
-    top = docs[:k]
+    top = [str(d) for d in docs[:k]]
+    rels_str = {str(r) for r in rels}
     hits = 0
     prec_sum = 0.0
     for i, doc in enumerate(top, start=1):
-        if doc in rels:
+        if doc in rels_str:
             hits += 1
             prec_sum += hits / i
     if hits == 0:
         return 0.0
-    return prec_sum / min(len(rels), k)
+    return prec_sum / min(len(rels_str), k)
 
 
 def compute_hybrid_per_query_recall(hybrid_runs_dir: Path, qrels_by_split: dict, k_values=(200, 2000)):
@@ -225,7 +227,8 @@ def compute_hybrid_per_query_recall(hybrid_runs_dir: Path, qrels_by_split: dict,
             rels = qrels.get(qid, set())
             if not rels:
                 continue
-            docs = group[doc_col].tolist()
+            # Normalize to str so PMIDs from CSV (may be int) match qrels (str)
+            docs = [str(x) for x in group[doc_col].tolist()]
             row = {"split": split, "qid": qid, "AP@10": ap_at_k(docs, rels, 10)}
             for k in k_values:
                 row[f"R@{k}"] = recall_at_k(docs, rels, k)
@@ -252,7 +255,7 @@ display(hybrid_per_query.head(10))
 # ---
 # ## 1. Ceiling: Does Hybrid contain the gold by K=2000?
 #
-# Table: **split**, **qid**, **n_rel**, **query** for every query where **Recall@2000 == 0** (Hybrid retrieved no relevant doc in top 2000).
+# Table: **split**, **qid**, **n_rel**, **query** for every query where **Recall@2000 == 0** (Hybrid = BM25+Dense RRF retrieved no relevant doc in top 2000). If a query appears here but BM25 alone retrieves the gold (e.g. drug-name queries like Xalnesiran/Zanidatamab), the cause may be docno type mismatch (run TSV read as int vs qrels str); the notebook now normalizes both to str before comparison.
 
 # %%
 def _n_rel_lookup(row):
@@ -278,6 +281,28 @@ analysis_dir = base_dir / "output" / "analysis_output"
 analysis_dir.mkdir(parents=True, exist_ok=True)
 ceiling_zero_path = analysis_dir / "ceiling_zero.csv"
 ceiling_zero.to_csv(ceiling_zero_path, index=False)
+
+# %%
+import pyterrier as pt
+if not pt.java.started():
+    pt.java.init()
+INDEX_PATH = "../output/pubmed_bm25_2026_subset_index/data.properties"  
+index = pt.IndexFactory.of(INDEX_PATH)
+
+lex = index.getLexicon()
+
+def lexicon_has(term: str):
+    # Terrier typically lowercases terms; try both
+    for t in [term, term.lower()]:
+        le = lex.getLexiconEntry(t)
+        if le is not None:
+            print(f"Found term in lexicon: {t}  df={le.getDocumentFrequency()}  tf={le.getFrequency()}")
+            return True
+    print("NOT found in lexicon:", term)
+    return False
+
+lexicon_has("xalnesiran")
+lexicon_has("zanidatamab")
 
 # %% [markdown]
 # ---

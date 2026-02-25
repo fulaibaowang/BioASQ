@@ -76,7 +76,7 @@ python scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_sha
 
 ### Full pipeline (BM25 → Dense → Hybrid → Reranker)
 
-Run all stages with one script and a config file. The script skips any stage whose output already exists (e.g. if hybrid is done, only reranker runs). Use `--no-rerank` to run only retrieval (BM25, Dense, Hybrid).
+Run all stages with one script and a config file. The script skips any stage whose output already exists (e.g. if hybrid is done, only reranker (and optional RRF fusion) run). Use `--no-rerank` to run only retrieval (BM25, Dense, Hybrid). Use `--no-rrf-fusion` to disable the Hybrid+Rerank RRF fusion step.
 
 ```bash
 ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config scripts/public/workflow_config_small.env
