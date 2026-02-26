@@ -1251,4 +1251,109 @@ else:
     plt.tight_layout()
     plt.show()
 
+# %% [markdown]
+# ---
+# ## Exploration: RRF weight sweep by question length (train vs test)
+#
+# Using the same per-query RRF fusion outputs (k=60), we now group queries by **question length** and sweep the Hybrid vs BGE weights:
+#
+# - **Length buckets (by token count in `body`):**
+#   - **short:** ≤ 6 tokens
+#   - **mid:** 7–14 tokens
+#   - **long:** ≥ 15 tokens
+# - **Weights:** (1.0, 0.0), (0.9, 0.1), (0.8, 0.2), (0.7, 0.3), (0.6, 0.4), (0.5, 0.5) — same as the type sweep.
+# - **k fixed to 60.**
+# - **Roles:** train vs test kept separate; within each role we merge all splits.
+#
+# Goal: see how the optimal weight trade-off depends on question length (for train vs test).
+
+# %%
+# RRF weight sweep by question length (short/mid/long), k=60, train vs test
+# Reuses `pq` from the previous RRF-by-type exploration; if missing, print a hint.
+
+if "pq" not in globals() or pq.empty:
+    print("No per-query RRF table `pq` found. Run the previous RRF-by-type exploration cell first.")
+else:
+    import re
+
+    # Build length metadata: qid -> len_words per (dataset, split)
+    def _len_bucket(n: int) -> str:
+        if n <= 6:
+            return "short"
+        if n <= 14:
+            return "mid"
+        return "long"
+
+    len_map = {}
+    for name in SELECTED_DATASETS:
+        txt_by_split = question_text_by_dataset.get(name, {})
+        for split, q2text in txt_by_split.items():
+            for qid, body in q2text.items():
+                tokens = re.findall(r"\w+", body or "")
+                len_map[(name, split, str(qid))] = len(tokens)
+
+    # Attach len_bucket to pq
+    def _lookup_len(row):
+        return len_map.get((row["dataset"], row["split"], str(row["qid"])), None)
+
+    pq_len = pq.copy()
+    pq_len["len_words"] = pq_len.apply(_lookup_len, axis=1)
+    pq_len = pq_len.dropna(subset=["len_words"]).copy()
+    pq_len["len_words"] = pq_len["len_words"].astype(int)
+    pq_len["len_bucket"] = pq_len["len_words"].apply(_len_bucket)
+
+    # Aggregate: MAP@10 per (role, len_bucket, w_bge, w_hybrid)
+    by_len = pq_len.groupby(["role", "len_bucket", "w_bge", "w_hybrid"], as_index=False).agg(
+        MAP10=("AP@10", "mean"),
+        n=("AP@10", "count"),
+    )
+    by_len["weight_label"] = by_len.apply(
+        lambda r: f"({r['w_bge']:.1f},{r['w_hybrid']:.1f})", axis=1
+    )
+
+    weight_order = [f"({w[0]:.1f},{w[1]:.1f})" for w in RRF_WEIGHTS_SWEEP]
+    len_order = ["short", "mid", "long"]
+
+    print("MAP@10 by (role, length bucket, weight); k=60, train and test merged separately")
+    display(
+        by_len.pivot_table(
+            index=["role", "len_bucket"],
+            columns="weight_label",
+            values="MAP10",
+            aggfunc="first",
+        ).reindex(index=pd.MultiIndex.from_product([
+            ["train", "test"], len_order
+        ], names=["role", "len_bucket"]), columns=weight_order)
+    )
+
+    # Plot: two panels (Train, Test), x = weight, y = MAP@10, lines = length buckets
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    colors = {"short": "C0", "mid": "C1", "long": "C2"}
+    for ax, role in zip(axes, ["train", "test"]):
+        sub = by_len[by_len["role"] == role]
+        if sub.empty:
+            ax.set_title(f"{role} (no data)")
+            continue
+        for lb in len_order:
+            row = sub[sub["len_bucket"] == lb].set_index("weight_label").reindex(weight_order)
+            if row["MAP10"].notna().any():
+                ax.plot(
+                    range(len(weight_order)),
+                    row["MAP10"].values,
+                    marker="o",
+                    label=lb,
+                    color=colors.get(lb, "gray"),
+                    markersize=6,
+                )
+        ax.set_xticks(range(len(weight_order)))
+        ax.set_xticklabels(weight_order, rotation=45, ha="right")
+        ax.set_ylabel("MAP@10")
+        ax.set_xlabel("(w_bge, w_hybrid)")
+        ax.set_title(f"k=60 — {role} (all {role} splits merged)")
+        ax.legend(title="len_bucket")
+        ax.grid(True, alpha=0.3)
+    plt.suptitle("RRF weight sweep by question length (k=60)", y=1.02)
+    plt.tight_layout()
+    plt.show()
+
 # %%
