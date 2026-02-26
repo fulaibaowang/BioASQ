@@ -51,6 +51,8 @@ for RERANK_QUERY_FIELD in "${QUERY_FIELDS[@]}"; do
     --container-workdir /work \
     bash -lc "
       set -euo pipefail
+      # Ensure Python can import retrieval_eval from scripts/public/shared_scripts
+      export PYTHONPATH=\"/work/scripts/public/shared_scripts:\${PYTHONPATH:-}\"
       export HF_HOME='/pubmed/_hf_cache'
       export HF_HUB_CACHE=\"\$HF_HOME/hub\"
       export TRANSFORMERS_CACHE=\"\$HF_HOME/transformers\"
