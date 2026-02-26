@@ -4,7 +4,7 @@
 # One job per query field; outputs to output/rerank_sweep_query_rewrite/rerank_<query_field>/.
 #SBATCH -J rerank_sweep_rewrite
 #SBATCH -p dev
-#SBATCH --time=24:00:00
+#SBATCH --time=12:00:00
 #SBATCH --gres=gpu:A100:3
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128G
