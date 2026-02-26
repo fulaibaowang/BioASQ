@@ -5,7 +5,7 @@
 #SBATCH -J rerank_sweep_rewrite
 #SBATCH -p dev
 #SBATCH --time=12:00:00
-#SBATCH --gres=gpu:A100:3
+#SBATCH --gres=gpu:3
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128G
 #SBATCH -o logs/%x_%j.out
