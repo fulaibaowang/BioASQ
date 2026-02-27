@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """
-Production script: LLM query rewrite for BioASQ JSONs.
+Deprecated script: LLM query rewrite for BioASQ JSONs.
 
 Reads a list of BioASQ JSON files (each with "questions" and "body" per question),
 calls an LLM to produce two rewrites (A: normalize_only, B: normalize_and_enrich),
 and writes outputs to a single folder as <stem>_rewrite.json.
 
-Usage:
-  python scripts/private_scripts/query_rewrite_llm.py --input FILE [FILE ...] [--out_dir DIR]
+Internal experiments with these two rewrite variants, used in downstream reranking
+and evaluated with MAP@K, did not show improvements over the baseline queries.
+The script is kept here for reference only.
+
+Usage (for reference only):
+  python scripts/deprecated/query_rewrite_llm.py --input FILE [FILE ...] [--out_dir DIR]
   Example (all 5 inputs, output to example/query_rewrite/):
-  python scripts/private_scripts/query_rewrite_llm.py --input example/training14b_10pct_sample.json bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json
+  python scripts/deprecated/query_rewrite_llm.py --input example/training14b_10pct_sample.json bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json
 
 Requires: QUERY_REWRITE_LLM_API_KEY or LLAMA_API_KEY in env or .env at repo root.
 """

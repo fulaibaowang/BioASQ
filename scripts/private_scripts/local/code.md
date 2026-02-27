@@ -83,7 +83,7 @@ python scripts/public/shared_scripts/compare_result_dirs.py \
   --plot both \
   --map-ks 10,20,50,100,200 \
   --train-json example/training14b_3pct_sample.json \
-  --test-batch-jsons example/13b_golden_50q_sample.json \
+  --test_batch_jsons example/13b_golden_50q_sample.json \
   --output-dir output/workflow_local_3pct_hpc_bge/compare_plots_mergedtest
 
 python scripts/public/shared_scripts/rerank/rerank_rrf_hybrid.py \
@@ -99,7 +99,7 @@ python scripts/public/shared_scripts/compare_result_dirs.py \
   --labels "rerank" "rerank_rrf_hybrid" \
   --output-dir output/workflow_local_10pct_hpc_bge/rerank_hybrid \
   --train-json example/training14b_10pct_sample.json \
-  --test-batch-jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json 
+  --test_batch_jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json 
 
 #evidence
 python3 "scripts/public/shared_scripts/evidence/post_rerank_json.py" \
@@ -114,4 +114,17 @@ python3 "scripts/public/shared_scripts/evidence/build_contexts_from_documents.py
   --output-path "output/workflow_local_10pct_hpc_bge/evidence/training14b_10pct_sample_contexts.jsonl"
 
 
-./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh
+#after query rewrting
+python scripts/public/shared_scripts/compare_result_dirs.py \
+  --dirs output/workflow_local_10pct_hpc_bge/rerank output/workflow_local_10pct_hpc_bge/rerank_body_rewrite_A output/workflow_local_10pct_hpc_bge/rerank_body_rewrite_B \
+  --labels "rerank" "rewrite A" "rewrite B"\
+  --plot both \
+  --map-ks 10,20,50,100,200 \
+  --train-json example/training14b_10pct_sample.json \
+  --test_batch_jsons \
+    bioasq_data/Task13BGoldenEnriched/13B1_golden.json \
+    bioasq_data/Task13BGoldenEnriched/13B2_golden.json \
+    bioasq_data/Task13BGoldenEnriched/13B3_golden.json \
+    bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
+  --output-dir output/workflow_local_10pct_hpc_bge/compare_plots_query_rewrite \
+  --plots-by-split 
