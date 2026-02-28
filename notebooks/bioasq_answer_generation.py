@@ -37,8 +37,8 @@ USER_BASE_PROMPT_PATH = PROMPTS_DIR / "user_base.txt"
 SCHEMAS_DIR = PROMPTS_DIR / "schemas"
 
 # Evidence block limits (used by format_evidence_block)
-MAX_CONTEXTS = 8
-MAX_CHARS_PER_CONTEXT = 2000
+MAX_CONTEXTS = 10
+MAX_CHARS_PER_CONTEXT = 5000
 
 REPO_ROOT, INPUT_JSON, OUTPUT_JSON, PROMPTS_DIR, SCHEMAS_DIR
 
@@ -108,9 +108,10 @@ for _q in ("summary", "yesno", "factoid", "list"):
     get_schema_block(_q)
 list(SCHEMA_BLOCKS.keys())
 
+
 # %%
 def load_contexts_json(path: Path) -> List[Dict[str, Any]]:
-    """Load contexts from JSON: expects {"questions": [...]} or a top-level list."""
+    """Load contexts from JSON: expects {\"questions\": [...]} or a top-level list."""
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     if isinstance(data, list):
