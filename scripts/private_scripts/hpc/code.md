@@ -69,7 +69,7 @@ srun -p dev --time=1:00:00 -c 4 --mem=32G --gres=gpu:1 \
   
 python scripts/public/shared_scripts/rerank/rerank_stage2.py \
   --output-dir output/eval_stage2_rerank_hpc_minitest \
-  --runs-dir output/eval_hybird_production_test/runs \
+  --runs-dir output/eval_hybrid_production_test/runs \
   --docs-jsonl output/subset_pubmed.jsonl \
   --train-json example/training14b_10pct_sample.json \
   --test_batch_jsons \

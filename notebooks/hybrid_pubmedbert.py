@@ -72,7 +72,7 @@ WEIGHTS = [
 
 # %%
 # Output folders
-OUTPUT_DIR = Path("../output/eval_hybird_pubmedbert")
+OUTPUT_DIR = Path("../output/eval_hybrid_pubmedbert")
 OUTPUT_RUNS_DIR = OUTPUT_DIR / "runs"
 OUTPUT_FIG_DIR = OUTPUT_DIR / "figures"
 

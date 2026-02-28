@@ -48,7 +48,7 @@ python scripts/public/shared_scripts/retrieval/eval_dense.py \
   --topk 5000 \
   --ef_cap 2000
 
-python scripts/public/shared_scripts/retrieval/eval_hybird.py \
+python scripts/public/shared_scripts/retrieval/eval_hybrid.py \
   --bm25_runs_dir output/eval_bm25_rm3/runs \
   --dense_root output/eval_dense_medembed_small \
   --train-json example/training14b_10pct_sample.json \
@@ -57,14 +57,14 @@ python scripts/public/shared_scripts/retrieval/eval_hybird.py \
     bioasq_data/Task13BGoldenEnriched/13B2_golden.json \
     bioasq_data/Task13BGoldenEnriched/13B3_golden.json \
     bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
-  --out_dir output/eval_hybird_production_test \
+  --out_dir output/eval_hybrid_production_test \
   --mode default \
   --jobs 4
 
 # rerank
 python scripts/public/shared_scripts/rerank/rerank_stage2.py \
   --output-dir output/eval_stage2_rerank_minitest \
-  --runs-dir output/eval_hybird_production_test/runs \
+  --runs-dir output/eval_hybrid_production_test/runs \
   --docs-jsonl output/subset_pubmed.jsonl \
   --train-json example/training14b_10pct_sample.json \
   --test_batch_jsons \
@@ -137,3 +137,5 @@ python scripts/public/shared_scripts/evidence/generate_answers.py \
   --max-contexts 8 \
   --max-chars-per-context 2000 \
   --sleep 0.5
+
+./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh 

@@ -38,7 +38,7 @@ See [notebooks/dense_test.ipynb](../notebooks/dense_test.ipynb) for detailed not
 | BM25 weight | 0.5 – 3.0 | Weight multiplier for BM25 scores |
 | Dense weight | 0.5 – 3.0 | Weight multiplier for dense scores |
 
-See [notebooks/hybird.ipynb](../notebooks/hybird.ipynb) for the RRF grid search.
+See [notebooks/hybrid.ipynb](../notebooks/hybrid.ipynb) for the RRF grid search.
 
 ## Stage 2 Rerank (Cross-Encoder)
 

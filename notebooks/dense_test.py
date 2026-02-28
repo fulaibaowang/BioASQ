@@ -550,7 +550,7 @@ for ef in [K_QUERY, 2 * K_QUERY, 4 * K_QUERY]:
     print({k: s[k] for k in ["MAP@10", "MRR@10", "MeanR@200", "MeanR@500", "MeanR@5000"]})
 
 # %% [markdown]
-# # save long table for hybird
+# # save long table for hybrid
 
 # %%
 # where to save per-query dense results for later hybrid tuning

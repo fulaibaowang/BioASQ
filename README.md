@@ -43,7 +43,7 @@ Pipeline config and env→script mapping: [scripts/public/README.md](scripts/pub
   - Tunable: `--ef_search`, `--ef_cap`, embedding model
 
 - **Hybrid** reciprocal Rank Fusion combining BM25 and dense
-  - ([notebook](notebooks/hybird.ipynb))
+  - ([notebook](notebooks/hybrid.ipynb))
   - Tuning knobs: `K_RRF`, BM25/dense weight ratio
 
 ### Second Stage Reranking
@@ -63,7 +63,7 @@ Recall metrics for stages 1-2. Full tables are in [docs/RESULTS.md](docs/RESULTS
 | Dense (MedEmbed)    | 0.787 |
 | Hybrid | 0.907 |
 
-Hybrid details: [notebooks/hybird.ipynb](notebooks/hybird.ipynb)
+Hybrid details: [notebooks/hybrid.ipynb](notebooks/hybrid.ipynb)
 
 ## Detailed commands
 

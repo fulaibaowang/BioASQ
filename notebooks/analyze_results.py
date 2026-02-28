@@ -45,7 +45,7 @@ print("Base dir:", base_dir)
 results = {
     "BM25+RM3": base_dir / "output/eval_bm25_rm3",
     "Dense (MedEmbed)": base_dir / "output/eval_dense_medembed_small",
-    "Hybrid (RRF)": base_dir / "output/eval_hybird_production_test",
+    "Hybrid (RRF)": base_dir / "output/eval_hybrid_production_test",
     "Reranker MiniLM": base_dir / "output/eval_stage2_rerank_miniLM",
     "BGE v2 (len=200)": base_dir / "output/eval_stage2_rerank_bge_reranker_v2_m3_len200",
     "BGE v2 (len=512)": base_dir / "output/eval_stage2_rerank_bge_reranker_v2_m3_len512",
@@ -456,7 +456,7 @@ qrels_paths = {
 }
 
 run_dirs = {
-    "Hybrid (RRF)": base_dir / "output" / "eval_hybird_production_test" / "runs",
+    "Hybrid (RRF)": base_dir / "output" / "eval_hybrid_production_test" / "runs",
     "Reranker MiniLM": base_dir / "output" / "eval_stage2_rerank_miniLM" / "runs",
     "BGE v2 (len=512)": base_dir / "output" / "eval_stage2_rerank_bge_reranker_v2_m3_len512" / "runs",
 }

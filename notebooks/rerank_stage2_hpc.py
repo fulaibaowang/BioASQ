@@ -65,7 +65,7 @@ GOLD_FILES = [
     GOLD_DIR / "13B4_golden.json",
 ]
 
-RUNS_DIR = Path("../output/eval_hybird_production_test/runs")
+RUNS_DIR = Path("../output/eval_hybrid_production_test/runs")
 RUN_FILES = {
     "train_subset": RUNS_DIR / "best_rrf_train_subset_top2000.tsv",
     "13B1_golden": RUNS_DIR / "best_rrf_13B1_golden_top2000.tsv",

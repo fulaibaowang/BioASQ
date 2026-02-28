@@ -151,7 +151,7 @@ python scripts/public/shared_scripts/retrieval/eval_dense.py \
 Fuse BM25 and dense runs with reciprocal rank fusion (RRF):
 
 ```bash
-python scripts/public/shared_scripts/retrieval/eval_hybird.py \
+python scripts/public/shared_scripts/retrieval/eval_hybrid.py \
   --bm25_runs_dir "output/eval_bm25_rm3/runs" \
   --dense_root "output/eval_dense" \
   --train-json "example/training14b_10pct_sample.json" \
@@ -160,7 +160,7 @@ python scripts/public/shared_scripts/retrieval/eval_hybird.py \
     bioasq_data/Task13BGoldenEnriched/13B2_golden.json \
     bioasq_data/Task13BGoldenEnriched/13B3_golden.json \
     bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
-  --out_dir "output/eval_hybird" \
+  --out_dir "output/eval_hybrid" \
   --mode "default" \
   --k_rrf 150 \
   --w_bm25 1.0 \
@@ -180,7 +180,7 @@ Re-rank stage-1 runs with a cross-encoder using query + doc text pairs:
 
 ```bash
 python scripts/public/shared_scripts/rerank/rerank_stage2.py \
-  --runs-dir "output/eval_hybird/runs" \
+  --runs-dir "output/eval_hybrid/runs" \
   --docs-jsonl "output/subset_pubmed.jsonl" \
   --train-json "example/training14b_10pct_sample.json" \
   --test_batch_jsons \

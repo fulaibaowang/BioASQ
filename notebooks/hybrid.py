@@ -45,7 +45,7 @@ TEST_BATCHES = [
 ]
 
 # Output folders
-OUTPUT_DIR = Path("../output/eval_hybird")
+OUTPUT_DIR = Path("../output/eval_hybrid")
 OUTPUT_RUNS_DIR = OUTPUT_DIR / "runs"
 OUTPUT_FIG_DIR = OUTPUT_DIR / "figures"
 
