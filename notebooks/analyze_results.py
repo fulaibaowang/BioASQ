@@ -934,17 +934,17 @@ print("Saved:", worst_out)
 print("Saved:", map_worse_out)
 
 
-# %%%% [markdown]
+# %% [markdown]
 # ## summary
 # Low recall questions:
 # - broad/definition/review-like queries tend to have diffuse vocab + large/ambiguous gold sets,
 #
-# so they're precisely where a cross-encoder is more likely to reshuffle top ranks in a way that doesn't match the gold labeling.
+# so they’re precisely where a cross-encoder is more likely to reshuffle top ranks in a way that doesn’t match the gold labeling.
 #
 # That said, to be precise: there are two different tails:
 #
 # - Low recall tail: gold is not concentrated in top-200 (hard retrieval/ranking problem).
 #
-# - BGE-worse tail: BGE moves top-10 in a direction that gold labels don't reward (model mismatch + label noise).
+# - BGE-worse tail: BGE moves top-10 in a direction that gold labels don’t reward (model mismatch + label noise).
 
 # %%
