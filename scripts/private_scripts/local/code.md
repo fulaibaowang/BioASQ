@@ -111,7 +111,7 @@ python3 "scripts/public/shared_scripts/evidence/post_rerank_json.py" \
 python3 "scripts/public/shared_scripts/evidence/build_contexts_from_documents.py" \
   --post-rerank-json "output/workflow_local_10pct_hpc_bge/post_rerank_training14b_10pct_sample.json" \
   --corpus-path output/subset_pubmed.jsonl \
-  --output-path "output/workflow_local_10pct_hpc_bge/evidence/training14b_10pct_sample_contexts.jsonl"
+  --output-path "output/workflow_local_10pct_hpc_bge/evidence/training14b_10pct_sample_contexts.json"
 
 #rewriting is depracted
 #after query rewriting
@@ -131,7 +131,7 @@ python scripts/public/shared_scripts/compare_result_dirs.py \
 
 #generation
 python scripts/public/shared_scripts/evidence/generate_answers.py \
-  --input-path output/workflow_local_10pct_hpc_bge/evidence/13B1_golden_contexts.jsonl \
+  --input-path output/workflow_local_10pct_hpc_bge/evidence/13B1_golden_contexts.json \
   --output-dir output/workflow_local_10pct_hpc_bge/generation \
   --concurrency 2 \
   --max-contexts 8 \

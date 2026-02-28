@@ -28,8 +28,8 @@ except Exception:  # tqdm is optional
 # Assume this notebook lives in repo_root/notebook/
 REPO_ROOT = Path("..").resolve()
 
-INPUT_JSONL = REPO_ROOT / "output" / "workflow_local_10pct_hpc_bge" / "evidence" / "13B1_golden_contexts.jsonl"
-OUTPUT_JSONL = REPO_ROOT / "output" / "workflow_local_10pct_hpc_bge" / "generation" / "13B1_golden_answers.jsonl"
+INPUT_JSON = REPO_ROOT / "output" / "workflow_local_10pct_hpc_bge" / "evidence" / "13B1_golden_contexts.json"
+OUTPUT_JSON = REPO_ROOT / "output" / "workflow_local_10pct_hpc_bge" / "generation" / "13B1_golden_answers.json"
 
 PROMPTS_DIR = REPO_ROOT / "scripts" / "public" / "prompts"
 SYSTEM_PROMPT_PATH = PROMPTS_DIR / "system.txt"
@@ -40,7 +40,7 @@ SCHEMAS_DIR = PROMPTS_DIR / "schemas"
 MAX_CONTEXTS = 8
 MAX_CHARS_PER_CONTEXT = 2000
 
-REPO_ROOT, INPUT_JSONL, OUTPUT_JSONL, PROMPTS_DIR, SCHEMAS_DIR
+REPO_ROOT, INPUT_JSON, OUTPUT_JSON, PROMPTS_DIR, SCHEMAS_DIR
 
 
 # %%
@@ -109,15 +109,19 @@ for _q in ("summary", "yesno", "factoid", "list"):
 list(SCHEMA_BLOCKS.keys())
 
 # %%
-# Inspect a few input lines to confirm schema
-preview: List[Dict[str, Any]] = []
-with open(INPUT_JSONL, "r", encoding="utf-8") as f:
-    for i, line in enumerate(f):
-        if not line.strip():
-            continue
-        preview.append(json.loads(line))
-        if len(preview) >= 3:
-            break
+def load_contexts_json(path: Path) -> List[Dict[str, Any]]:
+    """Load contexts from JSON: expects {"questions": [...]} or a top-level list."""
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict) and "questions" in data:
+        return data["questions"]
+    raise ValueError("Input JSON must be a list or an object with 'questions' key")
+
+# Inspect a few input records to confirm schema
+_all_input = load_contexts_json(INPUT_JSON)
+preview = _all_input[:3]
 
 preview[0]
 
@@ -259,18 +263,12 @@ def parse_answer_json_for_type(raw: str, qtype: str, q_id: Optional[str] = None)
 
 # %%
 # Single-example trace: one question, full visibility (schema, prompt, raw, parsed, validation)
-TRACE_INDEX = 1  # which line in the JSONL to run (0 = first)
+TRACE_INDEX = 1  # which record in the JSON to run (0 = first)
 
-sample = None
-with open(INPUT_JSONL, "r", encoding="utf-8") as f:
-    for i, line in enumerate(f):
-        if not line.strip():
-            continue
-        if i == TRACE_INDEX:
-            sample = json.loads(line)
-            break
-if sample is None:
-    raise RuntimeError(f"No line at index {TRACE_INDEX} in {INPUT_JSONL}")
+_trace_objs = load_contexts_json(INPUT_JSON)
+if TRACE_INDEX >= len(_trace_objs):
+    raise RuntimeError(f"Index {TRACE_INDEX} out of range (len={len(_trace_objs)}) in {INPUT_JSON}")
+sample = _trace_objs[TRACE_INDEX]
 
 q_id = sample.get("id")
 qtype = sample.get("type", "summary")
@@ -313,16 +311,9 @@ print("\n--- Validation passed for type:", qtype)
 # Batch processing loop (limited to first 5 questions for testing) with concurrency
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def iter_lines(path: Path):
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            if line.strip():
-                yield json.loads(line)
-
-def write_jsonl(path: Path, records: List[Dict[str, Any]]) -> None:
+def write_answers_json(path: Path, records: List[Dict[str, Any]]) -> None:
     with open(path, "w", encoding="utf-8") as f:
-        for rec in records:
-            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        json.dump(records, f, ensure_ascii=False, indent=2)
 
 def process_one(idx: int, obj: Dict[str, Any], total: int) -> tuple[int, Dict[str, Any]]:
     """Process a single question; returns (idx, record) for ordering."""
@@ -357,11 +348,11 @@ def process_one(idx: int, obj: Dict[str, Any], total: int) -> tuple[int, Dict[st
 
 MAX_EXAMPLES = 5
 CONCURRENCY = 2  # tune based on your API (2–4 recommended from parallel test)
-all_objs = list(iter_lines(INPUT_JSONL))
+all_objs = load_contexts_json(INPUT_JSON)
 subset = all_objs[:MAX_EXAMPLES]
 total = len(subset)
 if total == 0:
-    raise RuntimeError("No questions found in input JSONL; aborting.")
+    raise RuntimeError("No questions found in input JSON; aborting.")
 
 results_by_idx: Dict[int, Dict[str, Any]] = {}
 with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:
@@ -383,12 +374,12 @@ successful = [
 ]
 if not successful:
     raise RuntimeError(
-        f"No successful non-empty ideal_answer out of {total} questions; not writing {OUTPUT_JSONL}."
+        f"No successful non-empty ideal_answer out of {total} questions; not writing {OUTPUT_JSON}."
     )
 
-OUTPUT_JSONL.parent.mkdir(parents=True, exist_ok=True)
-write_jsonl(OUTPUT_JSONL, records_out)
-print(f"Wrote {len(records_out)} records (successful={len(successful)}) to {OUTPUT_JSONL}")
-OUTPUT_JSONL, len(records_out)
+OUTPUT_JSON.parent.mkdir(parents=True, exist_ok=True)
+write_answers_json(OUTPUT_JSON, records_out)
+print(f"Wrote {len(records_out)} records (successful={len(successful)}) to {OUTPUT_JSON}")
+OUTPUT_JSON, len(records_out)
 
 # %%
