@@ -113,8 +113,8 @@ python3 "scripts/public/shared_scripts/evidence/build_contexts_from_documents.py
   --corpus-path output/subset_pubmed.jsonl \
   --output-path "output/workflow_local_10pct_hpc_bge/evidence/training14b_10pct_sample_contexts.jsonl"
 
-
-#after query rewrting
+#rewriting is depracted
+#after query rewriting
 python scripts/public/shared_scripts/compare_result_dirs.py \
   --dirs output/workflow_local_10pct_hpc_bge/rerank output/workflow_local_10pct_hpc_bge/rerank_body_rewrite_A output/workflow_local_10pct_hpc_bge/rerank_body_rewrite_B \
   --labels "rerank" "rewrite A" "rewrite B"\
@@ -128,3 +128,12 @@ python scripts/public/shared_scripts/compare_result_dirs.py \
     bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
   --output-dir output/workflow_local_10pct_hpc_bge/compare_plots_query_rewrite \
   --plots-by-split 
+
+#generation
+python scripts/public/shared_scripts/evidence/generate_answers.py \
+  --input-path output/workflow_local_10pct_hpc_bge/evidence/13B1_golden_contexts.jsonl \
+  --output-dir output/workflow_local_10pct_hpc_bge/generation \
+  --concurrency 2 \
+  --max-contexts 8 \
+  --max-chars-per-context 2000 \
+  --sleep 0.5
