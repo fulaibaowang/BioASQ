@@ -130,7 +130,7 @@ python scripts/public/shared_scripts/compare_result_dirs.py \
   --plots-by-split 
 
 #generation
-python scripts/public/shared_scripts/evidence/generate_answers.py \
+python scripts/public/shared_scripts/generation/generate_answers.py \
   --input-path output/workflow_local_10pct_hpc_bge/evidence/13B1_golden_contexts.json \
   --output-dir output/workflow_local_10pct_hpc_bge/generation \
   --concurrency 2 \
