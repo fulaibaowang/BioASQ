@@ -309,7 +309,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def write_answers_json(path: Path, records: List[Dict[str, Any]]) -> None:
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(records, f, ensure_ascii=False, indent=2)
+        json.dump({"questions": records}, f, ensure_ascii=False, indent=2)
 
 def process_one(idx: int, obj: Dict[str, Any], total: int) -> tuple[int, Dict[str, Any]]:
     """Process a single question; returns (idx, record) for ordering."""
