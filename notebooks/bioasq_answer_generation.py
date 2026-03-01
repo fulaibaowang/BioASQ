@@ -135,8 +135,8 @@ def format_evidence_block(
 ) -> str:
     """Format contexts into a readable block while preserving IDs.
 
-    Each context is expected to have at least `id` and `text` fields,
-    and optionally `doc` (e.g. PubMed URL).
+    Each context is expected to have at least `id` and `text` fields.
+    Output format: [id],\n{text} (no URL to save prompt length).
     Caps the number of contexts and truncates each context text using
     MAX_CONTEXTS and MAX_CHARS_PER_CONTEXT when not passed.
     """
@@ -144,16 +144,11 @@ def format_evidence_block(
     max_chars = max_chars_per_context if max_chars_per_context is not None else MAX_CHARS_PER_CONTEXT
     lines: List[str] = []
     for ctx in contexts[:cap]:
-        cid = str(ctx.get("id", ""))
+        cid = str(ctx.get("id", "")) or "(no id)"
         text = str(ctx.get("text", "")).strip()
         if len(text) > max_chars:
             text = text[:max_chars] + "..."
-        doc = str(ctx.get("doc", "")).strip()
-        header_parts = [cid]
-        if doc:
-            header_parts.append(doc)
-        header = " | ".join(header_parts) if header_parts else "(no id)"
-        block = f"[{header}]\n{text}" if text else f"[{header}]"
+        block = f"[{cid}],\n{text}" if text else f"[{cid}],"
         lines.append(block)
     return "\n\n".join(lines)
 

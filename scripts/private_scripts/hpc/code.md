@@ -160,7 +160,7 @@ python scripts/public/shared_scripts/compare_result_dirs.py \
   --log-x --plots-by-split \
   --output-dir output/workflow_local_10pct_hpc_bge/rerank_hybrid/compare_plots
 
-
+scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config scripts/private_scripts/hpc/config_10pct_sbatch_test.env
 
 ##############################!##############################################################
 # whole dataset
