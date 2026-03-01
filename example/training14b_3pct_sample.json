@@ -95,7 +95,9 @@
         "Cerebral hemiatrophy (atrophy of one cerebral hemisphere) is the characteristic feature of the Dyke-Davidoff-Masson syndrome. It develops due to an insult to the brain in fetal or early childhood period. Calvarial thickening, skull and facial asymmetry, contralateral hemiparesis, cognitive impairment and seizures are also characteristic to the Dyke-Davidoff-Masson syndrome.\n."
       ],
       "exact_answer": [
-        "cerebral hemiatrophy"
+        [
+          "cerebral hemiatrophy"
+        ]
       ],
       "type": "factoid",
       "id": "55032e65e9bde69634000034",
@@ -431,7 +433,9 @@
         "Genomiser"
       ],
       "exact_answer": [
-        "Genomiser"
+        [
+          "Genomiser"
+        ]
       ],
       "type": "factoid",
       "id": "5a67c497b750ff4455000012",
@@ -543,7 +547,9 @@
         "the mitochondrial protease presenilin-associated rhomboid-like (PARL). Rhomboids are a recently discovered family of widely distributed intramembrane serine proteases."
       ],
       "exact_answer": [
-        "PARL are serine proteases"
+        [
+          "PARL are serine proteases"
+        ]
       ],
       "type": "factoid",
       "id": "58dfe6b56fddd3e83e000004",
@@ -596,7 +602,9 @@
         "the incidence of sudden cardiac death among young athletes ranges from 0.5  to 3  per 100,000 athletes per year  ."
       ],
       "exact_answer": [
-        "0.5  to 3  per 100,000 athletes per year"
+        [
+          "0.5  to 3  per 100,000 athletes per year"
+        ]
       ],
       "concepts": [
         "http://www.nlm.nih.gov/cgi/mesh/2014/MB_cgi?field=uid&exact=Find+Exact+Term&term=D016757",
@@ -661,7 +669,9 @@
         "Functional Annotation Of Mouse 3 (FANTOM3), an international collaboration research project focusing on expanding the transcriptome and subsequent analyses. The FANTOM3 annotation system, consisting of automated computational prediction, manual curation, and final expert curation, facilitated the comprehensive characterization of the mouse transcriptome, and could be applied to the transcriptomes of other species."
       ],
       "exact_answer": [
-        "The comprehensive characterization of the mouse transcriptome."
+        [
+          "The comprehensive characterization of the mouse transcriptome."
+        ]
       ],
       "type": "factoid",
       "id": "569e79ecceceede94d000002",
@@ -758,7 +768,9 @@
         "There is an approximate incidence of 10% autoimmune diseases affecting the general population."
       ],
       "exact_answer": [
-        "10%"
+        [
+          "10%"
+        ]
       ],
       "type": "factoid",
       "id": "66151045fdcbea915f000048",
@@ -873,8 +885,12 @@
         "The mammalian DNA (cytosine-5) methyltransferase 1, DNMT1 is the major enzyme responsible for the maintenance of the DNA methylation patterns on the newly synthesized strand after DNA replication. DNMT1 prefers hemimethylated DNA and during DNA replication methylates hemimethylated CpG sites by copying methylation patterns from the parental DNA strand to the newly synthesized daughter strand. The equivalent of DNMT1 in plants is MET1."
       ],
       "exact_answer": [
-        "DNMT1",
-        "MET1"
+        [
+          "DNMT1"
+        ],
+        [
+          "MET1"
+        ]
       ],
       "concepts": [
         "http://www.uniprot.org/uniprot/CMT1_MAIZE",
@@ -1489,8 +1505,12 @@
         "The Trp73 gene belongs to the p53 family of transcription factors and, like the other members, is transcribed into different isoforms [1-4]. TP73 gene contains two promoters, encoding the transcriptional domain-containing (TAp73) and the amino deleted (DNp73) isoforms [5, 6]. Furthermore alternative splicing at the 3'-end (to generate a, b, g, etc isoforms) and 5'-end (to generate D2, D3 and D2-3 isoforms) results in generation of at least 14 different transcripts, with different abilities to promote or repress apoptosis [7, 8]. (PMID: 22388545)"
       ],
       "exact_answer": [
-        "seven",
-        "7"
+        [
+          "seven"
+        ],
+        [
+          "7"
+        ]
       ],
       "concepts": [
         "http://www.nlm.nih.gov/cgi/mesh/2012/MB_cgi?field=uid&exact=Find+Exact+Term&term=D020033"
@@ -2426,7 +2446,9 @@
         "Diamond Blackfan anemia (DBA) is an inherited erythroblastopenia associated with mutations in at least 8 different ribosomal protein genes. Mutation of ribosomal protein RPS24 in Diamond-Blackfan anemia results in a ribosome biogenesis disorder."
       ],
       "exact_answer": [
-        "ribosomal protein genes"
+        [
+          "ribosomal protein genes"
+        ]
       ],
       "type": "factoid",
       "id": "58e74bff3e8b6dc87c000004",
@@ -2728,7 +2750,9 @@
         "Prokaryotes often have functionally-related genes joined together under the direction of a single promoter. These structures are called operons. Clustering of functionally-related genes in operons allows for coordinated gene expression and spatiotemporal control of cellular processes."
       ],
       "exact_answer": [
-        "Operons"
+        [
+          "Operons"
+        ]
       ],
       "type": "factoid",
       "id": "64371a4257b1c7a315000029",
@@ -3382,7 +3406,9 @@
         "Biallelic mutations in G-Protein coupled receptor kinase 1 (GRK1) cause Oguchi disease, a rare subtype of congenital stationary night blindness (CSNB), which is caused by a protein-coupled receptor-protein interaction."
       ],
       "exact_answer": [
-        "Oguchi disease"
+        [
+          "Oguchi disease"
+        ]
       ],
       "type": "factoid",
       "id": "61f95f9f882a024a1000004e",
@@ -3459,7 +3485,9 @@
         "In response to damage induced by DNA cross-linking agents, the S-phase checkpoint is inefficient in Fanconi anemia (FA) cells, leading to accumulation of secondary lesions, such as single- and double-strand breaks and gaps. The prolonged time in G2 phase seen in FA cells therefore exists in order to allow the cells to remove lesions which accumulated during the preceding abnormal S phase."
       ],
       "exact_answer": [
-        "In Fanconi anemia cells, the S-phase checkpoint is inefficient."
+        [
+          "In Fanconi anemia cells, the S-phase checkpoint is inefficient."
+        ]
       ],
       "concepts": [
         "http://www.nlm.nih.gov/cgi/mesh/2015/MB_cgi?field=uid&exact=Find+Exact+Term&term=D051856",
@@ -3666,9 +3694,15 @@
         "Certain transcription factors have vital roles in lineage development, including the specification of cell types and control of differentiation. Microphthalmia-associated transcription factor (MITF) is a key transcription factor for melanocyte development and differentiation. MITF regulates the expression of numerous pigmentation genes to promote melanocyte differentiation, as well as fundamental genes for maintaining cell homeostasis, including genes encoding proteins involved in apoptosis (eg, BCL2) and the cell cycle (eg, CDK2)."
       ],
       "exact_answer": [
-        "Microphthalmia-associated transcription factor",
-        "MITF",
-        "MITF (Microphthalmia-associated Transcription Factor)"
+        [
+          "Microphthalmia-associated transcription factor"
+        ],
+        [
+          "MITF"
+        ],
+        [
+          "MITF (Microphthalmia-associated Transcription Factor)"
+        ]
       ],
       "type": "factoid",
       "id": "661d96c9eac11fad33000028",
@@ -4842,7 +4876,9 @@
         "Upon UV irradiation of primate cells,  UV-DDB associates tightly with chromatin and is involved in global genomic nucleotide excision repair (NER) in mammalian cells."
       ],
       "exact_answer": [
-        "UV-DDB associates tightly with chromatin and is involved in global genomic nucleotide excision repair (NER)"
+        [
+          "UV-DDB associates tightly with chromatin and is involved in global genomic nucleotide excision repair (NER)"
+        ]
       ],
       "type": "factoid",
       "id": "5e46da9c3f5415952900000a",
@@ -5166,7 +5202,9 @@
         "Central vein sign on FLAIR* magnetic resonance imaging  is highly specific and sensitive for multiple sclerosis."
       ],
       "exact_answer": [
-        "multiple sclerosis"
+        [
+          "multiple sclerosis"
+        ]
       ],
       "type": "factoid",
       "id": "5e4601293f54159529000002",
@@ -5825,7 +5863,9 @@
         "Traditionally, microsporidia were considered as protozoans, but recently they have been reclassified as the earliest-diverging clade of sequenced fungi. Microsporidia are a diverse group of obligate, intracellular, eukaryotic, spore-forming parasites; they are ubiquitous fungi, with genomes that have undergone a strong reduction."
       ],
       "exact_answer": [
-        "Fungi"
+        [
+          "Fungi"
+        ]
       ],
       "concepts": [
         "http://www.nlm.nih.gov/cgi/mesh/2015/MB_cgi?field=uid&exact=Find+Exact+Term&term=D002965",
@@ -6043,7 +6083,9 @@
         "Fluzone was the first influenza vaccine licensed in the USA that uses a new microinjection system for intradermal delivery of vaccines (Soluvia(tm), Becton Dickinson)."
       ],
       "exact_answer": [
-        "Microinjection system for intradermal vaccine delivery"
+        [
+          "Microinjection system for intradermal vaccine delivery"
+        ]
       ],
       "type": "factoid",
       "id": "5e7f5d83835f4e4777000017",
@@ -6194,7 +6236,9 @@
         "Itaconic acid levels are elevetad in immune defence."
       ],
       "exact_answer": [
-        "Immune Defence"
+        [
+          "Immune Defence"
+        ]
       ],
       "type": "factoid",
       "id": "54d669003706e8952800000e",
@@ -6245,7 +6289,9 @@
         "Rett syndrome (RTT) was shown to be caused by mutations in the methyl-CpG-binding protein 2 (MECP2) gene, with molecular studies identifying MECP2 mutations in up to 80% of classic RTT patients. MECP2 protein was found to assist in the transcriptional silencing process via DNA methylation. We therefore hypothesize that disruption of this gene alters the normal developmental expression of various other genes, some of which must account for the peculiar neurologic phenotype of RTT."
       ],
       "exact_answer": [
-        "Methyl-CpG-binding protein 2 (MECP2)"
+        [
+          "Methyl-CpG-binding protein 2 (MECP2)"
+        ]
       ],
       "concepts": [
         "http://www.uniprot.org/uniprot/MECP2_HUMAN",
@@ -6326,7 +6372,9 @@
         "sequenced genomes of the obligate symbionts , sulcia muelleri and nasuia deltocephalinicola , of the phloem-feeding pest insect , macrosteles quadrilineatus (auchenorrhyncha: cicadellidae). . regions exhibit a significant reduction in length and gene number in b aphidicola bcc , as it could be expected since it possess the smallest bacterial genome. . results reveal that nasuia-alf has the smallest bacterial genome yet sequenced (112 kb) , and that the sulcia-alf genome (190 kb) is smaller than that of sulcia in other insect lineages. . "
       ],
       "exact_answer": [
-        "Nasuia deltocephalinicola"
+        [
+          "Nasuia deltocephalinicola"
+        ]
       ],
       "type": "factoid",
       "id": "58e9f0ba3e8b6dc87c00000e",
@@ -6363,7 +6411,9 @@
         "Epithelial cell adhesion molecule (EpCAM) is a type I transmembrane glycoprotein"
       ],
       "exact_answer": [
-        "transmembrane expression"
+        [
+          "transmembrane expression"
+        ]
       ],
       "type": "factoid",
       "id": "5ac09a7b19833b0d7b000001",
@@ -6513,7 +6563,9 @@
         "Bulevirtide can be used for chronic hepatitis D virus infection."
       ],
       "exact_answer": [
-        "chronic hepatitis D"
+        [
+          "chronic hepatitis D"
+        ]
       ],
       "type": "factoid",
       "id": "65cfdaae1930410b13000025",
@@ -7083,8 +7135,12 @@
         "Alirocumab is a PCSK9 inhibitor indicated for lowering LDL cholesterol. It is used in patients who cannot achieve target LDL cholesterol levels with other lipid-lowering therapies."
       ],
       "exact_answer": [
-        "high cholesterol",
-        "hypercholestoremia"
+        [
+          "high cholesterol"
+        ],
+        [
+          "hypercholestoremia"
+        ]
       ],
       "type": "factoid",
       "id": "65f70b9cc4010b4d7800001c",
@@ -8178,7 +8234,9 @@
         "A tnfr2 3' flanking region polymorphism in systemic lupus erythematosus has been shown to be significantly associated with selenocytoplasmic lupus erythematotosus. No transmission distortion was observed for tnpr2-196r allele."
       ],
       "exact_answer": [
-        "3' flanking region"
+        [
+          "3' flanking region"
+        ]
       ],
       "type": "factoid",
       "id": "5d386ed6a1e1595105000004",
@@ -8275,7 +8333,9 @@
         "SYL040012 is in phase 2 clinical trials"
       ],
       "exact_answer": [
-        "Phase 3"
+        [
+          "Phase 3"
+        ]
       ],
       "type": "factoid",
       "id": "5a735cdc3b9d13c708000004",
@@ -8788,7 +8848,9 @@
         "A common goal of tumor sequencing projects is finding genes whose mutations are selected for during tumor development. This is accomplished by choosing genes that have more non-synonymous mutations than expected from an estimated background mutation frequency."
       ],
       "exact_answer": [
-        "non-synonymous"
+        [
+          "non-synonymous"
+        ]
       ],
       "concepts": [
         "http://www.disease-ontology.org/api/metadata/DOID:162",
@@ -10257,7 +10319,9 @@
         "Pregabalin is, therefore, a valuable option in the first-line treatment of patients with fibromyalgia."
       ],
       "exact_answer": [
-        "Pregabalin"
+        [
+          "Pregabalin"
+        ]
       ],
       "concepts": [
         "http://www.nlm.nih.gov/cgi/mesh/2014/MB_cgi?field=uid&exact=Find+Exact+Term&term=D013812",
@@ -10524,8 +10588,12 @@
         "Autosomal dominant leukodystrophy (ADLD) is an adult onset demyelinating disorder that is caused by duplications of the lamin B1 (LMNB1) gene."
       ],
       "exact_answer": [
-        "Lamin B1 gene",
-        "LMNB1"
+        [
+          "Lamin B1 gene"
+        ],
+        [
+          "LMNB1"
+        ]
       ],
       "type": "factoid",
       "id": "5e355e20fbd6abf43b000065",
@@ -10806,7 +10874,9 @@
         "diffloop"
       ],
       "exact_answer": [
-        "Diffloop"
+        [
+          "Diffloop"
+        ]
       ],
       "type": "factoid",
       "id": "5a6e2578b750ff445500003d",
@@ -11184,8 +11254,12 @@
         "Idelalisib represents a first-in-class specific inhibitor of the phosphoinositol-3 kinase (PI3K) delta isoform."
       ],
       "exact_answer": [
-        "PI3K-δ",
-        "phosphoinositol-3 kinase delta isoform"
+        [
+          "PI3K-δ"
+        ],
+        [
+          "phosphoinositol-3 kinase delta isoform"
+        ]
       ],
       "concepts": [
         "http://www.nlm.nih.gov/cgi/mesh/2014/MB_cgi?field=uid&exact=Find+Exact+Term&term=D011955",
@@ -11291,7 +11365,9 @@
         "SECIS (selenocysteine insertion sequence)"
       ],
       "exact_answer": [
-        "SECIS"
+        [
+          "SECIS"
+        ]
       ],
       "concepts": [
         "http://www.nlm.nih.gov/cgi/mesh/2014/MB_cgi?field=uid&exact=Find+Exact+Term&term=D055029",
@@ -11671,7 +11747,9 @@
         "csDMARDS are conventional synthetic disease-modifying antirheumatic drugs."
       ],
       "exact_answer": [
-        "conventional synthetic disease-modifying antirheumatic drug"
+        [
+          "conventional synthetic disease-modifying antirheumatic drug"
+        ]
       ],
       "type": "factoid",
       "id": "602598301cb411341a0000b0",
@@ -11826,7 +11904,9 @@
         "The gamma-secretase complex has a decisive role in the development of Alzheimer's disease, as it cleaves a precursor protein to create the amyloid beta peptide whose aggregates form the senile plaques encountered in the brains of patients. Gamma-secretase is a member of the intramembrane-cleaving proteases which process their transmembrane substrates within the bilayer."
       ],
       "exact_answer": [
-        "cleaves a precursor protein to create the amyloid beta peptide"
+        [
+          "cleaves a precursor protein to create the amyloid beta peptide"
+        ]
       ],
       "concepts": [
         "https://www.nlm.nih.gov/cgi/mesh/2017/MB_cgi?field=uid&exact=Find+Exact+Term&term=D000544",
@@ -12968,7 +13048,9 @@
         "Cerebral autosomal dominant arteriopathy with subcortical infarcts and leukoencephalopathy (CADASIL), the most common form of familial vascular dementia, is caused by mutations of the NOTCH3 gene."
       ],
       "exact_answer": [
-        "Notch3 gene"
+        [
+          "Notch3 gene"
+        ]
       ],
       "concepts": [
         "http://www.nlm.nih.gov/cgi/mesh/2014/MB_cgi?field=uid&exact=Find+Exact+Term&term=D046589",
@@ -13057,8 +13139,12 @@
         "Bosch-Boonstra-Schaaf Optic Atrophy Syndrome"
       ],
       "exact_answer": [
-        "Bosch-Boonstra-Schaaf optic atrophy syndrome",
-        "BBSOAS"
+        [
+          "Bosch-Boonstra-Schaaf optic atrophy syndrome"
+        ],
+        [
+          "BBSOAS"
+        ]
       ],
       "type": "factoid",
       "id": "61f52f22882a024a10000002",
@@ -13439,7 +13525,9 @@
         "Differnet Proseek multiplex protein biomarker panels exists: CVD, inflammatory, neurology and oncology biomarker."
       ],
       "exact_answer": [
-        "Differnet Proseek multiplex protein biomarker panels exists: CVD, inflammatory, neurology and oncology biomarker."
+        [
+          "Differnet Proseek multiplex protein biomarker panels exists: CVD, inflammatory, neurology and oncology biomarker."
+        ]
       ],
       "type": "factoid",
       "id": "5a9d99ac4e03427e73000002",
@@ -13562,7 +13650,9 @@
         "Glucocorticoids (GC) such as cortisol regulate multiple physiological functions, notably those involved in development, metabolism, inflammatory processes and stress, and exert their effects upon binding to the glucocorticoid receptor (GR, encoded by NR3C1 gene in humans)."
       ],
       "exact_answer": [
-        "cortisol"
+        [
+          "cortisol"
+        ]
       ],
       "type": "factoid",
       "id": "606b396994d57fd879000063",
@@ -13617,8 +13707,12 @@
         "The main cause of spillover events and emerging infectious diseases is cross-species transmission of pathogens, particularly from animals to humans (zoonoses). Key drivers that facilitate this process include:\n\n1. Increased contact and sharing of space between wildlife, humans, and domesticated animals, often due to human intrusion into natural habitats.\n\n2. Agricultural intensification, animal trade, and certain herd management practices.\n\n3. High mutation and recombination rates in some viruses (e.g., coronaviruses) that enable host jumping and adaptation to new species.\n\n4. Specific human behaviors, such as hunting, butchering, and consuming wild animal meat, especially in hotspots like bushmeat markets.\n\n5. Domestication of wild animals as pets or for other purposes, bringing them into close proximity with humans.\n\nIn summary, the growing human-animal interface, coupled with the ability of some pathogens to adapt to new hosts, is the key driver of zoonotic spillover events."
       ],
       "exact_answer": [
-        "The main cause of spillover events is the disruption of habitats of the reservoir species.",
-        "The main cause of spillover events is the interface between humans, wildlife, and domesticated animals, which is associated with high habitat fragmentation, biodiversity loss through land use change, high livestock densities, agricultural inputs, and wildlife hunting."
+        [
+          "The main cause of spillover events is the disruption of habitats of the reservoir species."
+        ],
+        [
+          "The main cause of spillover events is the interface between humans, wildlife, and domesticated animals, which is associated with high habitat fragmentation, biodiversity loss through land use change, high livestock densities, agricultural inputs, and wildlife hunting."
+        ]
       ],
       "type": "factoid",
       "id": "65f8447fc4010b4d78000043",
@@ -13750,7 +13844,9 @@
         "CRISPR-Cas12a and CRISPR-Cpf1 refer to the same thing."
       ],
       "exact_answer": [
-        "None"
+        [
+          "None"
+        ]
       ],
       "type": "factoid",
       "id": "5c8fee200101eac87000000f",
@@ -14065,7 +14161,9 @@
         "Anti-tumour necrosis factor (TNF) agents have revolutionized the treatment of patients with rheumatoid arthritis (RA). These therapies are, however, expensive and 30% of patients fail to respond."
       ],
       "exact_answer": [
-        "30%"
+        [
+          "30%"
+        ]
       ],
       "type": "factoid",
       "id": "5fe31307a43ad3127800003d",
@@ -14187,7 +14285,9 @@
         "PD98059 is a specific, reversible MEK inhibitor."
       ],
       "exact_answer": [
-        "MEK"
+        [
+          "MEK"
+        ]
       ],
       "type": "factoid",
       "id": "6206bf3cc9dfcb9c0900003d",
@@ -14306,7 +14406,9 @@
         "The discovery of microRNAs (miRNAs) has opened an entire new avenue for drug development. These short (15-22 nucleotides) noncoding RNAs, which function in RNA silencing and posttranscriptional regulation of gene expression, have been shown to critically affect numerous pathways in both development and disease progression."
       ],
       "exact_answer": [
-        "MiRs are small (~23 nt) noncoding RNAs"
+        [
+          "MiRs are small (~23 nt) noncoding RNAs"
+        ]
       ],
       "type": "factoid",
       "id": "58f0b1d670f9fc6f0f000007",
@@ -15784,7 +15886,9 @@
         "Although proteomics has rapidly developed in the past decade, researchers are still in the early stage of exploring the world of complex proteoforms, which are protein products with various primary structure alterations resulting from gene mutations, alternative splicing, post-translational modifications, and other biological processes"
       ],
       "exact_answer": [
-        "proteoforms are protein products with various primary structure alterations resulting from gene mutations, alternative splicing, post-translational modifications, and other biological processes"
+        [
+          "proteoforms are protein products with various primary structure alterations resulting from gene mutations, alternative splicing, post-translational modifications, and other biological processes"
+        ]
       ],
       "type": "factoid",
       "id": "5aad4b37fcf456587200000a",
@@ -15971,7 +16075,9 @@
         "Release of SATB1 from the control of Foxp3 in T(reg) cells caused loss of suppressive function, establishment of transcriptional T(eff) cell programs and induction of T(eff) cell cytokines."
       ],
       "exact_answer": [
-        "it supresses cell cytokines and differentiation genes"
+        [
+          "it supresses cell cytokines and differentiation genes"
+        ]
       ],
       "concepts": [
         "http://www.uniprot.org/uniprot/SATB1_HUMAN",
@@ -16281,7 +16387,9 @@
         "Malignant pleural mesothelioma (MPM) is a hard to treat malignancy arising from the mesothelial surface of the pleura."
       ],
       "exact_answer": [
-        "lining of the lungs and chest wall"
+        [
+          "lining of the lungs and chest wall"
+        ]
       ],
       "type": "factoid",
       "id": "5a74eaa50384be955100000b",
@@ -16918,8 +17026,12 @@
         "Condensation of a unique region of chromosome XVI and the highly repetitive ribosomal DNA (rDNA) cluster from chromosome XII were also examined in budding yeast. The rDNA cluster in Saccharomyces cerevisiae is located 450 kb from the left end and 610 kb from the right end of chromosome XII and consists of approximately 150 tandemly repeated copies of a 9.1 kb rDNA unit. However, in cells arrested in late mitosis (M) by a cdc15 mutation, the unique DNA appeared decondensed while the repetitive rDNA region appeared condensed, suggesting that the condensation state of separate regions of the genome may be regulated differently. Finally our FISH method provides a new tool to analyze centromeres, telomeres, and gene expression in budding yeast."
       ],
       "exact_answer": [
-        "chromosome XII",
-        "chromosome 12"
+        [
+          "chromosome XII"
+        ],
+        [
+          "chromosome 12"
+        ]
       ],
       "concepts": [
         "http://amigo.geneontology.org/amigo/term/GO:0005694",
@@ -17104,7 +17216,9 @@
         "Microtubules are highly anisotropic structures built from tubulin heterodimers. They are hollow cylindrical shells with a ∼ 25 nm (24nm - 25nm) outer diameter."
       ],
       "exact_answer": [
-        "24nm - 25 nm"
+        [
+          "24nm - 25 nm"
+        ]
       ],
       "concepts": [
         "http://amigo.geneontology.org/cgi-bin/amigo/term_details?term=GO:0005874",
@@ -17524,11 +17638,21 @@
         "The cell cycle is a series of events that take place in a cell, leading to its division and duplication. Cell division requires cell cycle checkpoints that are used by the cell to both monitor and regulate the progress of the cell cycle. Deregulation of the cell cycle underlies the aberrant cell proliferation that characterizes cancer and loss of cell cycle checkpoint control promotes genetic instability.\n\nTumor suppressor genes are genes that protect the cell from a single event or multiple events leading to cancer. When these genes mutate, the cell can progress to a cancerous state. We now recognize that tumor suppressor genes regulate diverse cellular activities, including cell cycle checkpoint responses, detection and repair of DNA damage, protein ubiquitination and degradation, mitogenic signaling, cell specification, differentiation and migration, and tumor angiogenesis."
       ],
       "exact_answer": [
-        "Tumor suppressor genes",
-        "Tumor-suppressor genes",
-        "tumor suppressors",
-        "antioncogenes",
-        "anti-oncogenes"
+        [
+          "Tumor suppressor genes"
+        ],
+        [
+          "Tumor-suppressor genes"
+        ],
+        [
+          "tumor suppressors"
+        ],
+        [
+          "antioncogenes"
+        ],
+        [
+          "anti-oncogenes"
+        ]
       ],
       "type": "factoid",
       "id": "644e81fa57b1c7a315000079",
@@ -19237,7 +19361,9 @@
         "The Salk polio Vaccine was field tested in 1954."
       ],
       "exact_answer": [
-        "1954"
+        [
+          "1954"
+        ]
       ],
       "concepts": [
         "https://www.nlm.nih.gov/cgi/mesh/2017/MB_cgi?field=uid&exact=Find+Exact+Term&term=D000071497",
@@ -19446,7 +19572,9 @@
         "Canavan disease is an inherited leukodystrophy resulting from mutations in the gene encoding aspartoacylase (ASPA)."
       ],
       "exact_answer": [
-        "ASPA"
+        [
+          "ASPA"
+        ]
       ],
       "type": "factoid",
       "id": "63f56f7533942b094c000002",
@@ -19502,7 +19630,9 @@
         "LKB1 plays a physiological role in controlling the Wnt-signaling."
       ],
       "exact_answer": [
-        "LKB1 plays a physiological role in controlling the Wnt-signaling."
+        [
+          "LKB1 plays a physiological role in controlling the Wnt-signaling."
+        ]
       ],
       "concepts": [
         "http://www.uniprot.org/uniprot/STK11_HUMAN",
@@ -19539,7 +19669,9 @@
         "BPP is a sequence-based algorithm for branch point prediction."
       ],
       "exact_answer": [
-        "BPP"
+        [
+          "BPP"
+        ]
       ],
       "concepts": [
         "https://meshb.nlm.nih.gov/record/ui?ui=D000465"
@@ -19612,7 +19744,9 @@
         "The structure fold of the bromodomains is an all-alpha-helical fold, which includes a left-handed four-helix bundle topology, with two short additional helices in a long connecting loop."
       ],
       "exact_answer": [
-        "All-alpha-helical fold"
+        [
+          "All-alpha-helical fold"
+        ]
       ],
       "concepts": [
         "http://www.nlm.nih.gov/cgi/mesh/2016/MB_cgi?field=uid&exact=Find+Exact+Term&term=D011506"
@@ -19727,7 +19861,9 @@
         "Inoteresen has been approved for patients in stage 1 and stage 2 hereditary transthyretin amyloidosis polyneuropathy."
       ],
       "exact_answer": [
-        "stage 1 and stage 2 hereditary transthyretin amyloidosis polyneuropathy"
+        [
+          "stage 1 and stage 2 hereditary transthyretin amyloidosis polyneuropathy"
+        ]
       ],
       "type": "factoid",
       "id": "626aed2fe764a53204000043",
@@ -19798,7 +19934,9 @@
         "Yersinia pestis is the causative bacteria of the plague."
       ],
       "exact_answer": [
-        "Yersinia pestis"
+        [
+          "Yersinia pestis"
+        ]
       ],
       "type": "factoid",
       "id": "571cdd227de986d80d00000f",
@@ -20442,7 +20580,9 @@
         "PP2A inhibition by LB100 significantly ameliorates hepatic steatosis by regulating hepatic lipogenesis and fatty acid oxidation via the AMPK/Sirt1 pathway."
       ],
       "exact_answer": [
-        "AMPK/Sirt1 pathway"
+        [
+          "AMPK/Sirt1 pathway"
+        ]
       ],
       "type": "factoid",
       "id": "5e2a080caa19d7443100000a",
@@ -20530,7 +20670,9 @@
         "Jervell and Lange-Nielsen long QT syndrome (JLNS) is characterized by autosomal recessive mode of inheritance"
       ],
       "exact_answer": [
-        "autosomal recessive"
+        [
+          "autosomal recessive"
+        ]
       ],
       "concepts": [
         "http://www.nlm.nih.gov/cgi/mesh/2014/MB_cgi?field=uid&exact=Find+Exact+Term&term=D029593",
@@ -20641,8 +20783,12 @@
         "LHCII, the largest plant photosynthetic pigment-protein complex of photosystem II, is a most abundant membrane protein in living organisms and comprises approximately half of the pool of chlorophyll molecules in the biosphere."
       ],
       "exact_answer": [
-        "Light-harvesting pigment-protein complex of Photosystem II",
-        "LHCII"
+        [
+          "Light-harvesting pigment-protein complex of Photosystem II"
+        ],
+        [
+          "LHCII"
+        ]
       ],
       "concepts": [
         "http://www.nlm.nih.gov/cgi/mesh/2015/MB_cgi?field=uid&exact=Find+Exact+Term&term=D051380",
@@ -20714,7 +20860,9 @@
         "A transcription-independent role for TFIIB in gene looping."
       ],
       "exact_answer": [
-        "TFIIB"
+        [
+          "TFIIB"
+        ]
       ],
       "type": "factoid",
       "id": "58adc1ff9ef3c34033000006",
@@ -20834,7 +20982,9 @@
         "On October 24, 2016, the U.S. Food and Drug Administration (FDA) approved pembrolizumab (Keytruda) for treatment of metastatic non-small cell lung cancer."
       ],
       "exact_answer": [
-        "October 24, 2016"
+        [
+          "October 24, 2016"
+        ]
       ],
       "type": "factoid",
       "id": "6415c53e690f196b51000012",
@@ -21101,8 +21251,12 @@
         "FoundationOne CDx is a next generation sequencing (NGS) based test."
       ],
       "exact_answer": [
-        "next generation sequencing",
-        "NGS"
+        [
+          "next generation sequencing"
+        ],
+        [
+          "NGS"
+        ]
       ],
       "type": "factoid",
       "id": "606b800994d57fd879000071",
@@ -21468,7 +21622,9 @@
         "The conserved motif is: Asp(D)-Glu-(E)-Ala(A)-Asp(D)"
       ],
       "exact_answer": [
-        "Asp(D)-Glu-(E)-Ala(A)-Asp(D)"
+        [
+          "Asp(D)-Glu-(E)-Ala(A)-Asp(D)"
+        ]
       ],
       "type": "factoid",
       "id": "5a885daa61bb38fb24000018",
@@ -21494,7 +21650,9 @@
         "The functional annotation of the mammalian genome 5 (FANTOM5) project provides comprehensive expression profiles and functional annotation of mammalian cell-type-specific transcriptomes with wide applications in biomedical research. The FANTOM5 and ENCODE projects represent two independent large scale efforts to map regulatory and transcriptional features to the human genome."
       ],
       "exact_answer": [
-        "To provide comprehensive expression profiles and functional annotation of mammalian cell-type-specific transcriptomes with wide applications in biomedical research."
+        [
+          "To provide comprehensive expression profiles and functional annotation of mammalian cell-type-specific transcriptomes with wide applications in biomedical research."
+        ]
       ],
       "type": "factoid",
       "id": "569e731cca240fa209000003",
@@ -21606,7 +21764,9 @@
         "CLAPO syndrome is a rare vascular disorder characterized by capillary malformation of the lower lip, lymphatic malformation predominant on the face and neck, asymmetry, and partial/generalized overgrowth. In a cohort of 13 patients with CLAPO, five activating mutations have been identified in the PIK3CA gene in affected tissues from 6 of the 9 patients studied."
       ],
       "exact_answer": [
-        "PIK3CA"
+        [
+          "PIK3CA"
+        ]
       ],
       "type": "factoid",
       "id": "5c5b4a941a4c55d80b000002",
@@ -21942,7 +22102,9 @@
         "Report. Mutations in the BAF-Complex Subunit DPF2 Are Associated with Coffin-Siris Syndrome. Variants affecting the function of different subunits of the BAF chromatin-remodelling complex lead to various neurodevelopmental syndromes, including Coffin-Siris syndrome."
       ],
       "exact_answer": [
-        "SWI/SNF complex"
+        [
+          "SWI/SNF complex"
+        ]
       ],
       "type": "factoid",
       "id": "6032a8b91cb411341a000149",
@@ -22092,8 +22254,12 @@
         "A homozygous loss-of-function mutation of the Plakoglobin (Jup) gene, had been identified in Naxos Disease patients, a subset of ARVC, which is characterized by cutaneous disorder."
       ],
       "exact_answer": [
-        "The Plakoglobin gene",
-        "plakoglobin[jup]"
+        [
+          "The Plakoglobin gene"
+        ],
+        [
+          "plakoglobin[jup]"
+        ]
       ],
       "concepts": [
         "http://www.disease-ontology.org/api/metadata/DOID:4",
@@ -22244,7 +22410,9 @@
         "Syndromic thoracic aortic aneurysm"
       ],
       "exact_answer": [
-        "A syndromic form of thoracic aortic aneurysm (TAA) with clinical overlap with Loeys-Dietz and Shprintzen-Goldberg syndromes"
+        [
+          "A syndromic form of thoracic aortic aneurysm (TAA) with clinical overlap with Loeys-Dietz and Shprintzen-Goldberg syndromes"
+        ]
       ],
       "type": "factoid",
       "id": "61f810a5882a024a1000003e",
@@ -23343,7 +23511,9 @@
         "The genetic test recommended for clopidogrel is CYP2C19 genotyping."
       ],
       "exact_answer": [
-        "CYP2C19 genotyping"
+        [
+          "CYP2C19 genotyping"
+        ]
       ],
       "concepts": [
         "http://www.nlm.nih.gov/cgi/mesh/2012/MB_cgi?field=uid&exact=Find+Exact+Term&term=D003955",
@@ -23815,7 +23985,9 @@
         "Occurrence of myocardial fibrosis in hypertrophic cardiomyopathy is associated with left atrial and ventricular dysfunction as well as with the severity of heart failure symptoms and arrhythmic risk factors."
       ],
       "exact_answer": [
-        "In patients with hypertrophic cardiomyopathy delayed enhancement is associated with heart failure symptoms and left ventricular systolic dysfunction and arrhythmic risk"
+        [
+          "In patients with hypertrophic cardiomyopathy delayed enhancement is associated with heart failure symptoms and left ventricular systolic dysfunction and arrhythmic risk"
+        ]
       ],
       "concepts": [
         "http://www.disease-ontology.org/api/metadata/DOID:11984",
@@ -24265,7 +24437,9 @@
         "Brodifacoum poisoning was linked to marijuana use."
       ],
       "exact_answer": [
-        "marijuana"
+        [
+          "marijuana"
+        ]
       ],
       "type": "factoid",
       "id": "6024a6871cb411341a0000a4",
@@ -24646,8 +24820,12 @@
         "The athens protocol (transepithelial topography-guided PRK therapeutic remodeling, combined with same-day, collagen cross-linking) was developed for the management of cornea blindness due to severe corneal scarring."
       ],
       "exact_answer": [
-        "Keratoconus",
-        "cornea blindness due to severe corneal scarring"
+        [
+          "Keratoconus"
+        ],
+        [
+          "cornea blindness due to severe corneal scarring"
+        ]
       ],
       "concepts": [
         "http://www.disease-ontology.org/api/metadata/DOID:10428",
@@ -25093,7 +25271,9 @@
         "Talquetamab was developed for treatment of multiple myeloma."
       ],
       "exact_answer": [
-        "multiple myeloma"
+        [
+          "multiple myeloma"
+        ]
       ],
       "type": "factoid",
       "id": "63eeec79f36125a426000006",
