@@ -3,8 +3,7 @@
 #SBATCH -p frida
 #SBATCH --array=0-9
 #SBATCH --time=48:00:00
-#SBATCH --gres=gpu:1
-#SBATCH --constraint="L4|A100"
+#SBATCH --gres=gpu:L4:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=512G
 #SBATCH -o logs/%x_%A_%a.out
