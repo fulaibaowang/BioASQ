@@ -442,8 +442,8 @@ print("[top_p test] Question id:", q_id2)
 print("Qtype:", qtype2)
 print("Question:", question2)
 
-raw_high_p = call_llm(system_text, user_prompt2, temperature=0.0, top_p=1.0)
-raw_low_p = call_llm(system_text, user_prompt2, temperature=0.0, top_p=0.2)
+raw_high_p = call_llm(system_text, user_prompt2, temperature=0.7, top_p=1.0)
+raw_low_p = call_llm(system_text, user_prompt2, temperature=0.7, top_p=0.2)
 
 print("\n=== top_p=1.0 (first 600 chars) ===\n")
 print(raw_high_p[:600] + ("..." if len(raw_high_p) > 600 else ""))
