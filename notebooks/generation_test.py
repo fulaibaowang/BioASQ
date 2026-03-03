@@ -240,6 +240,99 @@ for split in splits:
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
 
+# %%
+# Compare workflow (retrieved docs) vs ground truth (temp=0.0) generation metrics
+
+gt_report_path = base / "report/groundtruth/0.0/phaseB_report.tsv"
+wf_report_path = base / "report/phaseB_report.tsv"
+
+gt_report = pd.read_csv(gt_report_path, sep="\t").set_index("split")
+wf_report = pd.read_csv(wf_report_path, sep="\t").set_index("split")
+
+compare_metrics = ["YN_Acc", "F_MRR", "L_F1", "R_2_Rec", "R_SU4_Rec"]
+shared_splits = sorted(set(gt_report.index) & set(wf_report.index))
+
+# --- Overall (macro-average across splits) comparison ---
+gt_means = gt_report.loc[shared_splits, compare_metrics].astype(float).mean()
+wf_means = wf_report.loc[shared_splits, compare_metrics].astype(float).mean()
+
+summary_rows = []
+for m in compare_metrics:
+    summary_rows.append({
+        "metric": m,
+        "ground_truth_0.0": gt_means[m],
+        "workflow": wf_means[m],
+        "delta": wf_means[m] - gt_means[m],
+        "rel_change_%": 100 * (wf_means[m] - gt_means[m]) / gt_means[m] if gt_means[m] != 0 else np.nan,
+    })
+compare_df = pd.DataFrame(summary_rows)
+print("Overall comparison (mean across splits): ground truth (temp=0.0) vs workflow (retrieved docs)")
+display(compare_df)
+
+fig, axes = plt.subplots(1, len(compare_metrics), figsize=(4 * len(compare_metrics), 4), sharey=False)
+if len(compare_metrics) == 1:
+    axes = [axes]
+
+conditions = ["ground_truth_0.0", "workflow"]
+colors = ["#4c72b0", "#dd8452"]
+
+for ax, m in zip(axes, compare_metrics):
+    vals = [gt_means[m], wf_means[m]]
+    x = np.arange(len(conditions))
+    ax.bar(x, vals, color=colors)
+    ax.set_title(m)
+    ax.set_xticks(x)
+    ax.set_xticklabels(conditions, rotation=45, ha="right")
+
+    vmin, vmax = min(vals), max(vals)
+    rng = vmax - vmin
+    if rng == 0:
+        pad = max(0.001, 0.05 * abs(vmin) if vmin != 0 else 0.01)
+        ax.set_ylim(vmin - pad, vmax + pad)
+    else:
+        pad = 0.2 * rng
+        ax.set_ylim(max(0, vmin - pad), min(1.0, vmax + pad))
+
+    for xi, v in zip(x, vals):
+        ax.text(xi, v, f"{v:.4f}", ha="center", va="bottom", fontsize=8, rotation=90)
+
+plt.suptitle("Ground truth (temp=0.0) vs Workflow (retrieved docs) — mean across splits")
+plt.tight_layout(rect=[0, 0, 1, 0.93])
+plt.show()
+
+# --- Per-split comparison ---
+for split in shared_splits:
+    gt_vals = gt_report.loc[split, compare_metrics].astype(float)
+    wf_vals = wf_report.loc[split, compare_metrics].astype(float)
+
+    fig, axes_s = plt.subplots(1, len(compare_metrics), figsize=(4 * len(compare_metrics), 4), sharey=False)
+    if len(compare_metrics) == 1:
+        axes_s = [axes_s]
+    fig.suptitle(f"Split: {split}")
+
+    for ax, m in zip(axes_s, compare_metrics):
+        vals = [float(gt_vals[m]), float(wf_vals[m])]
+        x = np.arange(len(conditions))
+        ax.bar(x, vals, color=colors)
+        ax.set_title(m)
+        ax.set_xticks(x)
+        ax.set_xticklabels(conditions, rotation=45, ha="right")
+
+        vmin, vmax = min(vals), max(vals)
+        rng = vmax - vmin
+        if rng == 0:
+            pad = max(0.001, 0.05 * abs(vmin) if vmin != 0 else 0.01)
+            ax.set_ylim(vmin - pad, vmax + pad)
+        else:
+            pad = 0.2 * rng
+            ax.set_ylim(max(0, vmin - pad), min(1.0, vmax + pad))
+
+        for xi, v in zip(x, vals):
+            ax.text(xi, v, f"{v:.4f}", ha="center", va="bottom", fontsize=8, rotation=90)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.93])
+    plt.show()
+
 # %% [markdown]
 # # correlation between retrieval and generation results
 
@@ -359,221 +452,6 @@ axes[1].set_title(f"corr = {corr_su4:.3f}")
 
 plt.tight_layout()
 plt.show()
-
-# %%
-# Per-split analysis (same logic as above, but done separately for each split)
-# plus an extra question-type-split analysis for R_2_Rec.
-
-split_values = sorted(perq_with_retr["split"].dropna().unique().tolist())
-print(f"Running per-split analysis for {len(split_values)} splits:")
-for s in split_values:
-    print(" -", s)
-
-for split_name in split_values:
-    df_split_all = perq_with_retr[perq_with_retr["split"] == split_name].copy()
-
-    print(f"\n===== Split: {split_name} =====")
-
-    # --- Association plots (MAP@10 vs generation metrics) ---
-    fig, axes = plt.subplots(1, len(gen_cols), figsize=(4 * len(gen_cols), 4), sharex=False, sharey=False)
-    if len(gen_cols) == 1:
-        axes = [axes]
-    fig.suptitle(f"Split: {split_name} (MAP@10 associations)")
-
-    assoc_rows_split = []
-    for ax, (g_name, g_col) in zip(axes, gen_cols.items()):
-        df_pair = df_split_all[[retr_col, g_col, "question_type"]].dropna().copy()
-        df_pair = filter_by_metric_type(df_pair, g_name)
-
-        x = pd.to_numeric(df_pair[retr_col], errors="coerce")
-        y = pd.to_numeric(df_pair[g_col], errors="coerce")
-        keep = x.notna() & y.notna()
-        x = x[keep].values
-        y = y[keep].values
-
-        ax.scatter(x, y, alpha=0.3, s=8)
-        ax.set_xlabel("MAP@10")
-        ax.set_ylabel(g_name)
-
-        row = {
-            "split": split_name,
-            "retrieval": "MAP@10",
-            "generation": g_name,
-            "question_type_filter": metric_qtype.get(g_name),
-            "n": int(len(x)),
-            "method": None,
-            "stat": np.nan,
-            "p": np.nan,
-            "stat_MAP_gt0": np.nan,
-            "p_MAP_gt0": np.nan,
-        }
-
-        if g_name == "YN_Acc":
-            if sm is not None and len(np.unique(y)) >= 2 and len(y) > 2:
-                X = sm.add_constant(x)
-                try:
-                    model = sm.Logit(y, X).fit(disp=False)
-                    beta = float(model.params[1])
-                    pval = float(model.pvalues[1])
-                    title = f"MAP@10 vs {g_name}\nLogit beta={beta:.3f}, p={pval:.1e}"
-                    row.update({"method": "logit", "stat": beta, "p": pval})
-                except Exception:
-                    title = f"MAP@10 vs {g_name}\nLogit failed"
-                    row.update({"method": "logit_failed"})
-            else:
-                title = f"MAP@10 vs {g_name}\nLogit unavailable"
-                row.update({"method": "logit_unavailable"})
-        elif g_name == "F_MRR":
-            if kendalltau is not None and len(x) > 1:
-                tau_all, p_all = kendalltau(x, y)
-                title = f"MAP@10 vs {g_name}\nKendall tau={tau_all:.3f}, p={p_all:.1e}"
-                row.update({"method": "kendall", "stat": float(tau_all), "p": float(p_all)})
-
-                mask_pos = x > 0
-                if mask_pos.sum() > 1:
-                    tau_pos, p_pos = kendalltau(x[mask_pos], y[mask_pos])
-                    row.update({"stat_MAP_gt0": float(tau_pos), "p_MAP_gt0": float(p_pos)})
-            else:
-                title = f"MAP@10 vs {g_name}\nKendall unavailable"
-                row.update({"method": "kendall_unavailable"})
-        else:
-            if spearmanr is not None and len(x) > 1:
-                rho_all, p_all = spearmanr(x, y)
-                title = f"MAP@10 vs {g_name}\nSpearman rho={rho_all:.3f}, p={p_all:.1e}"
-                row.update({"method": "spearman", "stat": float(rho_all), "p": float(p_all)})
-
-                mask_pos = x > 0
-                if mask_pos.sum() > 1:
-                    rho_pos, p_pos = spearmanr(x[mask_pos], y[mask_pos])
-                    row.update({"stat_MAP_gt0": float(rho_pos), "p_MAP_gt0": float(p_pos)})
-            else:
-                title = f"MAP@10 vs {g_name}\nSpearman unavailable"
-                row.update({"method": "spearman_unavailable"})
-
-        ax.set_title(title, fontsize=9)
-        assoc_rows_split.append(row)
-
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
-    plt.show()
-
-    assoc_split_df = pd.DataFrame(assoc_rows_split)
-    print("Association summary (this split):")
-    display(assoc_split_df)
-
-    # --- Extra: R_2_Rec split by question type ---
-    r2_types = sorted(df_split_all["question_type"].dropna().unique().tolist())
-    if r2_types:
-        fig, axes = plt.subplots(1, len(r2_types), figsize=(4 * len(r2_types), 4), sharex=False, sharey=False)
-        if len(r2_types) == 1:
-            axes = [axes]
-        fig.suptitle(f"Split: {split_name} (MAP@10 vs R_2_Rec by question type)")
-
-        r2_type_rows = []
-        for ax, qtype in zip(axes, r2_types):
-            df_t = df_split_all[df_split_all["question_type"] == qtype][[retr_col, "R_2_Rec"]].copy()
-            df_t[retr_col] = pd.to_numeric(df_t[retr_col], errors="coerce")
-            df_t["R_2_Rec"] = pd.to_numeric(df_t["R_2_Rec"], errors="coerce")
-            df_t = df_t.dropna()
-            x = df_t[retr_col].values
-            y = df_t["R_2_Rec"].values
-            ax.scatter(x, y, alpha=0.3, s=8)
-            ax.set_xlabel("MAP@10")
-            ax.set_ylabel("R_2_Rec")
-
-            stat = p = np.nan
-            method = "spearman"
-            if spearmanr is not None and len(x) > 1:
-                stat, p = spearmanr(x, y)
-                ax.set_title(f"{qtype}\nrho={stat:.3f}, p={p:.1e}", fontsize=9)
-            else:
-                ax.set_title(f"{qtype}\nSpearman unavailable", fontsize=9)
-                method = "spearman_unavailable"
-
-            r2_type_rows.append(
-                {
-                    "split": split_name,
-                    "question_type": qtype,
-                    "n": int(len(x)),
-                    "method": method,
-                    "stat": stat,
-                    "p": p,
-                }
-            )
-
-        plt.tight_layout(rect=[0, 0, 1, 0.95])
-        plt.show()
-        print("R_2_Rec by question-type summary (this split):")
-        display(pd.DataFrame(r2_type_rows))
-
-    # --- Success@10 threshold MWU (type-filtered) ---
-    if mannwhitneyu is not None:
-        mwu_rows_split = []
-        for g_name, g_col in gen_cols.items():
-            df_pair = df_split_all[["Success@10", g_col, "question_type"]].dropna().copy()
-            df_pair = filter_by_metric_type(df_pair, g_name)
-            g1 = df_pair[df_pair["Success@10"] == 1.0][g_col].values
-            g0 = df_pair[df_pair["Success@10"] == 0.0][g_col].values
-
-            if len(g1) > 0 and len(g0) > 0:
-                stat, p = mannwhitneyu(g1, g0, alternative="two-sided")
-            else:
-                stat, p = np.nan, np.nan
-
-            mwu_rows_split.append(
-                {
-                    "split": split_name,
-                    "generation": g_name,
-                    "question_type_filter": metric_qtype.get(g_name),
-                    "n_success1": len(g1),
-                    "n_success0": len(g0),
-                    "mean_success1": np.mean(g1) if len(g1) > 0 else np.nan,
-                    "mean_success0": np.mean(g0) if len(g0) > 0 else np.nan,
-                    "MWU_stat": stat,
-                    "MWU_p": p,
-                }
-            )
-
-        print("Success@10 threshold test (MWU, this split):")
-        display(pd.DataFrame(mwu_rows_split))
-    else:
-        print("SciPy not available; skipping MWU for this split.")
-
-    # --- MAP bins and violin plots (type-filtered) ---
-    fig, axes = plt.subplots(1, len(gen_cols), figsize=(4 * len(gen_cols), 4), sharey=False)
-    if len(gen_cols) == 1:
-        axes = [axes]
-    fig.suptitle(f"Split: {split_name} (generation by MAP@10 bins)")
-
-    for ax, (g_name, g_col) in zip(axes, gen_cols.items()):
-        df_metric = df_split_all[[retr_col, g_col, "question_type"]].dropna().copy()
-        df_metric = filter_by_metric_type(df_metric, g_name)
-
-        if df_metric.empty:
-            ax.set_title(f"{g_name}: no data")
-            continue
-
-        df_metric["MAP_bin"] = pd.cut(df_metric[retr_col], bins=bins, labels=labels, include_lowest=True)
-        data = [df_metric[df_metric["MAP_bin"] == label][g_col].values for label in labels]
-        non_empty = [i for i, d in enumerate(data) if len(d) > 0]
-        if not non_empty:
-            ax.set_title(f"{g_name}: no binned data")
-            continue
-
-        data_plot = [data[i] for i in non_empty]
-        labels_plot = [labels[i] for i in non_empty]
-        positions = np.arange(len(labels_plot))
-        ax.violinplot(data_plot, positions=positions, showmeans=True, showextrema=False)
-        ax.set_xticks(positions)
-        ax.set_xticklabels(labels_plot, rotation=45, ha="right")
-        ax.set_title(f"{g_name} by MAP@10 bin")
-        ax.set_ylabel(g_name)
-
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
-    plt.show()
-
-# %% [markdown]
-# Deprecated: older consolidated analysis block removed.
-# Use the v2 consolidated analysis block below.
 
 # %%
 # Consolidated retrieval-generation analysis (v2)
@@ -823,5 +701,220 @@ for ax, (g_name, g_col) in zip(axes, gen_cols.items()):
 
 plt.tight_layout()
 plt.show()
+
+# %%
+# Per-split analysis (same logic as above, but done separately for each split)
+# plus an extra question-type-split analysis for R_2_Rec.
+
+split_values = sorted(perq_with_retr["split"].dropna().unique().tolist())
+print(f"Running per-split analysis for {len(split_values)} splits:")
+for s in split_values:
+    print(" -", s)
+
+for split_name in split_values:
+    df_split_all = perq_with_retr[perq_with_retr["split"] == split_name].copy()
+
+    print(f"\n===== Split: {split_name} =====")
+
+    # --- Association plots (MAP@10 vs generation metrics) ---
+    fig, axes = plt.subplots(1, len(gen_cols), figsize=(4 * len(gen_cols), 4), sharex=False, sharey=False)
+    if len(gen_cols) == 1:
+        axes = [axes]
+    fig.suptitle(f"Split: {split_name} (MAP@10 associations)")
+
+    assoc_rows_split = []
+    for ax, (g_name, g_col) in zip(axes, gen_cols.items()):
+        df_pair = df_split_all[[retr_col, g_col, "question_type"]].dropna().copy()
+        df_pair = filter_by_metric_type(df_pair, g_name)
+
+        x = pd.to_numeric(df_pair[retr_col], errors="coerce")
+        y = pd.to_numeric(df_pair[g_col], errors="coerce")
+        keep = x.notna() & y.notna()
+        x = x[keep].values
+        y = y[keep].values
+
+        ax.scatter(x, y, alpha=0.3, s=8)
+        ax.set_xlabel("MAP@10")
+        ax.set_ylabel(g_name)
+
+        row = {
+            "split": split_name,
+            "retrieval": "MAP@10",
+            "generation": g_name,
+            "question_type_filter": metric_qtype.get(g_name),
+            "n": int(len(x)),
+            "method": None,
+            "stat": np.nan,
+            "p": np.nan,
+            "stat_MAP_gt0": np.nan,
+            "p_MAP_gt0": np.nan,
+        }
+
+        if g_name == "YN_Acc":
+            if sm is not None and len(np.unique(y)) >= 2 and len(y) > 2:
+                X = sm.add_constant(x)
+                try:
+                    model = sm.Logit(y, X).fit(disp=False)
+                    beta = float(model.params[1])
+                    pval = float(model.pvalues[1])
+                    title = f"MAP@10 vs {g_name}\nLogit beta={beta:.3f}, p={pval:.1e}"
+                    row.update({"method": "logit", "stat": beta, "p": pval})
+                except Exception:
+                    title = f"MAP@10 vs {g_name}\nLogit failed"
+                    row.update({"method": "logit_failed"})
+            else:
+                title = f"MAP@10 vs {g_name}\nLogit unavailable"
+                row.update({"method": "logit_unavailable"})
+        elif g_name == "F_MRR":
+            if kendalltau is not None and len(x) > 1:
+                tau_all, p_all = kendalltau(x, y)
+                title = f"MAP@10 vs {g_name}\nKendall tau={tau_all:.3f}, p={p_all:.1e}"
+                row.update({"method": "kendall", "stat": float(tau_all), "p": float(p_all)})
+
+                mask_pos = x > 0
+                if mask_pos.sum() > 1:
+                    tau_pos, p_pos = kendalltau(x[mask_pos], y[mask_pos])
+                    row.update({"stat_MAP_gt0": float(tau_pos), "p_MAP_gt0": float(p_pos)})
+            else:
+                title = f"MAP@10 vs {g_name}\nKendall unavailable"
+                row.update({"method": "kendall_unavailable"})
+        else:
+            if spearmanr is not None and len(x) > 1:
+                rho_all, p_all = spearmanr(x, y)
+                title = f"MAP@10 vs {g_name}\nSpearman rho={rho_all:.3f}, p={p_all:.1e}"
+                row.update({"method": "spearman", "stat": float(rho_all), "p": float(p_all)})
+
+                mask_pos = x > 0
+                if mask_pos.sum() > 1:
+                    rho_pos, p_pos = spearmanr(x[mask_pos], y[mask_pos])
+                    row.update({"stat_MAP_gt0": float(rho_pos), "p_MAP_gt0": float(p_pos)})
+            else:
+                title = f"MAP@10 vs {g_name}\nSpearman unavailable"
+                row.update({"method": "spearman_unavailable"})
+
+        ax.set_title(title, fontsize=9)
+        assoc_rows_split.append(row)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
+
+    assoc_split_df = pd.DataFrame(assoc_rows_split)
+    print("Association summary (this split):")
+    display(assoc_split_df)
+
+    # --- Extra: R_2_Rec split by question type ---
+    r2_types = ["yesno", "factoid", "list", "summary"]
+    if r2_types:
+        fig, axes = plt.subplots(1, len(r2_types), figsize=(4 * len(r2_types), 4), sharex=False, sharey=False)
+        if len(r2_types) == 1:
+            axes = [axes]
+        fig.suptitle(f"Split: {split_name} (MAP@10 vs R_2_Rec by question type)")
+
+        r2_type_rows = []
+        for ax, qtype in zip(axes, r2_types):
+            df_t = df_split_all[df_split_all["question_type"] == qtype][[retr_col, "R_2_Rec"]].copy()
+            df_t[retr_col] = pd.to_numeric(df_t[retr_col], errors="coerce")
+            df_t["R_2_Rec"] = pd.to_numeric(df_t["R_2_Rec"], errors="coerce")
+            df_t = df_t.dropna()
+            x = df_t[retr_col].values
+            y = df_t["R_2_Rec"].values
+            ax.set_xlabel("MAP@10")
+            ax.set_ylabel("R_2_Rec")
+
+            stat = p = np.nan
+            if len(x) == 0:
+                method = "no_data"
+                ax.set_title(f"{qtype}\nno data (n=0)", fontsize=9)
+            else:
+                ax.scatter(x, y, alpha=0.3, s=8)
+                method = "spearman"
+            if spearmanr is not None and len(x) > 1:
+                stat, p = spearmanr(x, y)
+                ax.set_title(f"{qtype}\nrho={stat:.3f}, p={p:.1e}", fontsize=9)
+            elif len(x) > 0:
+                ax.set_title(f"{qtype}\nSpearman unavailable", fontsize=9)
+                method = "spearman_unavailable"
+
+            r2_type_rows.append(
+                {
+                    "split": split_name,
+                    "question_type": qtype,
+                    "n": int(len(x)),
+                    "method": method,
+                    "stat": stat,
+                    "p": p,
+                }
+            )
+
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        plt.show()
+        print("R_2_Rec by question-type summary (this split):")
+        display(pd.DataFrame(r2_type_rows))
+
+    # --- Success@10 threshold MWU (type-filtered) ---
+    if mannwhitneyu is not None:
+        mwu_rows_split = []
+        for g_name, g_col in gen_cols.items():
+            df_pair = df_split_all[["Success@10", g_col, "question_type"]].dropna().copy()
+            df_pair = filter_by_metric_type(df_pair, g_name)
+            g1 = df_pair[df_pair["Success@10"] == 1.0][g_col].values
+            g0 = df_pair[df_pair["Success@10"] == 0.0][g_col].values
+
+            if len(g1) > 0 and len(g0) > 0:
+                stat, p = mannwhitneyu(g1, g0, alternative="two-sided")
+            else:
+                stat, p = np.nan, np.nan
+
+            mwu_rows_split.append(
+                {
+                    "split": split_name,
+                    "generation": g_name,
+                    "question_type_filter": metric_qtype.get(g_name),
+                    "n_success1": len(g1),
+                    "n_success0": len(g0),
+                    "mean_success1": np.mean(g1) if len(g1) > 0 else np.nan,
+                    "mean_success0": np.mean(g0) if len(g0) > 0 else np.nan,
+                    "MWU_stat": stat,
+                    "MWU_p": p,
+                }
+            )
+
+        print("Success@10 threshold test (MWU, this split):")
+        display(pd.DataFrame(mwu_rows_split))
+    else:
+        print("SciPy not available; skipping MWU for this split.")
+
+    # --- MAP bins and violin plots (type-filtered) ---
+    fig, axes = plt.subplots(1, len(gen_cols), figsize=(4 * len(gen_cols), 4), sharey=False)
+    if len(gen_cols) == 1:
+        axes = [axes]
+    fig.suptitle(f"Split: {split_name} (generation by MAP@10 bins)")
+
+    for ax, (g_name, g_col) in zip(axes, gen_cols.items()):
+        df_metric = df_split_all[[retr_col, g_col, "question_type"]].dropna().copy()
+        df_metric = filter_by_metric_type(df_metric, g_name)
+
+        if df_metric.empty:
+            ax.set_title(f"{g_name}: no data")
+            continue
+
+        df_metric["MAP_bin"] = pd.cut(df_metric[retr_col], bins=bins, labels=labels, include_lowest=True)
+        data = [df_metric[df_metric["MAP_bin"] == label][g_col].values for label in labels]
+        non_empty = [i for i, d in enumerate(data) if len(d) > 0]
+        if not non_empty:
+            ax.set_title(f"{g_name}: no binned data")
+            continue
+
+        data_plot = [data[i] for i in non_empty]
+        labels_plot = [labels[i] for i in non_empty]
+        positions = np.arange(len(labels_plot))
+        ax.violinplot(data_plot, positions=positions, showmeans=True, showextrema=False)
+        ax.set_xticks(positions)
+        ax.set_xticklabels(labels_plot, rotation=45, ha="right")
+        ax.set_title(f"{g_name} by MAP@10 bin")
+        ax.set_ylabel(g_name)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
 
 # %%
