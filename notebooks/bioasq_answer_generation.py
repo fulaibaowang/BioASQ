@@ -58,7 +58,8 @@ if not API_KEY:
 OLLAMA_URL = "https://chat.fri.uni-lj.si/ollama/api/generate"
 OLLAMA_MODEL = "llama3.3:latest"
 
-def call_llm(system_prompt: str, user_prompt: str, timeout: int = 120) -> str:
+
+def call_llm(system_prompt: str, user_prompt: str, timeout: int = 120, temperature: float = 0.0, top_p: float = 1.0) -> str:
     """Call the Ollama endpoint and return the raw text response."""
     import requests
 
@@ -66,7 +67,15 @@ def call_llm(system_prompt: str, user_prompt: str, timeout: int = 120) -> str:
     r = requests.post(
         OLLAMA_URL,
         headers={"Authorization": f"Bearer {API_KEY}"},
-        json={"model": OLLAMA_MODEL, "stream": False, "prompt": prompt},
+        json={
+            "model": OLLAMA_MODEL,
+            "stream": False,
+            "prompt": prompt,
+            "options": {
+                "temperature": float(temperature),
+                "top_p": float(top_p),
+            },
+        },
         timeout=timeout,
     )
     r.raise_for_status()
@@ -294,7 +303,7 @@ full_prompt = f"[SYSTEM]\n{system_text}\n\n[USER]\n{user_prompt}"
 print("\n=== FULL PROMPT FOR LLaMA (copy/paste) ===\n")
 print(full_prompt)
 
-raw_response = call_llm(system_text, user_prompt)
+raw_response = call_llm(system_text, user_prompt, temperature=0.0)
 print("\n--- Raw LLM response ---")
 print(raw_response[:800] + ("..." if len(raw_response) > 800 else ""))
 
@@ -329,7 +338,7 @@ def process_one(idx: int, obj: Dict[str, Any], total: int) -> tuple[int, Dict[st
         schema_block = get_schema_block(qtype)
         evidence_block = format_evidence_block(contexts)
         user_prompt = fill_user_prompt(question, evidence_block, qtype, schema_block)
-        raw = call_llm(system_text, user_prompt)
+        raw = call_llm(system_text, user_prompt, temperature=0.0)
         parsed = parse_answer_json_for_type(raw, qtype, q_id=q_id)
         rec = {"id": q_id, "body": question, "type": qtype, "ideal_answer": parsed["ideal_answer"], "evidence_ids": parsed["evidence_ids"]}
         if qtype in ("yesno", "factoid", "list"):
@@ -377,5 +386,70 @@ OUTPUT_JSON.parent.mkdir(parents=True, exist_ok=True)
 write_answers_json(OUTPUT_JSON, records_out)
 print(f"Wrote {len(records_out)} records (successful={len(successful)}) to {OUTPUT_JSON}")
 OUTPUT_JSON, len(records_out)
+
+# %%
+# Quick temperature comparison on a single example
+TEST_INDEX = 0
+
+_examples = load_contexts_json(INPUT_JSON)
+if TEST_INDEX >= len(_examples):
+    raise RuntimeError(f"TEST_INDEX {TEST_INDEX} out of range for {INPUT_JSON} (len={len(_examples)})")
+
+ex = _examples[TEST_INDEX]
+q_id = ex.get("id")
+qtype = ex.get("type", "summary")
+question = ex.get("body", "")
+contexts = ex.get("contexts", []) or []
+
+schema_block = get_schema_block(qtype)
+evidence_block = format_evidence_block(contexts, max_contexts=3, max_chars_per_context=600)
+user_prompt = fill_user_prompt(question, evidence_block, qtype, schema_block)
+
+print("Question id:", q_id)
+print("Qtype:", qtype)
+print("Question:", question)
+print("\n--- Evidence (truncated) ---\n", evidence_block[:400] + ("..." if len(evidence_block) > 400 else ""))
+
+raw_cold = call_llm(system_text, user_prompt, temperature=0.0, top_p=1.0)
+raw_warm = call_llm(system_text, user_prompt, temperature=0.7, top_p=1.0)
+
+print("\n=== Temperature 0.0 (first 600 chars) ===\n")
+print(raw_cold[:600] + ("..." if len(raw_cold) > 600 else ""))
+
+print("\n=== Temperature 0.7 (first 600 chars) ===\n")
+print(raw_warm[:600] + ("..." if len(raw_warm) > 600 else ""))
+
+
+# %%
+# Quick top_p comparison at fixed temperature
+TEST_INDEX_TOPP = 0
+
+_examples_topp = load_contexts_json(INPUT_JSON)
+if TEST_INDEX_TOPP >= len(_examples_topp):
+    raise RuntimeError(f"TEST_INDEX_TOPP {TEST_INDEX_TOPP} out of range for {INPUT_JSON} (len={len(_examples_topp)})")
+
+ex2 = _examples_topp[TEST_INDEX_TOPP]
+q_id2 = ex2.get("id")
+qtype2 = ex2.get("type", "summary")
+question2 = ex2.get("body", "")
+contexts2 = ex2.get("contexts", []) or []
+
+schema_block2 = get_schema_block(qtype2)
+evidence_block2 = format_evidence_block(contexts2, max_contexts=3, max_chars_per_context=600)
+user_prompt2 = fill_user_prompt(question2, evidence_block2, qtype2, schema_block2)
+
+print("[top_p test] Question id:", q_id2)
+print("Qtype:", qtype2)
+print("Question:", question2)
+
+raw_high_p = call_llm(system_text, user_prompt2, temperature=0.0, top_p=1.0)
+raw_low_p = call_llm(system_text, user_prompt2, temperature=0.0, top_p=0.2)
+
+print("\n=== top_p=1.0 (first 600 chars) ===\n")
+print(raw_high_p[:600] + ("..." if len(raw_high_p) > 600 else ""))
+
+print("\n=== top_p=0.2 (first 600 chars) ===\n")
+print(raw_low_p[:600] + ("..." if len(raw_low_p) > 600 else ""))
+
 
 # %%

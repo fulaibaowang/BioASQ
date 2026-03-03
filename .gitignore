@@ -16,3 +16,4 @@ runs_dense/
 .jupyter/
 .vscode/
 .venv/
+report/

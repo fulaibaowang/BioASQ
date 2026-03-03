@@ -7,10 +7,45 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: dicty (Python 3.14 venv)
 #     language: python
-#     name: python3
+#     name: dicty-py314
 # ---
+
+# %%
+import pandas as pd
+from pathlib import Path
+
+base = Path("..")
+
+metrics_path = base / "output/workflow_local_10pct_hpc_bge/rerank_hybrid/metrics.csv"
+official_agg_path = base / "report/phaseA_report.tsv"
+official_perq_path = base / "report/phaseA_report_perq.tsv"
+
+metrics = pd.read_csv(metrics_path)
+official_agg = pd.read_csv(official_agg_path, sep="\t")
+official_perq = pd.read_csv(official_perq_path, sep="\t")
+
+# align split naming
+official_agg["split_base"] = official_agg["split"].str.replace("_answers$", "", regex=True)
+
+merged = metrics.merge(
+    official_agg,
+    left_on="split",
+    right_on="split_base",
+    suffixes=("_ours", "_official"),
+)
+
+# compare MAP@10 (ours) vs d_MAP (official)
+# use the aligned name `split_base` and rename it back to `split` for display
+summary = merged[["split_base", "MAP@10", "d_MAP"]].copy()
+summary = summary.rename(columns={"split_base": "split"})
+summary["MAP_diff"] = summary["MAP@10"] - summary["d_MAP"]
+summary
+
+# %%
+# Display overall MAP comparison
+summary.style.format({"MAP@10": "{:.4f}", "d_MAP": "{:.4f}", "MAP_diff": "{:+.4f}"})
 
 # %% [markdown]
 # # Results analysis: workflow (3pct / 10pct)
@@ -27,6 +62,10 @@
 
 # %% [markdown]
 # ## Setup and paths
+
+# %%
+
+# %%
 
 # %%
 import json
