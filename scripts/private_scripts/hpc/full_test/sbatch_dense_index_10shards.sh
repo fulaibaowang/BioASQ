@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH -J dense_medembed_10shards
 #SBATCH -p frida
-#SBATCH --array=0-9
-#SBATCH --time=48:00:00
-#SBATCH --gres=gpu:L4:1
+#SBATCH --array=6-9
+#SBATCH --time=24:00:00
+#SBATCH --gres=gpu:A100_80GB:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=256G
 #SBATCH -o logs/%x_%A_%a.out
@@ -44,6 +44,16 @@ SAVE_EVERY=250000
 echo "Starting array task ${SLURM_ARRAY_TASK_ID} (shard ${SHARD_ID}) job ${SLURM_JOB_ID} on $(hostname) at $(date)"
 echo "SHARD_DIR=${SHARD_DIR}  OUT_FINAL=${OUT_FINAL}"
 echo "MAX_ELEMENTS=${MAX_ELEMENTS}  SAVE_EVERY=${SAVE_EVERY}"
+
+# -----------------------------
+# Skip if final index already exists
+# -----------------------------
+if [ -f "${OUT_FINAL}/hnsw_index.bin" ] && \
+   [ -f "${OUT_FINAL}/rowid_to_pmid.tsv" ] && \
+   [ -f "${OUT_FINAL}/meta.json" ]; then
+  echo "[skip] Final index already exists in ${OUT_FINAL}; skipping shard ${SHARD_ID}."
+  exit 0
+fi
 
 # -----------------------------
 # Run inside container

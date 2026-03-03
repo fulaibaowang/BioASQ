@@ -139,3 +139,12 @@ python scripts/public/shared_scripts/generation/generate_answers.py \
   --sleep 0.5
 
 ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh 
+
+python scripts/public/shared_scripts/generation/generate_answers.py \
+  --input-path bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
+  --output-dir output/using_ground_truth_generation/snippet_generation_13B4 \
+  --evidence-source snippets
+  --max-contexts 12 \
+  --max-chars-per-context 1200 \
+  --sleep 0.5
+
