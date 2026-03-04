@@ -917,4 +917,115 @@ for split_name in split_values:
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
 
+# %% [markdown]
+# # high retrieval but low generation questions
+
+# %%
+# For each generation metric, find questions in the top 20% of MAP@10
+# but bottom 20% of that generation metric.
+
+high_retr_low_gen_metrics = {
+    "YN_Acc": ("YN_Acc", "yesno"),
+    "F_MRR": ("F_MRR", "factoid"),
+    "L_F1": ("L_F1", "list"),
+    "R_2_Rec": ("R_2_Rec", None),
+}
+
+# Build a question-id -> text mapping from workflow-local generation JSONs (for display)
+wf_json_root_for_text = base / "output/workflow_local_10pct_hpc_bge/generation"
+wf_json_paths_for_text = sorted(wf_json_root_for_text.glob("*_answers.json"))
+qid_to_body: dict[str, str] = {}
+for path in wf_json_paths_for_text:
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        continue
+    for q in data.get("questions", []):
+        qid = str(q.get("id", ""))
+        if qid and qid not in qid_to_body:
+            qid_to_body[qid] = q.get("body", "")
+
+# Collect hit IDs per metric so we can export them from the full-test JSONs later
+hits_by_metric: dict[str, list[str]] = {k: [] for k in high_retr_low_gen_metrics.keys()}
+
+for label, (g_col, qtype_filter) in high_retr_low_gen_metrics.items():
+    df_sub = perq_with_retr.copy()
+    if qtype_filter is not None:
+        df_sub = df_sub[df_sub["question_type"] == qtype_filter]
+
+    # Ensure one row per question_id to avoid duplicates in the output
+    df_sub = df_sub.sort_values(retr_col, ascending=False).drop_duplicates(subset=["question_id"])
+
+    df_sub[g_col] = pd.to_numeric(df_sub[g_col], errors="coerce")
+    df_sub = df_sub.dropna(subset=[retr_col, g_col])
+
+    map_vals = pd.to_numeric(df_sub[retr_col], errors="coerce")
+    gen_vals = df_sub[g_col]
+
+    map_t20 = map_vals.quantile(0.80)
+
+    if label == "YN_Acc":
+        # For YN_Acc use only questions with YN_Acc == 0 in the top 20% MAP@10
+        gen_b20 = 0.0
+        mask = (map_vals >= map_t20) & (gen_vals == 0.0)
+    else:
+        gen_b20 = gen_vals.quantile(0.20)
+        mask = (map_vals >= map_t20) & (gen_vals <= gen_b20)
+
+    hits = df_sub[mask][["split", "question_id", "question_type", retr_col, g_col]].copy()
+    # Attach question text if available
+    hits["question_text"] = hits["question_id"].map(qid_to_body)
+    hits = hits.sort_values(g_col)
+
+    qtype_note = f" (filtered to {qtype_filter})" if qtype_filter else ""
+    print(f"\n{'='*60}")
+    if label == "YN_Acc":
+        print(f"{label}{qtype_note}: top-20% MAP@10 (>= {map_t20:.4f}) AND YN_Acc == 0")
+    else:
+        print(f"{label}{qtype_note}: top-20% MAP@10 (>= {map_t20:.4f}) AND bottom-20% {label} (<= {gen_b20:.4f})")
+    print(f"  Found {len(hits)} questions")
+
+    if not hits.empty:
+        # Track IDs for export
+        hit_ids = hits["question_id"].astype(str).tolist()
+        hits_by_metric[label].extend(hit_ids)
+        display(hits.reset_index(drop=True))
+
+# %%
+# Export high-retrieval / low-generation questions (body + contexts) from full-test JSONs
+
+export_root = base / "output/workflow_full_test/bad_generations"
+export_root.mkdir(parents=True, exist_ok=True)
+
+# Unique IDs per metric
+hits_by_metric = {m: sorted(set(ids)) for m, ids in hits_by_metric.items()}
+
+# Build lookup from full-test generation JSONs
+full_gen_root = base / "output/workflow_full_test/generation"
+full_gen_paths = sorted(full_gen_root.glob("*_answers.json"))
+full_q_by_id: dict[str, dict] = {}
+for path in full_gen_paths:
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        continue
+    for q in data.get("questions", []):
+        qid = str(q.get("id", ""))
+        if qid and qid not in full_q_by_id:
+            full_q_by_id[qid] = {
+                "id": qid,
+                "type": q.get("type", ""),
+                "body": q.get("body", ""),
+                "contexts": q.get("contexts", []),
+            }
+
+for metric, ids in hits_by_metric.items():
+    records = [full_q_by_id[qid] for qid in ids if qid in full_q_by_id]
+    out_path = export_root / f"{metric}_bad_questions.json"
+    with out_path.open("w", encoding="utf-8") as f:
+        json.dump(records, f, ensure_ascii=False, indent=2)
+    print(f"Wrote {len(records)} questions for {metric} to {out_path}")
+
 # %%
