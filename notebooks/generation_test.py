@@ -946,9 +946,38 @@ for path in wf_json_paths_for_text:
         if qid and qid not in qid_to_body:
             qid_to_body[qid] = q.get("body", "")
 
-# Collect hit IDs per metric so we can export them from the full-test JSONs later
-hits_by_metric: dict[str, list[str]] = {k: [] for k in high_retr_low_gen_metrics.keys()}
+# Build lookups for export (generation JSONs + gold answers from training14b)
+import csv
 
+gen_root = base / "output/workflow_local_10pct_hpc_bge/generation"
+gen_paths = sorted(gen_root.glob("*_answers.json"))
+gen_q_by_id: dict[str, dict] = {}
+for path in gen_paths:
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        continue
+    for q in data.get("questions", []):
+        qid = str(q.get("id", ""))
+        if qid and qid not in gen_q_by_id:
+            gen_q_by_id[qid] = q
+
+gold_path = base / "bioasq_data/BioASQ-training14b/training14b.json"
+with gold_path.open("r", encoding="utf-8") as f:
+    gold_data = json.load(f)
+gold_by_id: dict[str, dict] = {}
+for q in gold_data.get("questions", []):
+    qid = str(q.get("id", ""))
+    if qid:
+        gold_by_id[qid] = q
+
+export_root = base / "output/workflow_local_10pct_hpc_bge/bad_generations"
+export_root.mkdir(parents=True, exist_ok=True)
+
+exact_metrics = {"YN_Acc", "F_MRR", "L_F1"}
+
+# Selection + display + export in one pass
 for label, (g_col, qtype_filter) in high_retr_low_gen_metrics.items():
     df_sub = perq_with_retr.copy()
     if qtype_filter is not None:
@@ -966,7 +995,6 @@ for label, (g_col, qtype_filter) in high_retr_low_gen_metrics.items():
     map_t20 = map_vals.quantile(0.80)
 
     if label == "YN_Acc":
-        # For YN_Acc use only questions with YN_Acc == 0 in the top 20% MAP@10
         gen_b20 = 0.0
         mask = (map_vals >= map_t20) & (gen_vals == 0.0)
     else:
@@ -974,7 +1002,6 @@ for label, (g_col, qtype_filter) in high_retr_low_gen_metrics.items():
         mask = (map_vals >= map_t20) & (gen_vals <= gen_b20)
 
     hits = df_sub[mask][["split", "question_id", "question_type", retr_col, g_col]].copy()
-    # Attach question text if available
     hits["question_text"] = hits["question_id"].map(qid_to_body)
     hits = hits.sort_values(g_col)
 
@@ -987,45 +1014,43 @@ for label, (g_col, qtype_filter) in high_retr_low_gen_metrics.items():
     print(f"  Found {len(hits)} questions")
 
     if not hits.empty:
-        # Track IDs for export
-        hit_ids = hits["question_id"].astype(str).tolist()
-        hits_by_metric[label].extend(hit_ids)
         display(hits.reset_index(drop=True))
 
-# %%
-# Export high-retrieval / low-generation questions (body + contexts) from full-test JSONs
-
-export_root = base / "output/workflow_full_test/bad_generations"
-export_root.mkdir(parents=True, exist_ok=True)
-
-# Unique IDs per metric
-hits_by_metric = {m: sorted(set(ids)) for m, ids in hits_by_metric.items()}
-
-# Build lookup from full-test generation JSONs
-full_gen_root = base / "output/workflow_full_test/generation"
-full_gen_paths = sorted(full_gen_root.glob("*_answers.json"))
-full_q_by_id: dict[str, dict] = {}
-for path in full_gen_paths:
-    try:
-        with path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception:
-        continue
-    for q in data.get("questions", []):
-        qid = str(q.get("id", ""))
-        if qid and qid not in full_q_by_id:
-            full_q_by_id[qid] = {
-                "id": qid,
-                "type": q.get("type", ""),
-                "body": q.get("body", ""),
-                "contexts": q.get("contexts", []),
-            }
-
-for metric, ids in hits_by_metric.items():
-    records = [full_q_by_id[qid] for qid in ids if qid in full_q_by_id]
-    out_path = export_root / f"{metric}_bad_questions.json"
-    with out_path.open("w", encoding="utf-8") as f:
-        json.dump(records, f, ensure_ascii=False, indent=2)
-    print(f"Wrote {len(records)} questions for {metric} to {out_path}")
+    # Export to TSV directly from the same hits
+    hit_ids = hits["question_id"].astype(str).tolist()
+    out_path = export_root / f"{label}_bad_questions.tsv"
+    with out_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f, delimiter="\t")
+        if label in exact_metrics:
+            writer.writerow(["id", "type", "body", "contexts", "exact_answer", "gold_exact_answer"])
+            for qid in hit_ids:
+                gq = gen_q_by_id.get(qid)
+                goldq = gold_by_id.get(qid)
+                if gq is None:
+                    continue
+                contexts = gq.get("contexts", [])
+                ctx_text = " ||| ".join(
+                    c.get("text", "") if isinstance(c, dict) else str(c) for c in contexts
+                )
+                exact = json.dumps(gq.get("exact_answer", ""), ensure_ascii=False)
+                gold_exact = json.dumps(goldq.get("exact_answer", ""), ensure_ascii=False) if goldq else ""
+                writer.writerow([qid, gq.get("type", ""), gq.get("body", ""), ctx_text, exact, gold_exact])
+        else:
+            writer.writerow(["id", "type", "body", "contexts", "ideal_answer", "gold_ideal_answer"])
+            for qid in hit_ids:
+                gq = gen_q_by_id.get(qid)
+                goldq = gold_by_id.get(qid)
+                if gq is None:
+                    continue
+                contexts = gq.get("contexts", [])
+                ctx_text = " ||| ".join(
+                    c.get("text", "") if isinstance(c, dict) else str(c) for c in contexts
+                )
+                ideal = gq.get("ideal_answer", "")
+                gold_ideal = goldq.get("ideal_answer", "") if goldq else ""
+                if isinstance(gold_ideal, list):
+                    gold_ideal = gold_ideal[0] if gold_ideal else ""
+                writer.writerow([qid, gq.get("type", ""), gq.get("body", ""), ctx_text, ideal, gold_ideal])
+    print(f"  -> Wrote {len(hit_ids)} questions to {out_path}")
 
 # %%
