@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -J dense_medembed_10shards
-#SBATCH -p frida
-#SBATCH --array=6-9
-#SBATCH --time=24:00:00
+#SBATCH -p dev
+#SBATCH --array=0-9
+#SBATCH --time=12:00:00
 #SBATCH --gres=gpu:A100_80GB:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=256G

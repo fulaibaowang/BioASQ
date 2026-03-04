@@ -23,7 +23,7 @@ WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
 
 # Pipeline config
-PIPELINE_CONFIG="scripts/private_scripts/hpc/full_test/config_full_pubmed_sharded.env"
+PIPELINE_CONFIG="scripts/private_scripts/hpc/full_test/config_full_pubmed_sharded_no_groundtruth.env"
 
 echo "Starting job ${SLURM_JOB_ID} on $(hostname) at $(date)"
 echo "Running pipeline script with config: ${PIPELINE_CONFIG}"
