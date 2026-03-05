@@ -2,6 +2,18 @@
 
 Pipeline config (env vars and script mapping): [scripts/public/README.md](../scripts/public/README.md).
 
+## Recommended Operating Ranges
+
+| Parameter | Suggested Range | Default | Constraint |
+|-----------|----------------|---------|------------|
+| `TOP_K` | 1000 – 5000 | 5000 | Retrieval depth for BM25 and Dense |
+| `HYBRID_CAP` | 1000 – 2000 | TOP_K | `≤ TOP_K` |
+| `RERANK_CANDIDATE_LIMIT` | 200 – 1000 | TOP_K (clamped [30, 2000]) | `≤ HYBRID_CAP` |
+| `pool_top_rerank` | 50 – 200 | 50 | `≤ RERANK_CANDIDATE_LIMIT` |
+| `pool_top_hybrid` | 50 – 200 | 50 | `≤ HYBRID_CAP` |
+
+Each stage's output feeds the next, so values must satisfy: `pool_top ≤ RERANK_CANDIDATE_LIMIT ≤ HYBRID_CAP ≤ TOP_K`. Staying within the suggested ranges guarantees no constraint violations.
+
 ## BM25 + RM3
 
 | Parameter | Range Tested | Default | Notes |
@@ -10,7 +22,7 @@ Pipeline config (env vars and script mapping): [scripts/public/README.md](../scr
 | `fb_terms` | 10 – 30 | **30** | Expanded terms to add |
 | `fb_lambda` | 0.6 – 0.8 | **0.6** | Interpolation weight (0 = pure RM3, 1 = pure original) |
 
-**Decision:** Aggressive config (`fb_docs=20, fb_terms=30, fb_lambda=0.6`) chosen by optimising `0.5 × MeanR@200 + 0.5 × MeanR@500` across test batches. It achieved the highest combined recall (score 0.6709) while balanced configs had marginally higher MAP@10 but lower recall.
+**Decision:** Aggressive config (`fb_docs=20, fb_terms=30, fb_lambda=0.6`) achieved the highest recall while balanced configs had marginally higher MAP@10 but lower recall.
 
 See [notebooks/bm25_test.ipynb](../notebooks/bm25_test.ipynb) for the RM3 parameter sweep.
 
@@ -20,12 +32,12 @@ See [notebooks/bm25_test.ipynb](../notebooks/bm25_test.ipynb) for the RM3 parame
 |-----------|-------------|---------|-------|
 | `M` | — | **32** | HNSW graph degree (common value, not swept) |
 | `ef_construction` | — | **200** | HNSW build-time quality (common value, not swept) |
-| `ef_search` | 5000 – 20000 | **100** | HNSW query-time expansion (diminishing returns above 5000) |
+| `ef_search` | 5000 – 20000 | **max(meta, DENSE_TOP_K)** | Runtime auto-promoted to `≥ topk`; stored as 100 in meta.json. Capped by `DENSE_EF_CAP` if set |
 | `batch_size` | — | **128** (index) / **256** (retrieval) | Embedding batch size (not swept) |
 | `max_seq_length` | — | **512** | Encoder truncation length (~2.8% of docs truncate at 512) |
 | `hnsw_space` | — | **cosine** | Distance metric |
 
-**Decision:** Only `ef_search` was swept (5000/10000/20000); differences in MeanR@5000 were marginal (0.845 → 0.850). Other HNSW parameters use standard values from the literature.
+**Decision:** Only `ef_search` was swept (5000/10000/20000); differences in MeanR@5000 were marginal (0.845 → 0.850). Other HNSW parameters use standard values. The retrieval script auto-promotes `ef_search` to `max(meta_value, topk)` so the stored default of 100 does not limit deep recall.
 
 See [notebooks/dense_test.ipynb](../notebooks/dense_test.ipynb) for details.
 
@@ -56,7 +68,7 @@ See [notebooks/hybrid.ipynb](../notebooks/hybrid.ipynb) for the RRF grid search.
 
 | Parameter | Range Tested | Default | Notes |
 |-----------|-------------|---------|-------|
-| `--candidate-limit` | — | **2000** | Stage-1 candidates per query to rerank |
+| `--candidate-limit` | — | **2000** | Stage-1 candidates per query to rerank (clamped to [30, 2000]) |
 | `--model` | MiniLM, BGE v2 | **BAAI/bge-reranker-v2-m3** | Cross-encoder model |
 | `--model-device` | cpu / cuda / mps / auto | **auto** | Device selection |
 | `--model-batch` | — | **16** | Cross-encoder batch size |
@@ -108,8 +120,55 @@ See [notebooks/generation_test.ipynb](../notebooks/generation_test.ipynb) for te
 | Stage | Method | Key Defaults |
 |-------|--------|-------------|
 | 1a | BM25 + RM3 | `fb_docs=20, fb_terms=30, fb_lambda=0.6` |
-| 1b | Dense (MedEmbed) | `M=32, ef_construction=200, ef_search=100` |
-| 2 | Hybrid RRF | `K_RRF=150, weights=1.0/1.0` |
-| 3 | Rerank (BGE v2) | `candidate_limit=2000, max_length=512` |
-| 4 | Fusion (BGE + Hybrid) | `k_rrf=60, w_bge=0.8, w_hybrid=0.2` |
+| 1b | Dense (MedEmbed) | `M=32, ef_construction=200, ef_search=max(meta,topk)` |
+| 2 | Hybrid RRF | `K_RRF=150, weights=1.0/1.0, cap=TOP_K` |
+| 3 | Rerank (BGE v2) | `candidate_limit=min(TOP_K,HYBRID_CAP) clamped [30,2000], max_length=512` |
+| 4 | Fusion (BGE + Hybrid) | `k_rrf=60, w_bge=0.8, w_hybrid=0.2, pool_top_rerank=50, pool_top_hybrid=50` |
 | 5 | Generation (Llama 3.3) | `temperature=0.0, max_contexts=10` |
+
+## Parameter Constraints
+
+The pipeline cascades `TOP_K` (default 5000) into stage-specific defaults. The following invariants must hold to avoid silent truncation or degraded results.
+
+### Data-flow constraints
+
+```
+TOP_K ──► BM25_TOP_K ──────────┐
+     ──► DENSE_TOP_K ──────────┤
+                                ├──► HYBRID_CAP ──► RERANK_CANDIDATE_LIMIT ──► pool_top_rerank
+                                │                                               pool_top_hybrid ◄── HYBRID_CAP
+                                │
+                                └──► (RRF fusion top-N union) ──► evidence top-10 ──► generation
+```
+
+| Constraint | Why | What happens on violation |
+|------------|-----|--------------------------|
+| `RERANK_CANDIDATE_LIMIT ≤ HYBRID_CAP` | Reranker reads hybrid runs | Pipeline enforces `min(RERANK_CANDIDATE_LIMIT, HYBRID_CAP)` |
+| `pool_top_rerank ≤ RERANK_EFFECTIVE` | Fusion draws from reranker output | Silent truncation — fewer rerank docs in pool than requested |
+| `pool_top_hybrid ≤ HYBRID_CAP` | Fusion draws from hybrid output | Silent truncation — fewer hybrid docs in pool than requested |
+| `RERANK_EFFECTIVE ≥ 30` | Minimum reranker input | Pipeline clamps to 30 with a warning |
+| `RERANK_EFFECTIVE ≤ 2000` | Reranking is expensive beyond this | Pipeline clamps to 2000 with a warning |
+| `ef_search ≥ DENSE_TOP_K` | HNSW requires ef ≥ k for k results | Auto-promoted at runtime: `ef = max(meta, topk)` |
+| `k_feedback ≥ fb_docs` | RM3 needs enough docs in feedback pool | Not enforced — BM25 feedback pool must cover fb_docs |
+
+### Default safety check
+
+With default `TOP_K=5000`:
+
+| Variable | Resolved value | Safe? |
+|----------|---------------|-------|
+| `HYBRID_CAP` | 5000 | `≥ pool_top_hybrid (50)` |
+| `RERANK_CANDIDATE_LIMIT` | 5000 → clamped 2000 | `≥ pool_top_rerank (50)` |
+| `pool_top_rerank` | 50 | `≤ 2000` |
+| `pool_top_hybrid` | 50 | `≤ 5000` |
+| `ef_search` | max(100, 5000) = 5000 | `≥ DENSE_TOP_K` |
+
+### Potential issues when overriding defaults
+
+1. **Setting `TOP_K` < 50**: Cascades to `HYBRID_CAP` and `RERANK_CANDIDATE_LIMIT`, both of which may fall below the default `pool_top_rerank=50` / `pool_top_hybrid=50`. The pipeline now warns but does not error — fusion silently uses fewer docs.
+
+2. **Setting `RERANK_CANDIDATE_LIMIT` < 50**: After clamping to [30, 2000], the reranker output may be smaller than `pool_top_rerank`. The pipeline warns via `WARNING: RRF_POOL_TOP_RERANK > RERANK_CANDIDATE_LIMIT`.
+
+3. **Setting `DENSE_EF_CAP` too low**: If `DENSE_EF_CAP < DENSE_TOP_K`, deep recall degrades because HNSW can't return accurate results when `ef < k`. The runtime prints ef_search details but does not warn explicitly.
+
+4. **Setting `HYBRID_CAP` much smaller than `RERANK_CANDIDATE_LIMIT`**: Pipeline uses `min(RERANK_CANDIDATE_LIMIT, HYBRID_CAP)`, so an explicit `RERANK_CANDIDATE_LIMIT=2000` with `HYBRID_CAP=100` silently reduces the reranker input to 100.
