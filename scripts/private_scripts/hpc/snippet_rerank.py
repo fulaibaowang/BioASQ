@@ -431,7 +431,13 @@ def main() -> None:
     ks_recall = tuple(int(k) for k in args.ks_recall.split(",") if k.strip()) or RECALL_KS
 
     # --- save config ---
-    cfg_dump = {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}
+    def _jsonable(v):
+        if isinstance(v, Path):
+            return str(v)
+        if isinstance(v, (list, tuple)):
+            return [_jsonable(x) for x in v]
+        return v
+    cfg_dump = {k: _jsonable(v) for k, v in vars(args).items()}
     output_cfg.config_path.write_text(json.dumps(cfg_dump, indent=2), encoding="utf-8")
 
     summary_rows: List[dict] = []
