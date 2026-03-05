@@ -269,7 +269,7 @@ def select_top_windows(
     bm25_sc = _window_scores_bm25(query, windows, bm25_class)
     dense_sc = _window_scores_dense(query, windows, dense_model, dense_batch, normalize_emb)
     fused = _rrf_fuse(bm25_sc, dense_sc, k_rrf, w_bm25, w_dense)
-    return list(np.argsort(-fused)[:top_w])
+    return [int(i) for i in np.argsort(-fused)[:top_w]]
 
 
 # ---------------------------------------------------------------------------
