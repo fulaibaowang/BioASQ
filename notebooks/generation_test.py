@@ -1053,4 +1053,99 @@ for label, (g_col, qtype_filter) in high_retr_low_gen_metrics.items():
                 writer.writerow([qid, gq.get("type", ""), gq.get("body", ""), ctx_text, ideal, gold_ideal])
     print(f"  -> Wrote {len(hit_ids)} questions to {out_path}")
 
+# %% [markdown]
+# # Compare before vs after prompt tuning (run3)
+
+# %%
+# Compare before_tuning vs after_tuning prompt test generation metrics
+
+before_path = base / "output/workflow_full_test_run3/prompt_test/before_tuning/phaseB_report.tsv"
+after_path = base / "output/workflow_full_test_run3/prompt_test/after_tuning/phaseB_report.tsv"
+
+before_report = pd.read_csv(before_path, sep="\t").set_index("split")
+after_report = pd.read_csv(after_path, sep="\t").set_index("split")
+
+compare_metrics_pt = ["YN_Acc", "F_MRR", "L_F1", "R_2_Rec", "R_SU4_Rec"]
+shared_splits_pt = sorted(set(before_report.index) & set(after_report.index))
+
+before_means = before_report.loc[shared_splits_pt, compare_metrics_pt].astype(float).mean()
+after_means = after_report.loc[shared_splits_pt, compare_metrics_pt].astype(float).mean()
+
+summary_rows_pt = []
+for m in compare_metrics_pt:
+    summary_rows_pt.append({
+        "metric": m,
+        "before_tuning": before_means[m],
+        "after_tuning": after_means[m],
+        "delta": after_means[m] - before_means[m],
+        "rel_change_%": 100 * (after_means[m] - before_means[m]) / before_means[m] if before_means[m] != 0 else np.nan,
+    })
+compare_df_pt = pd.DataFrame(summary_rows_pt)
+print("Overall comparison (mean across splits): before_tuning vs after_tuning")
+display(compare_df_pt)
+
+fig, axes = plt.subplots(1, len(compare_metrics_pt), figsize=(4 * len(compare_metrics_pt), 4), sharey=False)
+if len(compare_metrics_pt) == 1:
+    axes = [axes]
+
+conditions_pt = ["before_tuning", "after_tuning"]
+colors_pt = ["#4c72b0", "#dd8452"]
+
+for ax, m in zip(axes, compare_metrics_pt):
+    vals = [before_means[m], after_means[m]]
+    x = np.arange(len(conditions_pt))
+    ax.bar(x, vals, color=colors_pt)
+    ax.set_title(m)
+    ax.set_xticks(x)
+    ax.set_xticklabels(conditions_pt, rotation=45, ha="right")
+
+    vmin, vmax = min(vals), max(vals)
+    rng = vmax - vmin
+    if rng == 0:
+        pad = max(0.001, 0.05 * abs(vmin) if vmin != 0 else 0.01)
+        ax.set_ylim(vmin - pad, vmax + pad)
+    else:
+        pad = 0.2 * rng
+        ax.set_ylim(max(0, vmin - pad), min(1.0, vmax + pad))
+
+    for xi, v in zip(x, vals):
+        ax.text(xi, v, f"{v:.4f}", ha="center", va="bottom", fontsize=8, rotation=90)
+
+plt.suptitle("Before tuning vs After tuning — mean across splits")
+plt.tight_layout(rect=[0, 0, 1, 0.93])
+plt.show()
+
+# --- Per-split comparison ---
+for split in shared_splits_pt:
+    before_vals = before_report.loc[split, compare_metrics_pt].astype(float)
+    after_vals = after_report.loc[split, compare_metrics_pt].astype(float)
+
+    fig, axes_s = plt.subplots(1, len(compare_metrics_pt), figsize=(4 * len(compare_metrics_pt), 4), sharey=False)
+    if len(compare_metrics_pt) == 1:
+        axes_s = [axes_s]
+    fig.suptitle(f"Split: {split}")
+
+    for ax, m in zip(axes_s, compare_metrics_pt):
+        vals = [float(before_vals[m]), float(after_vals[m])]
+        x = np.arange(len(conditions_pt))
+        ax.bar(x, vals, color=colors_pt)
+        ax.set_title(m)
+        ax.set_xticks(x)
+        ax.set_xticklabels(conditions_pt, rotation=45, ha="right")
+
+        vmin, vmax = min(vals), max(vals)
+        rng = vmax - vmin
+        if rng == 0:
+            pad = max(0.001, 0.05 * abs(vmin) if vmin != 0 else 0.01)
+            ax.set_ylim(vmin - pad, vmax + pad)
+        else:
+            pad = 0.2 * rng
+            ax.set_ylim(max(0, vmin - pad), min(1.0, vmax + pad))
+
+        for xi, v in zip(x, vals):
+            ax.text(xi, v, f"{v:.4f}", ha="center", va="bottom", fontsize=8, rotation=90)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.93])
+    plt.show()
+
 # %%
