@@ -2,7 +2,7 @@
 #SBATCH -J snippet_rerank
 #SBATCH -p dev
 #SBATCH --time=12:00:00
-#SBATCH --gres=gpu:A100_80GB:1
+#SBATCH --gres=gpu:A100:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128G
 #SBATCH -o logs/%x_%j.out
@@ -15,7 +15,7 @@ cd ~/BioASQ
 # -----------------------------
 # Paths / inputs
 # -----------------------------
-CONTAINER_IMG="/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs"
+CONTAINER_IMG="/shared/home/yun.wang/biolab/yun/bioasq_20.02.26.sqfs"
 WORKDIR="${PWD}"
 
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
@@ -37,7 +37,7 @@ TEST_BATCH_JSONS=(
 )
 
 # Output
-OUT_DIR="output/snippet_rerank"
+OUT_DIR="output/workflow_local_10pct_hpc_bge/snippet_rerank"
 
 # Stage A (hybrid filter)
 DENSE_MODEL="abhinand/MedEmbed-small-v0.1"
