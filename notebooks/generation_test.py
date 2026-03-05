@@ -1059,8 +1059,8 @@ for label, (g_col, qtype_filter) in high_retr_low_gen_metrics.items():
 # %%
 # Compare before_tuning vs after_tuning prompt test generation metrics
 
-before_path = base / "output/workflow_full_test_run3/prompt_test/before_tuning/phaseB_report.tsv"
-after_path = base / "output/workflow_full_test_run3/prompt_test/after_tuning/phaseB_report.tsv"
+before_path = base / "report/generation_before_tuning/phaseB_report.tsv"
+after_path = base / "report/generation_after_tuning/phaseB_report.tsv"
 
 before_report = pd.read_csv(before_path, sep="\t").set_index("split")
 after_report = pd.read_csv(after_path, sep="\t").set_index("split")
