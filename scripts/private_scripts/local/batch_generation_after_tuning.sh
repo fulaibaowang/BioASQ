@@ -15,7 +15,7 @@ python scripts/public/shared_scripts/generation/generate_answers.py \
 
 python scripts/public/shared_scripts/generation/generate_answers.py \
   --input-path output/workflow_local_10pct_hpc_bge/generation/13B4_golden_answers.json \
-  --output-dir output/workflow_local_10pct_hpc_bge/generation_after_tuning/ \    
+  --output-dir output/workflow_local_10pct_hpc_bge/generation_after_tuning/ \
   --sleep 0.5 
 
 python scripts/public/shared_scripts/generation/generate_answers.py \
