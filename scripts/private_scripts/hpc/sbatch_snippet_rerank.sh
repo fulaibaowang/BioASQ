@@ -42,9 +42,9 @@ OUT_DIR="output/workflow_local_10pct_hpc_bge/snippet_rerank"
 # Stage A (hybrid filter)
 DENSE_MODEL="abhinand/MedEmbed-small-v0.1"
 N_DOCS=100
-WINDOW_SIZE=3
+WINDOW_SIZE=2
 WINDOW_STRIDE=1
-TOP_W=8
+TOP_W=12
 
 # Stage B (CE rerank)
 CE_MODEL="BAAI/bge-reranker-v2-m3"
