@@ -1395,4 +1395,245 @@ else:
     plt.tight_layout()
     plt.show()
 
+# %% [markdown]
+# ---
+# ## Sweep: Rerank Hybrid (K_RRF x pool_top_rerank x pool_top_hybrid)
+#
+# Grid sweep over:
+# - **K_RRF:** 10, 30, 60, 90
+# - **pool_top_rerank:** 50, 100, 200
+# - **pool_top_hybrid:** 20, 50, 100, 200
+#
+# Fixed weights: w_bge=0.8, w_hybrid=0.2 (from prior analysis).
+# Train and test kept separate (no question-type or question-length breakdown).
+# Metrics: **MAP@10** and **Recall@50**.
+
+# %%
+SWEEP_K_RRF = [10, 30, 60, 90]
+SWEEP_POOL_RERANK = [50, 100, 200]
+SWEEP_POOL_HYBRID = [20, 50, 100, 200]
+W_BGE_FIXED = 0.8
+W_HYBRID_FIXED = 0.2
+
+
+def rrf_fuse_separate_pools(
+    bge_docs: list,
+    hybrid_docs: list,
+    pool_top_rerank: int,
+    pool_top_hybrid: int,
+    k_rrf: int,
+    w_bge: float,
+    w_hybrid: float,
+) -> list:
+    """Union of top-N_rerank BGE + top-N_hybrid Hybrid; weighted RRF; return full fused ranking."""
+    bge_top = bge_docs[:pool_top_rerank]
+    hyb_top = hybrid_docs[:pool_top_hybrid]
+    rank_bge = {d: i + 1 for i, d in enumerate(bge_top)}
+    rank_hyb = {d: i + 1 for i, d in enumerate(hyb_top)}
+    union = list(dict.fromkeys(bge_top + hyb_top))
+    scores = []
+    for d in union:
+        s = 0.0
+        if d in rank_bge:
+            s += w_bge / (k_rrf + rank_bge[d])
+        if d in rank_hyb:
+            s += w_hybrid / (k_rrf + rank_hyb[d])
+        scores.append((d, s))
+    scores.sort(key=lambda x: -x[1])
+    return [d for d, _ in scores]
+
+
+run_template = "best_rrf_{split}_top5000.tsv"
+MAX_POOL = max(max(SWEEP_POOL_RERANK), max(SWEEP_POOL_HYBRID))
+
+# Preload all runs once (up to MAX_POOL docs per query)
+preloaded_hybrid = {}
+preloaded_rerank = {}
+for name in SELECTED_DATASETS:
+    cfg = DATASET_CONFIG[name]
+    hybrid_dir = cfg["workflow_dir"] / "hybrid" / "runs"
+    rerank_dir = cfg["workflow_dir"] / "rerank" / "runs"
+    for split in cfg["splits"]:
+        key = (name, split)
+        h_path = hybrid_dir / run_template.format(split=split)
+        r_path = rerank_dir / run_template.format(split=split)
+        if h_path.exists():
+            preloaded_hybrid[key] = run_to_qid_docs(h_path, MAX_POOL)
+        if r_path.exists():
+            preloaded_rerank[key] = run_to_qid_docs(r_path, MAX_POOL)
+
+print(f"Preloaded {len(preloaded_hybrid)} hybrid and {len(preloaded_rerank)} rerank run files")
+
+# %%
+# Run the sweep
+sweep_rows = []
+total = len(SWEEP_K_RRF) * len(SWEEP_POOL_RERANK) * len(SWEEP_POOL_HYBRID)
+print(f"Sweeping {total} configs across {len(preloaded_hybrid)} splits ...")
+
+for k_rrf in SWEEP_K_RRF:
+    for pool_rerank in SWEEP_POOL_RERANK:
+        for pool_hybrid in SWEEP_POOL_HYBRID:
+            for name in SELECTED_DATASETS:
+                cfg = DATASET_CONFIG[name]
+                qrels = qrels_by_dataset[name]
+                for split in cfg["splits"]:
+                    key = (name, split)
+                    hybrid_docs_map = preloaded_hybrid.get(key, {})
+                    rerank_docs_map = preloaded_rerank.get(key, {})
+                    split_qrels = qrels.get(split, {})
+                    qids = [
+                        q for q in rerank_docs_map
+                        if q in hybrid_docs_map and q in split_qrels and split_qrels[q]
+                    ]
+                    if not qids:
+                        continue
+                    ap10_list = []
+                    r50_list = []
+                    for qid in qids:
+                        fused = rrf_fuse_separate_pools(
+                            rerank_docs_map[qid],
+                            hybrid_docs_map[qid],
+                            pool_rerank,
+                            pool_hybrid,
+                            k_rrf,
+                            W_BGE_FIXED,
+                            W_HYBRID_FIXED,
+                        )
+                        rels = {str(r) for r in split_qrels[qid]}
+                        ap10_list.append(ap_at_k(fused, rels, 10))
+                        r50_list.append(recall_at_k(fused, rels, 50))
+                    sweep_rows.append({
+                        "dataset": name,
+                        "split": split,
+                        "k_rrf": k_rrf,
+                        "pool_top_rerank": pool_rerank,
+                        "pool_top_hybrid": pool_hybrid,
+                        "MAP@10": float(np.mean(ap10_list)),
+                        "Recall@50": float(np.mean(r50_list)),
+                        "n_queries": len(qids),
+                    })
+
+sweep_df = pd.DataFrame(sweep_rows)
+sweep_df["role"] = sweep_df["split"].map(_role_for_split)
+print(f"Sweep complete: {len(sweep_df)} rows")
+print("Role counts:", sweep_df["role"].value_counts().to_dict())
+
+# %%
+# Aggregate train and test separately (query-weighted average across splits within each role)
+train_sweep = sweep_df[sweep_df["role"] == "train"].copy()
+train_agg = train_sweep.groupby(
+    ["k_rrf", "pool_top_rerank", "pool_top_hybrid"]
+).apply(
+    lambda g: pd.Series({
+        "MAP@10_train": np.average(g["MAP@10"], weights=g["n_queries"]),
+        "Recall@50_train": np.average(g["Recall@50"], weights=g["n_queries"]),
+        "n_train": int(g["n_queries"].sum()),
+    })
+).reset_index()
+
+test_sweep = sweep_df[sweep_df["role"] == "test"].copy()
+test_agg = test_sweep.groupby(
+    ["k_rrf", "pool_top_rerank", "pool_top_hybrid"]
+).apply(
+    lambda g: pd.Series({
+        "MAP@10_test": np.average(g["MAP@10"], weights=g["n_queries"]),
+        "Recall@50_test": np.average(g["Recall@50"], weights=g["n_queries"]),
+        "n_test": int(g["n_queries"].sum()),
+    })
+).reset_index()
+
+sweep_summary = train_agg.merge(
+    test_agg, on=["k_rrf", "pool_top_rerank", "pool_top_hybrid"], how="outer"
+)
+sweep_summary["MAP@10_mean"] = (sweep_summary["MAP@10_train"] + sweep_summary["MAP@10_test"]) / 2
+sweep_summary["Recall@50_mean"] = (sweep_summary["Recall@50_train"] + sweep_summary["Recall@50_test"]) / 2
+
+_fmt = {
+    "MAP@10_train": "{:.4f}", "MAP@10_test": "{:.4f}", "MAP@10_mean": "{:.4f}",
+    "Recall@50_train": "{:.4f}", "Recall@50_test": "{:.4f}", "Recall@50_mean": "{:.4f}",
+}
+
+print("=== Sweep results sorted by MAP@10_mean (descending) ===")
+display(
+    sweep_summary.sort_values("MAP@10_mean", ascending=False)
+    .reset_index(drop=True)
+    .style.format(_fmt)
+)
+
+print("\n=== Sweep results sorted by Recall@50_mean (descending) ===")
+display(
+    sweep_summary.sort_values("Recall@50_mean", ascending=False)
+    .reset_index(drop=True)
+    .style.format(_fmt)
+)
+
+# Best configs
+best_map = sweep_summary.loc[sweep_summary["MAP@10_mean"].idxmax()]
+best_recall = sweep_summary.loc[sweep_summary["Recall@50_mean"].idxmax()]
+
+print(f"\nBest by MAP@10_mean:  k_rrf={int(best_map['k_rrf'])}, "
+      f"pool_rerank={int(best_map['pool_top_rerank'])}, pool_hybrid={int(best_map['pool_top_hybrid'])}")
+print(f"  MAP@10  train={best_map['MAP@10_train']:.4f}  test={best_map['MAP@10_test']:.4f}  mean={best_map['MAP@10_mean']:.4f}")
+print(f"  R@50    train={best_map['Recall@50_train']:.4f}  test={best_map['Recall@50_test']:.4f}  mean={best_map['Recall@50_mean']:.4f}")
+
+print(f"\nBest by Recall@50_mean:  k_rrf={int(best_recall['k_rrf'])}, "
+      f"pool_rerank={int(best_recall['pool_top_rerank'])}, pool_hybrid={int(best_recall['pool_top_hybrid'])}")
+print(f"  MAP@10  train={best_recall['MAP@10_train']:.4f}  test={best_recall['MAP@10_test']:.4f}  mean={best_recall['MAP@10_mean']:.4f}")
+print(f"  R@50    train={best_recall['Recall@50_train']:.4f}  test={best_recall['Recall@50_test']:.4f}  mean={best_recall['Recall@50_mean']:.4f}")
+
+# %%
+# Heatmaps: one per K_RRF value; rows = pool_top_rerank, cols = pool_top_hybrid
+# 2x2 grid of heatmaps (one per K_RRF) for each metric+role combination
+
+import matplotlib.ticker as mticker
+
+for metric, role_col in [
+    ("MAP@10", "MAP@10_train"), ("MAP@10", "MAP@10_test"),
+    ("Recall@50", "Recall@50_train"), ("Recall@50", "Recall@50_test"),
+]:
+    role_label = "train" if "train" in role_col else "test"
+    n_k = len(SWEEP_K_RRF)
+    ncols = min(n_k, 4)
+    nrows = (n_k + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 4 * nrows))
+    if n_k == 1:
+        axes = np.array([axes])
+    axes = axes.flatten()
+
+    vmin = sweep_summary[role_col].min()
+    vmax = sweep_summary[role_col].max()
+
+    for i, k_rrf in enumerate(SWEEP_K_RRF):
+        ax = axes[i]
+        sub = sweep_summary[sweep_summary["k_rrf"] == k_rrf]
+        pivot = sub.pivot_table(
+            index="pool_top_rerank", columns="pool_top_hybrid",
+            values=role_col, aggfunc="first",
+        )
+        pivot = pivot.reindex(
+            index=SWEEP_POOL_RERANK, columns=SWEEP_POOL_HYBRID
+        )
+        im = ax.imshow(pivot.values, aspect="auto", cmap="viridis", vmin=vmin, vmax=vmax)
+        ax.set_xticks(range(len(SWEEP_POOL_HYBRID)))
+        ax.set_xticklabels(SWEEP_POOL_HYBRID)
+        ax.set_yticks(range(len(SWEEP_POOL_RERANK)))
+        ax.set_yticklabels(SWEEP_POOL_RERANK)
+        ax.set_xlabel("pool_top_hybrid")
+        ax.set_ylabel("pool_top_rerank")
+        ax.set_title(f"K_RRF = {k_rrf}")
+        for yi in range(pivot.shape[0]):
+            for xi in range(pivot.shape[1]):
+                val = pivot.values[yi, xi]
+                if not np.isnan(val):
+                    ax.text(xi, yi, f"{val:.4f}", ha="center", va="center",
+                            fontsize=8, color="white" if val < (vmin + vmax) / 2 else "black")
+
+    for j in range(n_k, len(axes)):
+        axes[j].set_visible(False)
+
+    fig.colorbar(im, ax=axes[:n_k], label=role_col, shrink=0.8)
+    plt.suptitle(f"{metric} ({role_label}) — sweep over K_RRF x pool_top_rerank x pool_top_hybrid", y=1.02)
+    plt.tight_layout()
+    plt.show()
+
 # %%
