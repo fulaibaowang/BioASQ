@@ -61,7 +61,7 @@ SPLITS = [
 KS = list(range(10, 101, 10))
 
 # RRF fusion: rerank_hybrid + snippet_rerank (top-50 union -> weighted RRF -> top-10)
-RUN_TOP = 50
+RUN_TOP = 100
 OUTPUT_TOP = 10
 RRF_KS = [(60)]
 RRF_WEIGHTS = [(1, 0),(0.9, 0.1),(0.8, 0.2),  (0.7, 0.3), (0.6, 0.4), (0.5, 0.5)]  # (w_rerank_hybrid, w_snippet_rerank)
