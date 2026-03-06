@@ -1,4 +1,4 @@
-# BioASQ: retrieval + reranking experiments
+# BioASQ: retrieval + reranking + generation experiments
 
 This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A style document retrieval.
 
@@ -37,12 +37,20 @@ The pipeline has a baseline document-evidence route and an optional snippet-RRF 
 
 ```mermaid
 flowchart TD
-  BM25[BM25 + RM3] --> Dense[Dense] --> Hybrid[Hybrid RRF] --> Rerank[Cross-encoder rerank] --> RRF1[RRF fusion] --> RH[rerank_hybrid]
+  BM25[BM25 + RM3] --> Dense[Dense]
+  Dense --> Hybrid[Hybrid RRF]
+  Hybrid --> Rerank[Cross-encoder rerank]
+  Rerank --> RRF1[RRF fusion]
+  RRF1 --> RH[rerank_hybrid]
 
-  RH --> EB[Evidence (baseline)] --> GB[Generation (baseline)]
+  RH --> EB[Baseline evidence]
+  EB --> GB[Baseline generation]
 
-  RH --> SR[Snippet extraction + CE rerank] --> RRF2[Final RRF fusion] --> RRFSN[snippet_rrf]
-  RRFSN --> ES[Evidence (snippets)] --> GS[Generation (snippets)]
+  RH --> SR[Snippet rerank]
+  SR --> RRF2[Final RRF fusion]
+  RRF2 --> RRFSN[snippet_rrf]
+  RRFSN --> ES[Snippet evidence]
+  ES --> GS[Snippet generation]
 ```
 
 - **Baseline route outputs**: `rerank_hybrid/`, `evidence_baseline/`, `generation_baseline/`

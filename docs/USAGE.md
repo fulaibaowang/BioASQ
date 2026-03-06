@@ -111,6 +111,8 @@ RUN_SNIPPET_RRF=1
 - **Baseline only**: `RUN_BASELINE=1`, `RUN_SNIPPET_RRF=0`
 - **Snippet only**: `RUN_BASELINE=0`, `RUN_SNIPPET_RRF=1`
 
+Generation is handled inside the same pipeline script: once evidence JSONL files exist under `evidence_baseline/` or `evidence_snippet/`, the script runs the LLM answer generation step and writes `*_answers.json` under the corresponding `generation_*` directory.
+
 ### BM25 + RM3
 
 Evaluate BM25 and BM25+RM3 on training and test sets:
