@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -J pipeline_full_pubmed_sharded
-#SBATCH -p dev
+#SBATCH -p dev,frida
 #SBATCH --time=12:00:00
-#SBATCH --gres=gpu:L4:3
+#SBATCH --gres=gpu:L4:2
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=256G
 #SBATCH -o logs/%x_%j.out
