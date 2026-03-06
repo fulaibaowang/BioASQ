@@ -235,11 +235,20 @@ Generation is handled inside the same pipeline script: once evidence JSONL files
 
 ## Output
 
-Both BM25 and dense evaluations produce:
-- `metrics.csv`: Aggregate metrics (MAP@10, GMAP@10, MRR@10, Success@10, MeanR@K)
-- `runs/`: Per-method run TSVs (qid, rank, docno, score)
-- `per_query/`: Per-query CSV breakdown (if `--save_per_query`)
-- `*_meta.json`: Metadata and parameters used
+Most stages in the pipeline write a `metrics.csv` summary, a `runs/` directory with TSV runs (`qid, docno, rank, score`), and optional per-query breakdowns:
+
+- **BM25 / Dense / Hybrid** (standalone eval scripts and within the pipeline):
+  - `bm25/`, `dense/`, `hybrid/` under `$WORKFLOW_OUTPUT_DIR` for the pipeline
+  - `metrics.csv`, `runs/`, `per_query/`, and `*_meta.json` in each stage directory
+- **Reranker + RRF fusion**:
+  - `rerank/` – cross-encoder reranker outputs
+  - `rerank_hybrid/` – Hybrid + Rerank RRF fusion outputs (and optionally `rerank_hybrid_200/` when using a wider pool for snippet-RRF)
+- **Snippet-RRF route (when enabled)**:
+  - `snippet_rerank/` – document-level runs from snippet window reranking
+  - `snippet_rrf/` – final RRF fusion of `rerank_hybrid` and `snippet_rerank` (used by snippet evidence)
+- **Evidence and generation** (when `DOCS_JSONL` is set):
+  - `evidence_baseline/` and `generation_baseline/` – baseline document-based contexts and LLM answers
+  - `evidence_snippet/` and `generation_snippet/` – snippet-based contexts and LLM answers (snippet-RRF route)
 
 ## Tuning
 
