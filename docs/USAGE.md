@@ -74,15 +74,42 @@ python scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_sha
 
 ## Evaluation
 
-### Full pipeline (BM25 → Dense → Hybrid → Reranker)
+### Full pipeline (BM25 → Dense → Hybrid → Reranker → Fusion → Evidence → Generation)
 
-Run all stages with one script and a config file. The script skips any stage whose output already exists (e.g. if hybrid is done, only reranker (and optional RRF fusion) run). Use `--no-rerank` to run only retrieval (BM25, Dense, Hybrid). Use `--no-rrf-fusion` to disable the Hybrid+Rerank RRF fusion step.
+Run all stages with one script and a config file. The script skips any stage whose output already exists. Use `--no-rerank` to run only retrieval (BM25, Dense, Hybrid). Use `--no-rrf-fusion` to disable the Hybrid+Rerank fusion step.
+
+If `DOCS_JSONL` is set, the pipeline will also build:
+
+- `evidence_baseline/` and `generation_baseline/` (baseline route)
+- Optionally, `evidence_snippet/` and `generation_snippet/` (snippet-RRF route)
 
 ```bash
 ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config scripts/public/shared_scripts/workflow_config_baseline.env
 ```
 
-**Config files:** [workflow_config_baseline.env](../scripts/public/shared_scripts/workflow_config_baseline.env), [workflow_config_small.env](../scripts/public/shared_scripts/workflow_config_small.env), [workflow_config_full.env](../scripts/public/shared_scripts/workflow_config_full.env). For all options and env→script mapping see [scripts/public/README.md](../scripts/public/README.md).
+**Config files:** [workflow_config_baseline.env](../scripts/public/shared_scripts/workflow_config_baseline.env), [workflow_config_small.env](../scripts/public/shared_scripts/workflow_config_small.env), [workflow_config_snippet.env](../scripts/public/shared_scripts/workflow_config_snippet.env), [workflow_config_full.env](../scripts/public/shared_scripts/workflow_config_full.env). For all options and env→script mapping see [scripts/public/README.md](../scripts/public/README.md).
+
+### Snippet-RRF route (optional)
+
+The snippet route runs snippet window extraction + CE reranking and then a final fusion against `rerank_hybrid` to produce a snippet-driven run (`snippet_rrf/`) and snippet-driven contexts (`evidence_snippet/`).
+
+You can enable snippet-RRF either via a CLI flag:
+
+```bash
+./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh \
+  --config scripts/public/shared_scripts/workflow_config_baseline.env \
+  --snippet-rrf
+```
+
+Or via env toggles in your config file:
+
+```bash
+RUN_BASELINE=1
+RUN_SNIPPET_RRF=1
+```
+
+- **Baseline only**: `RUN_BASELINE=1`, `RUN_SNIPPET_RRF=0`
+- **Snippet only**: `RUN_BASELINE=0`, `RUN_SNIPPET_RRF=1`
 
 ### BM25 + RM3
 

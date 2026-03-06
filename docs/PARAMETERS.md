@@ -101,6 +101,42 @@ See [notebooks/analyze_results.ipynb](../notebooks/analyze_results.ipynb) for re
 
 See [notebooks/analyze_workflow_results.ipynb](../notebooks/analyze_workflow_results.ipynb) for the fusion sweep.
 
+## Snippet-RRF route (optional)
+
+The snippet-RRF route adds a snippet window reranking stage and a second fusion stage:
+
+- `rerank_hybrid/` → `snippet_rerank/` (window extraction + two-stage window selection + CE rerank)
+- `rerank_hybrid/` + `snippet_rerank/` → `snippet_rrf/` (final RRF fusion)
+- Evidence/generation can then use `evidence_snippet/` + `generation_snippet/`.
+
+### Snippet extraction + window rerank (`snippet_rerank/`)
+
+| Parameter | Suggested Range | Default | Notes |
+|-----------|----------------|---------|-------|
+| `SNIPPET_N_DOCS` | 50 – 200 | **100** | Top docs per query (from `rerank_hybrid`) used for windowing |
+| `SNIPPET_WINDOW_SIZE` | 2 – 5 | **3** | Sentences per window |
+| `SNIPPET_WINDOW_STRIDE` | 1 – 2 | **1** | Sliding stride in sentences |
+| `SNIPPET_TOP_W` | 4 – 16 | **8** | Top windows per doc kept after Stage A |
+| `SNIPPET_DENSE_MODEL` | — | **BAAI/bge-base-en-v1.5** | Stage A dense scorer for windows |
+| `SNIPPET_CE_MODEL` | — | **BAAI/bge-reranker-v2-m3** | Stage B cross-encoder reranker for windows |
+| `SNIPPET_CE_BATCH` | — | **64** | CE batch size (tune for GPU memory) |
+| `SNIPPET_CE_MAX_LENGTH` | 200 – 512 | **512** | CE truncation length |
+
+### Final fusion (`snippet_rrf/`)
+
+| Parameter | Suggested Range | Default | Notes |
+|-----------|----------------|---------|-------|
+| `SNIPPET_FINAL_POOL` | 50 – 200 | **SNIPPET_N_DOCS** | Pool size on both sides of final fusion |
+| `SNIPPET_RRF_K` | 30 – 100 | **60** | RRF constant in \(1 / (k + rank)\) |
+| `SNIPPET_RRF_W_DOCS` | 0.5 – 0.9 | **0.8** | Weight on `rerank_hybrid` |
+| `SNIPPET_RRF_W_SNIPPET` | 0.1 – 0.5 | **0.2** | Weight on `snippet_rerank` |
+
+### Snippet evidence contexts
+
+| Parameter | Suggested Range | Default | Notes |
+|-----------|----------------|---------|-------|
+| `SNIPPET_CONTEXT_TOP_WINDOWS` | 1 – 3 | **2** | Top CE windows per doc used to build contexts |
+
 ## Answer Generation (LLM)
 
 | Parameter | Range Tested | Default | Notes |
@@ -124,7 +160,8 @@ See [notebooks/generation_test.ipynb](../notebooks/generation_test.ipynb) for te
 | 2 | Hybrid RRF | `K_RRF=150, weights=1.0/1.0, cap=TOP_K` |
 | 3 | Rerank (BGE v2) | `candidate_limit=min(TOP_K,HYBRID_CAP) clamped [30,2000], max_length=512` |
 | 4 | Fusion (BGE + Hybrid) | `k_rrf=60, w_bge=0.8, w_hybrid=0.2, pool_top_rerank=50, pool_top_hybrid=50` |
-| 5 | Generation (Llama 3.3) | `temperature=0.0, max_contexts=10` |
+| 5 (optional) | Snippet rerank + fusion | `SNIPPET_N_DOCS=100, window=3/1, top_w=8, final_pool=SNIPPET_N_DOCS, weights=0.8/0.2` |
+| 6 | Generation (Llama 3.3) | `temperature=0.0, max_contexts=10` |
 
 ## Parameter Constraints
 

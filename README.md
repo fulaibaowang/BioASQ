@@ -6,8 +6,8 @@ This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A 
 
 - Stage 1 retrieval: combine retrievers (BM25+RM3, dense, hybrid) , fetch ~500-2000 docs per query, .
 - Stage 2 reranking: cross-encoder model, focus on precision at top ranks (MAP@10, MRR@10).
-- Stage 3: snippet extraction (planned).
-- Metrics: use MeanR@K for stages 1-2 and MAP@10/MRR@10 for stage 3 (BioASQ official metrics).
+- Stage 3 (optional): snippet window extraction + reranking (for snippet-style evidence).
+- Metrics: use MeanR@K for stages 1-2; MAP@10/MRR@10 at the top ranks for rerank + downstream routes.
 
 ## Methods
 
@@ -25,11 +25,28 @@ Point `BM25_INDEX_PATH` and `DENSE_INDEX_DIR` in your pipeline config to these o
 The easiest way to run retrieval and reranking is the pipeline script with a config file. It runs BM25 → Dense → Hybrid (and optionally Reranker), skips stages whose output already exists, and uses one config for all options.
 
 - **Script:** [scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh](scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh)
-- **Example configs:** [workflow_config_baseline.env](scripts/public/shared_scripts/workflow_config_baseline.env) (baseline defaults), [workflow_config_small.env](scripts/public/shared_scripts/workflow_config_small.env) (small run), [workflow_config_full.env](scripts/public/shared_scripts/workflow_config_full.env) (full options)
+- **Example configs:** [workflow_config_baseline.env](scripts/public/shared_scripts/workflow_config_baseline.env) (baseline defaults), [workflow_config_small.env](scripts/public/shared_scripts/workflow_config_small.env) (small run), [workflow_config_snippet.env](scripts/public/shared_scripts/workflow_config_snippet.env) (snippet-RRF route example), [workflow_config_full.env](scripts/public/shared_scripts/workflow_config_full.env) (full options)
 - **Run (from repo root):** `./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config scripts/public/shared_scripts/workflow_config_baseline.env`  
   Use `--no-rerank` to run only BM25, Dense, and Hybrid.
 
 Pipeline config and env→script mapping: [scripts/public/README.md](scripts/public/README.md).
+
+### Pipeline routes (baseline vs snippet-RRF)
+
+The pipeline has a baseline document-evidence route and an optional snippet-RRF route (for snippet-style contexts).
+
+```mermaid
+flowchart TD
+  BM25[BM25 + RM3] --> Dense[Dense] --> Hybrid[Hybrid RRF] --> Rerank[Cross-encoder rerank] --> RRF1[RRF fusion] --> RH[rerank_hybrid]
+
+  RH --> EB[Evidence (baseline)] --> GB[Generation (baseline)]
+
+  RH --> SR[Snippet extraction + CE rerank] --> RRF2[Final RRF fusion] --> RRFSN[snippet_rrf]
+  RRFSN --> ES[Evidence (snippets)] --> GS[Generation (snippets)]
+```
+
+- **Baseline route outputs**: `rerank_hybrid/`, `evidence_baseline/`, `generation_baseline/`
+- **Snippet-RRF route outputs**: `snippet_rerank/`, `snippet_rrf/`, `evidence_snippet/`, `generation_snippet/`
 
 ### First Stage Retrieval
 
@@ -77,4 +94,4 @@ Pipeline config and options (env vars and how they map to each script): [scripts
 ## TODO
 
 - look at zero or low recall quries manaully after 1.st retrieval
-- snippet extraction
+- snippet analysis and ablations (window sizes, fusion weights)
