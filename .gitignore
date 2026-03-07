@@ -9,6 +9,7 @@ tmp/
 **/__pycache__
 *.pyc
 output/
+!output/OUTPUT_DIRS.md
 .env
 logs/
 indexes/
