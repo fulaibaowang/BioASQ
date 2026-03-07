@@ -75,10 +75,10 @@ def load_metrics_from_dir(result_dir: Path) -> pd.DataFrame | None:
             df["split"] = df["batch"]
         return df
 
-    # Hybrid outputs recall-focused tables in results_all.csv
-    results_all = result_dir / "results_all.csv"
-    if results_all.exists():
-        df = pd.read_csv(results_all)
+    # Hybrid outputs recall-focused tables in metrics.csv
+    metrics_file = result_dir / "metrics.csv"
+    if metrics_file.exists():
+        df = pd.read_csv(metrics_file)
         best_cfg = result_dir / "best_config.json"
         if best_cfg.exists():
             with best_cfg.open("r", encoding="utf-8") as f:
