@@ -120,7 +120,7 @@ The snippet-RRF route adds a snippet window reranking stage and a second fusion 
 | `SNIPPET_DENSE_MODEL` | — | **abhinand/MedEmbed-small-v0.1** | Stage A dense scorer for windows |
 | `SNIPPET_DENSE_BATCH` | — | **256** | Stage A dense batch size (tune for GPU memory) |
 | `SNIPPET_CE_MODEL` | — | **BAAI/bge-reranker-v2-m3** | Stage B cross-encoder reranker for windows |
-| `SNIPPET_CE_BATCH` | — | **64** | CE batch size (tune for GPU memory) |
+| `SNIPPET_CE_BATCH` | — | **84** | CE batch size (tune for GPU memory) |
 | `SNIPPET_CE_MAX_LENGTH` | 200 – 512 | **512** | CE truncation length |
 
 ### Final fusion (`snippet_rrf/`)
