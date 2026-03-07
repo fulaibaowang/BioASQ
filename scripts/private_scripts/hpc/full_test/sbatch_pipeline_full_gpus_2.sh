@@ -8,6 +8,7 @@
 #SBATCH --mem=256G
 #SBATCH --gres=gpu:A100:4
 
+
 set -euo pipefail
 
 cd ~/BioASQ
@@ -23,7 +24,7 @@ WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
 
 # Pipeline config
-PIPELINE_CONFIG="scripts/private_scripts/hpc/full_test/config_full_pubmed_sharded_gpus.env"
+PIPELINE_CONFIG="scripts/private_scripts/hpc/full_test/config_full_pubmed_sharded_gpus_2.env"
 
 echo "Starting job ${SLURM_JOB_ID} on $(hostname) at $(date)"
 echo "Running pipeline script with config: ${PIPELINE_CONFIG}"
