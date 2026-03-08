@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J pipeline_full_pubmed_sharded
 #SBATCH -p frida
-#SBATCH --time=36:00:00
+#SBATCH --time=48:00:00
 #SBATCH --cpus-per-task=16
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
