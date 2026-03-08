@@ -37,8 +37,8 @@ USER_BASE_PROMPT_PATH = PROMPTS_DIR / "user_base.txt"
 SCHEMAS_DIR = PROMPTS_DIR / "schemas"
 
 # Evidence block limits (used by format_evidence_block)
-MAX_CONTEXTS = 10
-MAX_CHARS_PER_CONTEXT = 1400
+MAX_CONTEXTS = 8
+MAX_CHARS_PER_CONTEXT = 1200
 
 REPO_ROOT, INPUT_JSON, OUTPUT_JSON, PROMPTS_DIR, SCHEMAS_DIR
 
@@ -56,8 +56,8 @@ if not API_KEY:
     raise RuntimeError("Missing QUERY_REWRITE_LLM_API_KEY or LLAMA_API_KEY in environment or .env")
 
 OLLAMA_URL = "https://chat.fri.uni-lj.si/ollama/api/generate"
-OLLAMA_MODEL = "llama3.3:latest"
-
+#OLLAMA_MODEL = "llama3.3:latest"
+OLLAMA_MODEL = "qwen3:32b-q8_0"
 
 def call_llm(system_prompt: str, user_prompt: str, timeout: int = 120, temperature: float = 0.0, top_p: float = 1.0) -> str:
     """Call the Ollama endpoint and return the raw text response."""
