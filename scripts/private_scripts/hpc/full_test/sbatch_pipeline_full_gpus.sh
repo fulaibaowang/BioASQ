@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
-#SBATCH --mem=256G
+#SBATCH --mem=146G
 #SBATCH --gres=gpu:A100_80GB:2
 
 
