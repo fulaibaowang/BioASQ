@@ -97,5 +97,5 @@ See [docs/USAGE.md](docs/USAGE.md) for detailed setup and evaluation commands.
 
 ## Environment
 
-For a reproducible GPU environment see [Dockerfile](Dockerfile). For local setup see [docs/USAGE.md](docs/USAGE.md).
+For a reproducible environment see [Dockerfile](Dockerfile). 
 
