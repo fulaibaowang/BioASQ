@@ -4,9 +4,10 @@ This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A 
 
 ## Plan and Goals
 
-- Stage 1 retrieval: combine retrievers (BM25+RM3, dense, hybrid) , fetch ~500-2000 docs per query, .
-- Stage 2 reranking: cross-encoder model, focus on precision at top ranks (MAP@10, MRR@10).
-- Stage 3 (optional): snippet window extraction + reranking (for snippet-style evidence).
+- Stage 1: retrieval (BM25+RM3, dense, hybrid), fetch ~500-2000 docs per query.
+- Stage 2: document-level reranking with a cross-encoder + RRF fusion at the top ranks (focus on MAP@10, MRR@10).
+- Stage 2.5 (optional): snippet window extraction + reranking (for snippet-style evidence).
+- Stage 3: LLM answer generation from baseline or snippet-based evidence.
 - Metrics: use MeanR@K for stages 1-2; MAP@10/MRR@10 at the top ranks for rerank + downstream routes.
 
 ## Methods
@@ -58,18 +59,14 @@ flowchart TD
 
 ### First Stage Retrieval
 
-- **BM25 + RM3** ([script](scripts/public/shared_scripts/retrieval/eval_bm25_rm3.py), [notebook](notebooks/bm25_test.ipynb))
-  - Keyword retrieval with RM3 query expansion
-  - Tunable: `--rm3_fb_docs`, `--rm3_fb_terms`, `--rm3_lambda`
+- **BM25 + RM3**
+  - Keyword retrieval with RM3 query expansion.
 
-- **Dense Retrieval** ([script](scripts/public/shared_scripts/retrieval/eval_dense.py), [notebook](notebooks/dense_test.ipynb))
-  - SentenceTransformer embeddings + HNSW index
-  - Models: MedEmbed-small-v0.1 (default), PubMedBERT
-  - Tunable: `--ef_search`, `--ef_cap`, embedding model
+- **Dense Retrieval**
+  - SentenceTransformer embeddings + HNSW index.
+  - Default model: MedEmbed-small-v0.1.
 
-- **Hybrid** reciprocal Rank Fusion combining BM25 and dense
-  - ([notebook](notebooks/hybrid.ipynb))
-  - Tuning knobs: `K_RRF`, BM25/dense weight ratio
+- **Hybrid** reciprocal Rank Fusion combining BM25 and dense.
 
 ### Second Stage Reranking
 
@@ -79,10 +76,16 @@ flowchart TD
 
 ### Snippet Reranking (optional)
 
-- Sliding-window extraction over top documents from econd Stage Reranking: each abstract is split into overlapping sentence windows, scored by a two-stage sparse + cross-encoder pipeline, then the best window score becomes the document's snippet score.
-- Final RRF fusion blends document-level and snippet-level rankings. 
+- Sliding-window extraction over top documents from Second Stage Reranking: each abstract is split into overlapping sentence windows, scored by a two-stage dense + cross-encoder pipeline, then the best window score becomes the document's snippet score.
+- Final RRF fusion blends document-level and snippet-level rankings into a single ranking used for snippet-based evidence.
 
-Tunable parameter ranges: [docs/PARAMETERS.md](docs/PARAMETERS.md)
+### Answer Generation
+
+- Evidence contexts from `evidence_baseline/` or `evidence_snippet/` are fed to an LLM.
+- Default model: `llama3.3:latest` via Ollama with `temperature=0.0` for deterministic output.
+- Outputs are written under `generation_baseline/` and `generation_snippet/`.
+
+Scripts, configs, and detailed usage: [scripts/public/README.md](scripts/public/README.md).
 
 ## Results
 
@@ -90,14 +93,9 @@ Full results are in [docs/RESULTS.md](docs/RESULTS.md).
 
 ## Detailed commands
 
-See [docs/USAGE.md](docs/USAGE.md) for detailed setup and evaluation commands.  
-Pipeline config and options (env vars and how they map to each script): [scripts/public/README.md](scripts/public/README.md).
+See [docs/USAGE.md](docs/USAGE.md) for detailed setup and evaluation commands.
 
 ## Environment
 
- `pip install pyterrier sentence-transformers hnswlib pyarrow pandas numpy scipy`
+For a reproducible GPU environment see [Dockerfile](Dockerfile). For local setup see [docs/USAGE.md](docs/USAGE.md).
 
-## TODO
-
-- look at zero or low recall quries manaully after 1.st retrieval
-- snippet analysis and ablations (window sizes, fusion weights)

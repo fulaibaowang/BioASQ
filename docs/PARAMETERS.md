@@ -138,6 +138,8 @@ The snippet-RRF route adds a snippet window reranking stage and a second fusion 
 |-----------|----------------|---------|-------|
 | `SNIPPET_CONTEXT_TOP_WINDOWS` | 1 – 3 | **2** | Top CE windows per doc used to build contexts |
 
+See also: [notebooks/snippet_extraction.ipynb](../notebooks/snippet_extraction.ipynb) and [notebooks/snippet_extraction_MedCPT.ipynb](../notebooks/snippet_extraction_MedCPT.ipynb) for window-size and fusion exploration.
+
 ## Answer Generation (LLM)
 
 | Parameter | Range Tested | Default | Notes |
@@ -159,10 +161,10 @@ See [notebooks/generation_test.ipynb](../notebooks/generation_test.ipynb) for te
 | 1a | BM25 + RM3 | `fb_docs=20, fb_terms=30, fb_lambda=0.6` |
 | 1b | Dense (MedEmbed) | `M=32, ef_construction=200, ef_search=max(meta,topk)` |
 | 2 | Hybrid RRF | `K_RRF=150, weights=1.0/1.0, cap=TOP_K` |
-| 3 | Rerank (BGE v2) | `candidate_limit=min(TOP_K,HYBRID_CAP) clamped [30,2000], max_length=512` |
-| 4 | Fusion (BGE + Hybrid) | `k_rrf=60, w_bge=0.8, w_hybrid=0.2, pool_top_rerank=50, pool_top_hybrid=50` ( `pool_top_rerank=200, pool_top_hybrid=200` when snippet route is active) |
-| 5 (optional) | Snippet rerank + fusion | `SNIPPET_N_DOCS=100, window=3/1, top_w=8, final_pool=SNIPPET_N_DOCS, weights=0.8/0.2` |
-| 6 | Generation (Llama 3.3) | `temperature=0.0, max_contexts=10` |
+| 2 | Rerank (BGE v2) | `candidate_limit=min(TOP_K,HYBRID_CAP) clamped [30,2000], max_length=512` |
+| 2 | Fusion (BGE + Hybrid) | `k_rrf=60, w_bge=0.8, w_hybrid=0.2, pool_top_rerank=50, pool_top_hybrid=50` (`pool_top_rerank=200, pool_top_hybrid=200` when snippet route is active) |
+| 2.5 (optional) | Snippet rerank + fusion | `SNIPPET_N_DOCS=100, window=3/1, top_w=8, final_pool=SNIPPET_N_DOCS, weights=0.8/0.2` |
+| 3 | Generation (Llama 3.3) | `temperature=0.0, max_contexts=10` |
 
 ## Parameter Constraints
 
