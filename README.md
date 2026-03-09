@@ -75,20 +75,18 @@ flowchart TD
 
 - Cross-encoder reranker that re-scores stage-1 candidates using (query, title+abstract) pairs.
 - Typical flow: take top ~200-2000 per query, re-rank.
+- reciprocal Rank Fusion combining reranking and hybrid (stage 1) results
+
+### Snippet Reranking (optional)
+
+- Sliding-window extraction over top documents from econd Stage Reranking: each abstract is split into overlapping sentence windows, scored by a two-stage sparse + cross-encoder pipeline, then the best window score becomes the document's snippet score.
+- Final RRF fusion blends document-level and snippet-level rankings. 
 
 Tunable parameter ranges: [docs/PARAMETERS.md](docs/PARAMETERS.md)
 
 ## Results
 
-Recall metrics for stages 1-2. Full tables are in [docs/RESULTS.md](docs/RESULTS.md).
-
-| Method | MeanR@2000 (13B test avg) |
-|--------|---------------------------|
-| BM25_RM3 | 0.856 |
-| Dense (MedEmbed)    | 0.787 |
-| Hybrid | 0.907 |
-
-Hybrid details: [notebooks/hybrid.ipynb](notebooks/hybrid.ipynb)
+Full results are in [docs/RESULTS.md](docs/RESULTS.md).
 
 ## Detailed commands
 
