@@ -1,5 +1,5 @@
 # Public scripts
 
-- **Shared retrieval pipeline and scripts:** see [shared_scripts/README.md](shared_scripts/README.md) for the end-to-end workflow (BM25 → Dense → Hybrid → Reranker → Snippet → Generation), config env vars, and script catalogue.
-- **Parameter tuning and notebook links:** see [docs/PARAMETERS.md](../../docs/PARAMETERS.md) for recommended ranges and pointers to analysis notebooks.
-- **Step-by-step CLI examples:** see [docs/USAGE.md](../../docs/USAGE.md) for indexing, standalone eval scripts, and full pipeline commands.
+- **Shared retrieval pipeline and scripts:** see [shared_scripts/README.md](shared_scripts/README.md) for the end-to-end workflow (BM25 → Dense → retrieval fusion → Reranker → Snippet → Generation), config env vars, and script catalogue.
+- **Parameter tuning and notebook links:** see [shared_scripts/docs/PARAMETERS.md](shared_scripts/docs/PARAMETERS.md) for recommended ranges and pointers to analysis notebooks.
+- **Step-by-step CLI examples:** see [shared_scripts/docs/USAGE.md](shared_scripts/docs/USAGE.md) for indexing, standalone eval scripts, and full pipeline commands.

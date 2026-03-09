@@ -20,11 +20,11 @@ python scripts/public/data/parse_pubmed_local.py \
 
 ### Build 10% Training Subset (BioASQ QAs)
 
-We generate a smaller training set at [example/training14b_10pct_sample.json](../example/training14b_10pct_sample.json).
+We generate a smaller training set at [example/training14b_10pct_sample.json](../../example/training14b_10pct_sample.json).
 This subset is built from gold QAs plus zero-recall IDs and top-5000 retrieved PMIDs.
 
 See the notebook section **Build 10% Subset with Gold + zero recall ids + Retrieved PMIDs top 5000** in
-[notebooks/bm25_test.ipynb](../notebooks/bm25_test.ipynb) for the exact steps.
+[notebooks/bm25_test.ipynb](../../../notebooks/bm25_test.ipynb) for the exact steps.
 
 ## Indexing & Retrieval
 
@@ -136,7 +136,7 @@ python scripts/public/shared_scripts/retrieval/eval_dense.py \
 - `--device`: `cpu`, `cuda`, or `mps`
 - `--model_name`: Override SentenceTransformer model
 
-### Hybrid Reranking
+### Retrieval fusion (BM25 + dense)
 
 Fuse BM25 and dense runs with reciprocal rank fusion (RRF):
 
@@ -194,9 +194,9 @@ python scripts/public/shared_scripts/rerank/rerank_stage2.py \
 - `--adaptive-p`, `--adaptive-cap`: Adaptive cutoff parameters
 - `--model-max-length`: Token truncation length for the cross-encoder
 
-### Full pipeline (BM25 → Dense → Hybrid → Reranker → Fusion → Evidence → Generation)
+### Full pipeline (BM25 → Dense → retrieval fusion → Reranker → post-rerank fusion → Evidence → Generation)
 
-Run all stages with one script and a config file. The script skips any stage whose output already exists. Use `--no-rerank` to run only retrieval (BM25, Dense, Hybrid). Use `--no-rrf-fusion` to disable the Hybrid+Rerank fusion step.
+Run all stages with one script and a config file. The script skips any stage whose output already exists. Use `--no-rerank` to run only retrieval (BM25, Dense, retrieval fusion). Use `--no-rrf-fusion` to disable the post-rerank fusion step.
 
 If `DOCS_JSONL` is set, the pipeline will also build:
 
@@ -207,11 +207,11 @@ If `DOCS_JSONL` is set, the pipeline will also build:
 ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config scripts/public/shared_scripts/workflow_config_baseline.env
 ```
 
-**Config files:** [workflow_config_baseline.env](../scripts/public/shared_scripts/workflow_config_baseline.env), [workflow_config_small.env](../scripts/public/shared_scripts/workflow_config_small.env), [workflow_config_snippet.env](../scripts/public/shared_scripts/workflow_config_snippet.env), [workflow_config_full.env](../scripts/public/shared_scripts/workflow_config_full.env). For all options and env→script mapping see [scripts/public/README.md](../scripts/public/README.md).
+**Config files:** [workflow_config_baseline.env](../workflow_config_baseline.env), [workflow_config_small.env](../workflow_config_small.env), [workflow_config_snippet.env](../workflow_config_snippet.env), [workflow_config_full.env](../workflow_config_full.env). For all options and env→script mapping see [scripts/public/README.md](../README.md).
 
 ### Snippet-RRF route (optional)
 
-The snippet route runs snippet window extraction + CE reranking and then a final fusion against `rerank_hybrid` to produce a snippet-driven run (`snippet_rrf/`) and snippet-driven contexts (`evidence_snippet/`).
+The snippet route runs snippet window extraction + CE reranking and then a final evidence fusion step against `rerank_hybrid` to produce a snippet-driven run (`snippet_rrf/`) and snippet-driven contexts (`evidence_snippet/`).
 
 You can enable snippet-RRF either via a CLI flag:
 
@@ -235,23 +235,9 @@ Generation is handled inside the same pipeline script: once evidence JSONL files
 
 ## Output
 
-Most stages in the pipeline write a `metrics.csv` summary, a `runs/` directory with TSV runs (`qid, docno, rank, score`), and optional per-query breakdowns:
-
-- **BM25 / Dense / Hybrid** (standalone eval scripts and within the pipeline):
-  - `bm25/`, `dense/`, `hybrid/` under `$WORKFLOW_OUTPUT_DIR` for the pipeline
-  - `metrics.csv`, `runs/`, `per_query/`, and `*_meta.json` in each stage directory
-- **Reranker + RRF fusion**:
-  - `rerank/` – cross-encoder reranker outputs
-  - `rerank_hybrid/` – Hybrid + Rerank RRF fusion outputs (and optionally `rerank_hybrid_200/` when using a wider pool for snippet-RRF)
-- **Snippet-RRF route (when enabled)**:
-  - `snippet_rerank/` – document-level runs from snippet window reranking
-  - `snippet_rrf/` – final RRF fusion of `rerank_hybrid` and `snippet_rerank` (used by snippet evidence)
-- **Evidence and generation** (when `DOCS_JSONL` is set):
-  - `evidence_baseline/` and `generation_baseline/` – baseline document-based contexts and LLM answers
-  - `evidence_snippet/` and `generation_snippet/` – snippet-based contexts and LLM answers (snippet-RRF route)
+For a detailed overview of output directories and how retrieval fusion, post-rerank fusion, and evidence fusion map to them, see [output.md](output.md).
 
 ## Tuning
 
-See [docs/PARAMETERS.md](PARAMETERS.md) for parameter ranges and short notes.
-
+See [PARAMETERS.md](PARAMETERS.md) for parameter ranges and short notes.
 

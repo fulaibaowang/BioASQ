@@ -1,6 +1,6 @@
 # Tunable Parameters
 
-Pipeline config (env vars and script mapping): [scripts/public/README.md](../scripts/public/README.md).
+Pipeline config (env vars and script mapping): [scripts/public/README.md](../README.md).
 
 ## Recommended Operating Ranges
 
@@ -24,7 +24,7 @@ Each stage's output feeds the next, so values must satisfy: `pool_top ≤ RERANK
 
 **Decision:** Aggressive config (`fb_docs=20, fb_terms=30, fb_lambda=0.6`) achieved the highest recall while balanced configs had marginally higher MAP@10 but lower recall.
 
-See [notebooks/bm25_test.ipynb](../notebooks/bm25_test.ipynb) for the RM3 parameter sweep.
+See [notebooks/bm25_test.ipynb](../../../notebooks/bm25_test.ipynb) for the RM3 parameter sweep.
 
 ## Dense Retrieval (HNSW)
 
@@ -39,7 +39,7 @@ See [notebooks/bm25_test.ipynb](../notebooks/bm25_test.ipynb) for the RM3 parame
 
 **Decision:** Only `ef_search` was swept (5000/10000/20000); differences in MeanR@5000 were marginal (0.845 → 0.850). Other HNSW parameters use standard values. The retrieval script auto-promotes `ef_search` to `max(meta_value, topk)` so the stored default of 100 does not limit deep recall.
 
-See [notebooks/dense_test.ipynb](../notebooks/dense_test.ipynb) for details.
+See [notebooks/dense_test.ipynb](../../../notebooks/dense_test.ipynb) for details.
 
 ### Dense Models Tested
 
@@ -50,7 +50,7 @@ See [notebooks/dense_test.ipynb](../notebooks/dense_test.ipynb) for details.
 
 **Decision:** MedEmbed is the default dense model. PubMedBERT was tested in a separate hybrid pipeline and produced lower recall.
 
-See [notebooks/hybrid_pubmedbert.ipynb](../notebooks/hybrid_pubmedbert.ipynb) for the model comparison.
+See [notebooks/hybrid_pubmedbert.ipynb](../../../notebooks/hybrid_pubmedbert.ipynb) for the model comparison.
 
 ## Hybrid Retrieval (RRF)
 
@@ -62,7 +62,7 @@ See [notebooks/hybrid_pubmedbert.ipynb](../notebooks/hybrid_pubmedbert.ipynb) fo
 
 **Decision:** Equal weights (`1.0 / 1.0`) with `K_RRF=150` selected via grid search (25 configs). Equal weights beat both BM25-heavy (2:1, 3:1) and Dense-heavy (1:2, 1:3) configurations. Best MeanR@2000 = 0.9012. `K_RRF` has a small effect — 60 and 200 are nearly identical to 150.
 
-See [notebooks/hybrid.ipynb](../notebooks/hybrid.ipynb) for the RRF grid search.
+See [notebooks/hybrid.ipynb](../../../notebooks/hybrid.ipynb) for the RRF grid search.
 
 ## Stage 2 Rerank (Cross-Encoder)
 
@@ -85,7 +85,7 @@ See [notebooks/hybrid.ipynb](../notebooks/hybrid.ipynb) for the RRF grid search.
 
 **Decision:** `candidate-limit=2000` chosen from recall curves — the smallest K where hybrid recall reaches 95% of maximum (P=0.95). BGE v2 at `max_length=512` is the default reranker, outperforming MiniLM (MAP@10 0.418 vs 0.385) and BGE at `max_length=200` (0.351).
 
-See [notebooks/analyze_results.ipynb](../notebooks/analyze_results.ipynb) for recall curves, reranker comparison, and BM25/Dense/Hybrid baselines.
+See [notebooks/analyze_results.ipynb](../../../notebooks/analyze_results.ipynb) for recall curves, reranker comparison, and BM25/Dense/Hybrid baselines.
 
 ### Post-Rerank Fusion
 
@@ -99,7 +99,7 @@ See [notebooks/analyze_results.ipynb](../notebooks/analyze_results.ipynb) for re
 
 **Decision:** Reranker-dominant fusion (`w_bge=0.8, w_hybrid=0.2`) outperforms pure reranker output. Optimal for MAP@10: `k_rrf=30, pool_rerank=50, pool_hybrid=50`. Optimal for Recall@50: `k_rrf=60, pool_rerank=100, pool_hybrid=200`.
 
-See [notebooks/analyze_workflow_results.ipynb](../notebooks/analyze_workflow_results.ipynb) for the fusion sweep.
+See [notebooks/analyze_workflow_results.ipynb](../../../notebooks/analyze_workflow_results.ipynb) for the fusion sweep.
 
 ## Snippet-RRF route (optional)
 
@@ -138,7 +138,7 @@ The snippet-RRF route adds a snippet window reranking stage and a second fusion 
 |-----------|----------------|---------|-------|
 | `SNIPPET_CONTEXT_TOP_WINDOWS` | 1 – 3 | **2** | Top CE windows per doc used to build contexts |
 
-See also: [notebooks/snippet_extraction.ipynb](../notebooks/snippet_extraction.ipynb) and [notebooks/snippet_extraction_MedCPT.ipynb](../notebooks/snippet_extraction_MedCPT.ipynb) for window-size and fusion exploration.
+See also: [notebooks/snippet_extraction.ipynb](../../../notebooks/snippet_extraction.ipynb) and [notebooks/snippet_extraction_MedCPT.ipynb](../../../notebooks/snippet_extraction_MedCPT.ipynb) for window-size and fusion exploration.
 
 ## Answer Generation (LLM)
 
@@ -152,7 +152,7 @@ See also: [notebooks/snippet_extraction.ipynb](../notebooks/snippet_extraction.i
 
 **Decision:** Temperature differences are marginal (F_MRR: 0.4994 at 0.3 vs 0.4988 at 0.8; R_SU4_Rec: 0.3478 at 0.8 vs 0.3474 at 0.3). Script default is `temperature=0.0` for deterministic output. Prompt tests are to be updated.
 
-See [notebooks/generation_test.ipynb](../notebooks/generation_test.ipynb) for temperature and prompt tests.
+See [notebooks/generation_test.ipynb](../../../notebooks/generation_test.ipynb) for temperature and prompt tests.
 
 ## Retrieval Pipeline Summary
 
@@ -212,3 +212,4 @@ With default `TOP_K=5000`:
 3. **Setting `DENSE_EF_CAP` too low**: If `DENSE_EF_CAP < DENSE_TOP_K`, deep recall degrades because HNSW can't return accurate results when `ef < k`. The runtime prints ef_search details but does not warn explicitly.
 
 4. **Setting `HYBRID_CAP` much smaller than `RERANK_CANDIDATE_LIMIT`**: Pipeline uses `min(RERANK_CANDIDATE_LIMIT, HYBRID_CAP)`, so an explicit `RERANK_CANDIDATE_LIMIT=2000` with `HYBRID_CAP=100` silently reduces the reranker input to 100.
+

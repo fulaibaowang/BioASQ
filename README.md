@@ -19,16 +19,16 @@ The pipeline expects a **BM25 (Terrier) index** and a **Dense (HNSW) index**. Bu
 - **BM25:** [scripts/public/shared_scripts/index/build_bm25_index_from_jsonl_shards.py](scripts/public/shared_scripts/index/build_bm25_index_from_jsonl_shards.py)
 - **Dense:** [scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_shards.py](scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_shards.py)
 
-Point `BM25_INDEX_PATH` and `DENSE_INDEX_DIR` in your pipeline config to these outputs. For data prep (parse XML to JSONL, subset) and full indexing commands see [docs/USAGE.md](docs/USAGE.md).
+Point `BM25_INDEX_PATH` and `DENSE_INDEX_DIR` in your pipeline config to these outputs. For data prep (parse XML to JSONL, subset) and full indexing commands see [scripts/public/shared_scripts/docs/USAGE.md](scripts/public/shared_scripts/docs/USAGE.md).
 
 ### Run the full pipeline (recommended)
 
-The easiest way to run retrieval and reranking is the pipeline script with a config file. It runs BM25 → Dense → Hybrid (and optionally Reranker), skips stages whose output already exists, and uses one config for all options.
+The easiest way to run retrieval and reranking is the pipeline script with a config file. It runs BM25 → Dense → retrieval fusion (BM25 + dense) → Reranker, skips stages whose output already exists, and uses one config for all options.
 
 - **Script:** [scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh](scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh)
 - **Example configs:** [workflow_config_baseline.env](scripts/public/shared_scripts/workflow_config_baseline.env) (baseline defaults), [workflow_config_snippet.env](scripts/public/shared_scripts/workflow_config_snippet.env) (snippet-RRF route example), [workflow_config_full.env](scripts/public/shared_scripts/workflow_config_full.env) (full options)
 - **Run (from repo root):** `./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config scripts/public/shared_scripts/workflow_config_baseline.env`  
-  Use `--no-rerank` to run only BM25, Dense, and Hybrid.
+  Use `--no-rerank` to run only BM25, Dense, and retrieval fusion.
 
 Pipeline config and env→script mapping: [scripts/public/README.md](scripts/public/README.md).
 
@@ -39,16 +39,16 @@ The pipeline has a baseline document-evidence route and an optional snippet-RRF 
 ```mermaid
 flowchart TD
   BM25[BM25 + RM3] --> Dense[Dense]
-  Dense --> Hybrid[Hybrid RRF]
+  Dense --> Hybrid[Retrieval fusion (BM25 + dense)]
   Hybrid --> Rerank[Cross-encoder rerank]
-  Rerank --> RRF1[RRF fusion]
+  Rerank --> RRF1[Post-rerank fusion]
   RRF1 --> RH[rerank_hybrid]
 
   RH --> EB[Baseline evidence]
   EB --> GB[Baseline generation]
 
   RH --> SR[Snippet rerank]
-  SR --> RRF2[Final RRF fusion]
+  SR --> RRF2[Evidence fusion]
   RRF2 --> RRFSN[snippet_rrf]
   RRFSN --> ES[Snippet evidence]
   ES --> GS[Snippet generation]
@@ -66,7 +66,7 @@ flowchart TD
   - SentenceTransformer embeddings + HNSW index.
   - Default model: MedEmbed-small-v0.1.
 
-- **Hybrid** reciprocal Rank Fusion combining BM25 and dense.
+- **Retrieval fusion**: reciprocal Rank Fusion combining BM25 and dense runs.
 
 ### Second Stage Reranking
 
@@ -93,9 +93,9 @@ Full results are in [docs/RESULTS.md](docs/RESULTS.md).
 
 ## Detailed commands
 
-See [docs/USAGE.md](docs/USAGE.md) for detailed setup and evaluation commands.
+See [scripts/public/shared_scripts/docs/USAGE.md](scripts/public/shared_scripts/docs/USAGE.md) for detailed setup and evaluation commands.
 
 ## Environment
 
-For a reproducible environment see [Dockerfile](Dockerfile). 
+For a reproducible environment see [Dockerfile](Dockerfile). For local setup see [scripts/public/shared_scripts/docs/USAGE.md](scripts/public/shared_scripts/docs/USAGE.md).
 
