@@ -4,8 +4,8 @@ This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A 
 
 ## Plan and Goals
 
-- Stage 1: retrieval (BM25+RM3, dense, hybrid), fetch ~500-2000 docs per query.
-- Stage 2: document-level reranking with a cross-encoder + RRF fusion at the top ranks (focus on MAP@10, MRR@10).
+- Stage 1: retrieval (BM25+RM3, dense, retrieval fusion), fetch ~500-2000 docs per query.
+- Stage 2: document-level reranking with a cross-encoder + RRF at the top ranks (focus on MAP@10, MRR@10).
 - Stage 2.5 (optional): snippet window extraction + reranking (for snippet-style evidence).
 - Stage 3: LLM answer generation from baseline or snippet-based evidence.
 - Metrics: use MeanR@K for stages 1-2; MAP@10/MRR@10 at the top ranks for rerank + downstream routes.
@@ -39,16 +39,16 @@ The pipeline has a baseline document-evidence route and an optional snippet-RRF 
 ```mermaid
 flowchart TD
   BM25[BM25 + RM3] --> Dense[Dense]
-  Dense --> Hybrid[Retrieval fusion (BM25 + dense)]
-  Hybrid --> Rerank[Cross-encoder rerank]
-  Rerank --> RRF1[Post-rerank fusion]
+  Dense --> Hybrid["Retrieval fusion (BM25 + dense)"]
+  Hybrid --> Rerank["Cross-encoder rerank"]
+  Rerank --> RRF1["Post-rerank fusion"]
   RRF1 --> RH[rerank_hybrid]
 
   RH --> EB[Baseline evidence]
   EB --> GB[Baseline generation]
 
-  RH --> SR[Snippet rerank]
-  SR --> RRF2[Evidence fusion]
+  RH --> SR["Snippet rerank"]
+  SR --> RRF2["Evidence fusion"]
   RRF2 --> RRFSN[snippet_rrf]
   RRFSN --> ES[Snippet evidence]
   ES --> GS[Snippet generation]
@@ -72,7 +72,7 @@ flowchart TD
 
 - Cross-encoder reranker that re-scores stage-1 candidates using (query, title+abstract) pairs.
 - Typical flow: take top ~200-2000 per query, re-rank.
-- reciprocal Rank Fusion combining reranking and hybrid (stage 1) results
+- Post-rerank fusion combining reranker scores and retrieval fusion (stage 1) results.
 
 ### Snippet Reranking (optional)
 
