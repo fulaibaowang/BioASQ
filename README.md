@@ -41,16 +41,14 @@ flowchart TD
   BM25[BM25 + RM3] --> Dense[Dense]
   Dense --> Hybrid["Retrieval fusion (BM25 + dense)"]
   Hybrid --> Rerank["Cross-encoder rerank"]
-  Rerank --> RRF1["Post-rerank fusion"]
-  RRF1 --> RH[rerank_hybrid]
+  Rerank --> RH["Post-rerank fusion"]
 
   RH --> EB[Baseline evidence]
   EB --> GB[Baseline generation]
 
   RH --> SR["Snippet rerank"]
   SR --> RRF2["Evidence fusion"]
-  RRF2 --> RRFSN[snippet_rrf]
-  RRFSN --> ES[Snippet evidence]
+  RRF2 --> ES[Snippet evidence]
   ES --> GS[Snippet generation]
 ```
 
