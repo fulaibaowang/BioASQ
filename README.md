@@ -4,11 +4,13 @@ This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A 
 
 ## Plan and Goals
 
-- Stage 1: retrieval (BM25+RM3, dense, retrieval fusion), fetch ~500-2000 docs per query.
-- Stage 2: document-level reranking with a cross-encoder + RRF at the top ranks (focus on MAP@10, MRR@10).
-- Stage 2.5 (optional): snippet window extraction + reranking (for snippet-style evidence).
-- Stage 3: LLM answer generation from baseline or snippet-based evidence.
-- Metrics: use MeanR@K for stages 1-2; MAP@10/MRR@10 at the top ranks for rerank + downstream routes.
+- Stage 1: hybrid retrieval (BM25+RM3, dense, retrieval fusion), fetch ~500-2000 docs per query.
+- Stage 2: document-level reranking with a cross-encoder 
+- Stage 2b: Post-rerank fusion at the top ranks (focus on MAP@10).
+- Stage 3: (optional): Snippet-aware evidence reranking
+- Stage 3b (optional): Evidence (document and snippet) fusion
+- Stage 4: LLM answer generation from baseline or snippet-based evidence.
+- Metrics: use MeanR@K for stages 1-2; MAP@10 at the top ranks for rerank + downstream routes.
 
 ## Methods
 
