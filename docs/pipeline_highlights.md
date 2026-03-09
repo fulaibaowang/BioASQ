@@ -1,25 +1,54 @@
-## Pipeline Highlights and Title Ideas
+# Pipeline Highlights
 
-### Multi-stage, multi-hybrid retrieval stack:
-- retrival (recall foucused)
-  -  reciprocal-rank-fusion (RRF) hybrid in retrival steps on BM25, dense HNSW retrieval, combining advantages keyword and semantic understanding
-- rerank (top titer precision focused)
-  -  doc level rrf on rerank lists with hybrid lists (from retrival), combining advantages keyword and cross encoder understanding
-  -  rrf on doc level (abstracts) and snippets list combining doc level and small window level
+- **Multi-stage retrieval, reranking, and evidence fusion pipeline**
 
-Key
-- bioasq test often focus on specific terms, bm25 almost always get higher recall to dense
-- reranker always help on early precision, and often the bigger model have better results
-- three hybrid
-  - bm25 and dense fusion usually helps
-  - hybrid and rerank fusion usually helps
-  - doc level and snippets fusion does not impactful on early pricision, because snippet are from top docs, but might help on selction window and feed llm key evidence passage (smaller context)
- 
-lesson learned:
-- query rewriting (either basic tpyo correction, or short question generailze / refrase) does not help reranking, prosumably reranker was robust on this already
-- hard miss by first retrieval stage is already low in my system. those wikipedia style questions is always diffcult for retrival though
-- reranking on whole abstract is almost always better than on select windows overall, so snippet selection can help on compress evidence but not increase map
-- is raranker (delta map@10 rerank - hybrid) bias by question types or question length (this is worthy one more closer look)
-- shorter question seems always have lower map@10
-- once move to reranking, recall is not anymore a good eval metrices, epecially number of  gold docs are not the same (the higher the # gold docs, the likely the lower the recall)
+---
+
+## Stage 1: Retrieval (recall-oriented)
+
+- A reciprocal rank fusion (RRF) hybrid combines **BM25+RM3** and **dense HNSW retrieval**, leveraging both lexical exact matching and semantic similarity.
+
+---
+
+## Stage 2: Reranking (early-precision oriented)
+
+- A cross-encoder reranker rescoring the stage-1 candidates improves top-rank precision.
+
+- The reranked list is further fused with the stage-1 hybrid ranking, combining the robustness of lexical-semantic retrieval with the precision of cross-encoder scoring.
+
+---
+
+## Stage 3: Snippet-aware evidence route (optional)
+
+- Top-ranked abstracts are split into overlapping sentence windows and reranked.
+
+- A final fusion combines document-level and snippet-level signals, with the main goal of improving evidence selection and context compression for downstream generation rather than substantially improving document-level MAP@10.
+
+---
+
+# Key observations
+
+- In BioASQ, **BM25 often achieves stronger recall than dense retrieval**, likely because many questions depend on highly specific biomedical terms, abbreviations, or entity mentions.
+
+- Cross-encoder reranking consistently improves early precision over first-stage hybrid retrieval.
+
+- Larger rerankers often perform better, although this should be reported as an empirical trend in the tested setup rather than a universal rule.
+
+- Document–snippet fusion has limited impact on early document-ranking precision, but it may still be useful for selecting compact evidence passages for LLM input.
+
+---
+
+# Lessons learned
+
+- Query rewriting (e.g. typo correction, paraphrasing, or question generalization) did not improve reranking performance in the current setup, suggesting that the reranker is already robust to modest query variation.
+
+- First-stage retrieval misses relatively few gold documents overall, although broader “Wikipedia-style” questions remain difficult.
+
+- Reranking full abstracts generally outperforms reranking preselected windows at the document-ranking level; snippet selection is more useful for evidence compression than for improving MAP.
+
+- Reranking gains may vary by question type and question length, which deserves a more systematic stratified analysis.
+
+- Shorter questions tend to have lower MAP@10, possibly because they are more ambiguous or underspecified.
+
+- After reranking, recall should not be the primary headline metric, because queries differ in the number of relevant documents and reranking mainly targets early precision. Metrics such as **MAP@10** and **MRR@10** are more appropriate for comparing rerankers.
 - how to name terms better?
