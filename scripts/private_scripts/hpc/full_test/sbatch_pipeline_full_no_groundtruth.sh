@@ -54,9 +54,16 @@ srun \
 
     export OMP_NUM_THREADS=8
     export PYTHONUNBUFFERED=1
+    # Avoid tqdm/sentence-transformers progress bars in .err (no TTY -> raw ^M and long logs)
+    export TQDM_DISABLE=1
 
     echo \"[debug] CUDA_VISIBLE_DEVICES=\${CUDA_VISIBLE_DEVICES:-<unset>}\"
     nvidia-smi -L || true
+
+    # Save a copy of the config used for this run
+    source '${PIPELINE_CONFIG}'
+    mkdir -p \"\$WORKFLOW_OUTPUT_DIR\"
+    cp '${PIPELINE_CONFIG}' \"\$WORKFLOW_OUTPUT_DIR/\"
 
     echo \"[run] Starting retrieval + rerank + evidence + generation pipeline\"
     ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config '${PIPELINE_CONFIG}'
