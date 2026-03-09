@@ -28,7 +28,7 @@ The easiest way to run retrieval and reranking is the pipeline script with a con
 - **Script:** [scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh](scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh)
 - **Example configs:** [workflow_config_baseline.env](scripts/public/shared_scripts/workflow_config_baseline.env) (baseline defaults), [workflow_config_snippet.env](scripts/public/shared_scripts/workflow_config_snippet.env) (snippet-RRF route example), [workflow_config_full.env](scripts/public/shared_scripts/workflow_config_full.env) (full options)
 - **Run (from repo root):** `./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config scripts/public/shared_scripts/workflow_config_baseline.env`  
-  Use `--no-rerank` to run only BM25, Dense, and retrieval fusion.
+  Use `--no-rerank` to run only BM25, Dense, and retrieval fusion; use `--no-generation` to skip LLM answer generation while still building evidence.
 
 Pipeline config and env→script mapping: [scripts/public/README.md](scripts/public/README.md).
 
@@ -52,8 +52,7 @@ flowchart TD
   ES --> GS[Snippet generation]
 ```
 
-- **Baseline route outputs**: `rerank_hybrid/`, `evidence_baseline/`, `generation_baseline/`
-- **Snippet-RRF route outputs**: `snippet_rerank/`, `snippet_rrf/`, `evidence_snippet/`, `generation_snippet/`
+- For a detailed map of pipeline outputs (including baseline and snippet-RRF routes), see [scripts/public/shared_scripts/docs/output.md](scripts/public/shared_scripts/docs/output.md).
 
 ### First Stage Retrieval
 
@@ -79,9 +78,10 @@ flowchart TD
 
 ### Answer Generation
 
-- Evidence contexts from `evidence_baseline/` or `evidence_snippet/` are fed to an LLM.
+- Baseline evidence uses document-level contexts built from title and abstract text (truncated to a fixed character budget per passage).
+- Snippet evidence uses title plus the highest-scoring sliding windows from the snippet reranking stage as compact contexts.
 - Default model: `llama3.3:latest` via Ollama with `temperature=0.0` for deterministic output.
-- Outputs are written under `generation_baseline/` and `generation_snippet/`.
+- Note: this part is currently wired to a personal/local LLM endpoint; this step can be skipped via `--no-generation` (or adapted to your own API) without affecting retrieval and reranking reproducibility.
 
 Scripts, configs, and detailed usage: [scripts/public/README.md](scripts/public/README.md).
 
@@ -95,5 +95,5 @@ See [scripts/public/shared_scripts/docs/USAGE.md](scripts/public/shared_scripts/
 
 ## Environment
 
-For a reproducible environment see [Dockerfile](Dockerfile). For local setup see [scripts/public/shared_scripts/docs/USAGE.md](scripts/public/shared_scripts/docs/USAGE.md).
+For a reproducible environment see [Dockerfile](Dockerfile).
 
