@@ -53,13 +53,9 @@ I would say “consistently improved MAP@10 / MRR@10 over the stage-1 hybrid” 
 
 The third point about snippet fusion is scientifically interesting, and the script actually supports your intuition. The snippet route is not a fresh retrieval branch from the full corpus; it is a late branch from the document route, using rerank_hybrid_200 as input, then extracting windows, reranking them, and finally fusing document and snippet signals with default weights of 0.8 for docs and 0.2 for snippets.
 
-run_retrieval_rerank_pipeline
-
 Because of that design, large MAP@10 gains are naturally hard to get: the snippet branch mostly rearranges evidence inside an already strong shortlisted document set. That makes your interpretation strong: snippet routing is better presented as evidence refinement / compression than as a major document-retrieval improvement.
 
 Your “query rewriting does not help reranking” point is useful, but it should be scoped carefully. The script allows separate query fields for BM25, dense, and rerank stages, so the system is already set up for stage-specific query representation choices.
-
-run_retrieval_rerank_pipeline
 
 I would therefore write: “In the current setup, lightweight query rewriting did not improve reranking performance.” That leaves room for the possibility that rewriting could still help stage-1 retrieval, or help under other models.
 
