@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -J pipeline_full_pubmed_sharded
-#SBATCH -p frida
+#SBATCH -p amd
 #SBATCH --time=24:00:00
 #SBATCH --mem=64G
 #SBATCH -o logs/%x_%j.out
