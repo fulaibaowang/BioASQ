@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -J pipeline_full_pubmed_sharded
-#SBATCH -p amd
+#SBATCH -p frida
 #SBATCH --time=24:00:00
 #SBATCH --mem=64G
 #SBATCH -o logs/%x_%j.out
@@ -30,9 +30,16 @@ echo "Starting job ${SLURM_JOB_ID} on $(hostname) at $(date)"
 echo "Running pipeline script with config: ${PIPELINE_CONFIG}"
 
 # Derive number of GPUs from Slurm allocation (for multi-GPU-aware code)
-NUM_GPUS="${SLURM_GPUS_PER_TASK:-${SLURM_GPUS_ON_NODE:-1}}"
+NUM_GPUS="${SLURM_GPUS_PER_TASK:-${SLURM_GPUS_ON_NODE:-0}}"
 export NUM_GPUS
 echo "Detected NUM_GPUS=${NUM_GPUS}"
+
+# On CPU-only jobs, disable NVIDIA integration for enroot/pyxis
+if [[ "${NUM_GPUS}" -eq 0 ]]; then
+  export ENROOT_DISABLE_NVIDIA=1
+  export NVIDIA_VISIBLE_DEVICES=void
+  echo "No GPUs allocated; disabling NVIDIA hooks for container"
+fi
 
 # -----------------------------
 # Run inside container
