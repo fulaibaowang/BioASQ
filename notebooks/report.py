@@ -813,427 +813,321 @@ print("Saved:", fig_path)
 plt.show()
 
 # %% [markdown]
-# ## 10. Reranker Top-1 Overlap, Win/Loss, and Jaccard@10
+# ## 10. MedCPT – MAP@K Curves: `rerank_hybrid_200` vs `snippet_rerank`
 
 # %%
-# Methods and runs for pairwise comparison (ignore BGE len=200)
-pair_methods = {
-    "MiniLM": base_dir / "output" / "eval_stage2_rerank_miniLM" / "runs",
-    "BGE-m3": base_dir / "output" / "eval_stage2_rerank_bge_reranker_v2_m3_len512" / "runs",
-    "Gemma 2.5B": base_dir / "output" / "workflow_baseline_full_run_both_routes_gemma" / "rerank" / "runs",
+medcpt_dir = base_dir / "output" / "workflow_baseline_full_run_both_routes_MedCPT"
+
+medcpt_run_dirs = {
+    "MedCPT rerank_hybrid_200": medcpt_dir / "rerank_hybrid_200" / "runs",
+    "MedCPT snippet_rerank": medcpt_dir / "snippet_rerank" / "runs",
 }
 
-splits_pairs = [
-    "training14b_10pct_sample",
-    "13B1_golden",
-    "13B2_golden",
-    "13B3_golden",
-    "13B4_golden",
-]
+medcpt_map_ks = list(range(10, 101, 10))
 
-# Reuse the same train/test overlap set so that train-only tables exclude
-# any queries whose IDs also appear in the test batches.
-pair_train_overlap_qids = train_overlap_qids
-
-# Collect top-1 and top-10 docs per (method, split, qid)
-top1_docs: dict[str, dict[tuple[str, str], str | None]] = {m: {} for m in pair_methods}
-top10_docs: dict[str, dict[tuple[str, str], list[str]]] = {m: {} for m in pair_methods}
-
-for split in splits_pairs:
-    qrels_split = qrels_by_split.get(split, {})
-    for method_name, runs_dir in pair_methods.items():
-        # Train/dev filenames use different stems ("train_subset" vs "training14b_10pct_sample")
-        stems = [split]
-        if split == "training14b_10pct_sample":
-            stems = ["train_subset", split]
-
-        run_path = None
-        for stem in stems:
-            pattern = f"best_rrf_{stem}_top"
-            candidates = list(runs_dir.glob(f"{pattern}*.tsv"))
-            if candidates:
-                run_path = candidates[0]
-                break
-
-        if run_path is None:
-            continue
-
-        run_df = _load_run(run_path)
-        qid_col, doc_col = run_df.columns.tolist()
-        for qid, group in run_df.groupby(qid_col, sort=False):
-            qid_str = str(qid)
-            if split == "training14b_10pct_sample" and pair_train_overlap_qids and qid_str in pair_train_overlap_qids:
-                continue
-            key = (split, qid_str)
-            docs = group[doc_col].astype(str).tolist()
-            top1_docs[method_name][key] = docs[0] if docs else None
-            top10_docs[method_name][key] = docs[:10]
-
-# All query keys where at least one method has output
-all_keys: set[tuple[str, str]] = set()
-for m in pair_methods:
-    all_keys.update(top1_docs[m].keys())
-
-# Use all keys (train overlap qids were already excluded when building top1_docs/top10_docs).
-analysis_keys = all_keys
-
-method_pairs = [
-    ("MiniLM", "BGE-m3"),
-    ("MiniLM", "Gemma 2.5B"),
-    ("BGE-m3", "Gemma 2.5B"),
-]
-
-# 1. Top-1 overlap counts
-rows_overlap = []
-for a, b in method_pairs:
-    same = 0
-    different = 0
-    total = 0
-    for split, qid in analysis_keys:
-        a_doc = top1_docs[a].get((split, qid))
-        b_doc = top1_docs[b].get((split, qid))
-        if not a_doc or not b_doc:
-            continue
-        total += 1
-        if a_doc == b_doc:
-            same += 1
-        else:
-            different += 1
-    rows_overlap.append(
-        {
-            "pair": f"{a} vs {b}",
-            "same_top1": same,
-            "different_top1": different,
-            "total_queries": total,
-            "same_frac": same / total if total else 0.0,
-        }
-    )
-
-df_overlap = pd.DataFrame(rows_overlap)
-print("Top-1 overlap (MiniLM, BGE-m3 len512, Gemma):")
-print(df_overlap.round(3).to_string(index=False))
-
-overlap_path = output_dir / "08_reranker_top1_overlap.csv"
-df_overlap.to_csv(overlap_path, index=False)
-print("Saved:", overlap_path)
-
-# 2. Top-1 win/loss vs relevance
-rows_winloss = []
-for a, b in method_pairs:
-    a_rel_b_not = 0
-    b_rel_a_not = 0
-    both_rel = 0
-    neither_rel = 0
-    total = 0
-    for split, qid in analysis_keys:
-        a_doc = top1_docs[a].get((split, qid))
-        b_doc = top1_docs[b].get((split, qid))
-        if not a_doc or not b_doc:
-            continue
-        rels = qrels_by_split.get(split, {}).get(qid, set())
-        if not rels:
-            continue
-        a_is_rel = a_doc in rels
-        b_is_rel = b_doc in rels
-        total += 1
-        if a_is_rel and not b_is_rel:
-            a_rel_b_not += 1
-        elif b_is_rel and not a_is_rel:
-            b_rel_a_not += 1
-        elif a_is_rel and b_is_rel:
-            both_rel += 1
-        else:
-            neither_rel += 1
-
-    rows_winloss.append(
-        {
-            "pair": f"{a} vs {b}",
-            "A_name": a,
-            "B_name": b,
-            "A_win": a_rel_b_not,
-            "B_win": b_rel_a_not,
-            "both_rel": both_rel,
-            "neither_rel": neither_rel,
-            "total_queries": total,
-            "A_win_frac": a_rel_b_not / total if total else float("nan"),
-            "B_win_frac": b_rel_a_not / total if total else float("nan"),
-            "both_rel_frac": both_rel / total if total else float("nan"),
-            "neither_rel_frac": neither_rel / total if total else float("nan"),
-        }
-    )
-
-df_winloss = pd.DataFrame(rows_winloss)
-print("\nTop-1 win/loss vs relevance (standardized table):")
-print(df_winloss.round(3).to_string(index=False))
-
-winloss_path = output_dir / "09_reranker_top1_winloss.csv"
-df_winloss.to_csv(winloss_path, index=False)
-print("Saved:", winloss_path)
-
-# 3. Jaccard overlap of top-10 sets
-rows_jaccard = []
-for a, b in method_pairs:
-    jaccs = []
-    n_pairs = 0
-    for split, qid in analysis_keys:
-        a_docs = top10_docs[a].get((split, qid))
-        b_docs = top10_docs[b].get((split, qid))
-        if not a_docs or not b_docs:
-            continue
-        set_a = set(a_docs)
-        set_b = set(b_docs)
-        union = set_a | set_b
-        if not union:
-            continue
-        inter = set_a & set_b
-        j = len(inter) / len(union)
-        jaccs.append(j)
-        n_pairs += 1
-    mean_j = float(np.mean(jaccs)) if jaccs else 0.0
-    median_j = float(np.median(jaccs)) if jaccs else 0.0
-    rows_jaccard.append(
-        {
-            "pair": f"{a} vs {b}",
-            "mean_jaccard@10": mean_j,
-            "median_jaccard@10": median_j,
-            "n_queries": n_pairs,
-        }
-    )
-
-df_jacc = pd.DataFrame(rows_jaccard)
-print("\nJaccard overlap of top-10 (MiniLM, BGE-m3 len512, Gemma):")
-print(df_jacc.round(3).to_string(index=False))
-
-jacc_path = output_dir / "10_reranker_jaccard_top10.csv"
-df_jacc.to_csv(jacc_path, index=False)
-print("Saved:", jacc_path)
-
-# %% [markdown]
-# ## 11. RRF fusion sweep: MiniLM + BGE-m3 (keep Gemma on plot)
-
-# %%
-from collections import defaultdict
-
-rrf_k = 60
-fusion_weights = [
-    (0.0, 1.0),
-    (0.33, 0.67),
-    (0.5, 0.5),
-    (0.67, 0.33),
-    (1.0, 0.0),
-]
-
-fusion_labels = {
-    (0.0, 1.0): "BGE-m3 only",
-    (0.33, 0.67): "Fusion w=(0.33,0.67)",
-    (0.5, 0.5): "Fusion w=(0.5,0.5)",
-    (0.67, 0.33): "Fusion w=(0.67,0.33)",
-    (1.0, 0.0): "MiniLM only",
-}
-
-minilm_runs_dir = base_dir / "output" / "eval_stage2_rerank_miniLM" / "runs"
-bge_runs_dir = base_dir / "output" / "eval_stage2_rerank_bge_reranker_v2_m3_len512" / "runs"
-gemma_runs_dir = base_dir / "output" / "workflow_baseline_full_run_both_routes_gemma" / "rerank" / "runs"
-
-def _find_run_path(runs_dir: Path, split: str) -> Path | None:
-    # Train/dev split uses both "train_subset" and "training14b_10pct_sample"
-    stems = [split]
-    if split == "training14b_10pct_sample":
-        stems = ["train_subset", split]
-    for stem in stems:
-        cands = list(runs_dir.glob(f"best_rrf_{stem}_top*.tsv"))
-        if cands:
-            return cands[0]
-    return None
-
-def _rrf_fuse_two_lists(
-    docs_a: list[str],
-    docs_b: list[str],
-    pool_a: int,
-    pool_b: int,
-    k_rrf: int,
-    w_a: float,
-    w_b: float,
-) -> list[str]:
-    # Adapted from rerank_rrf_hybrid._rrf_fuse_docs
-    a_top = docs_a[:pool_a]
-    b_top = docs_b[:pool_b]
-    rank_a = {d: i + 1 for i, d in enumerate(a_top)}
-    rank_b = {d: i + 1 for i, d in enumerate(b_top)}
-    union = list(dict.fromkeys(a_top + b_top))
-    scored = []
-    for d in union:
-        s = 0.0
-        ra = rank_a.get(d)
-        rb = rank_b.get(d)
-        if ra is not None:
-            s += w_a / (k_rrf + ra)
-        if rb is not None:
-            s += w_b / (k_rrf + rb)
-        scored.append((d, s))
-    scored.sort(key=lambda x: (-x[1], x[0]))
-    return [d for d, _ in scored]
-
-# Build MAP@K curves for: MiniLM, BGE-m3, Gemma, and each fusion weight
-fusion_curves: dict[str, dict[str, dict[int, float]]] = defaultdict(dict)
+medcpt_map_curves: dict[str, dict[str, dict[int, float]]] = defaultdict(dict)
 
 for split in splits_rerank:
     qrels_split = qrels_by_split.get(split, {})
     if not qrels_split:
         continue
-
-    # Load base runs
-    minilm_path = _find_run_path(minilm_runs_dir, split)
-    bge_path = _find_run_path(bge_runs_dir, split)
-    gemma_path = _find_run_path(gemma_runs_dir, split)
-
-    if not minilm_path or not bge_path:
-        continue  # need both for fusion
-
-    minilm_df = _load_run(minilm_path)
-    bge_df = _load_run(bge_path)
-
-    # Optional: apply same train-overlap filtering as section 9
-    if split == "training14b_10pct_sample" and train_overlap_qids:
-        qid_col, _ = minilm_df.columns.tolist()
-        mask = ~minilm_df[qid_col].astype(str).isin(train_overlap_qids)
-        minilm_df = minilm_df[mask]
-        mask = ~bge_df[qid_col].astype(str).isin(train_overlap_qids)
-        bge_df = bge_df[mask]
-
-    # Build per-qid doc lists
-    qid_col, doc_col = minilm_df.columns.tolist()
-    minilm_docs = {
-        q: g[doc_col].astype(str).tolist()
-        for q, g in minilm_df.groupby(qid_col, sort=False)
-    }
-    bge_docs = {
-        q: g[doc_col].astype(str).tolist()
-        for q, g in bge_df.groupby(qid_col, sort=False)
-    }
-
-    # 1) Base curves for MiniLM, BGE-m3, and Gemma
-    for name, df_path in [
-        ("MiniLM", minilm_path),
-        ("BGE-m3", bge_path),
-        ("Gemma 2.5B", gemma_path),
-    ]:
-        if not df_path:
+    for method_name, runs_dir in medcpt_run_dirs.items():
+        stem = f"best_rrf_{split}_top5000_rrf_poolR200_poolH200_k60"
+        run_path = runs_dir / f"{stem}.tsv"
+        if not run_path.exists():
             continue
-        base_df = _load_run(df_path)
+        run_df = _load_run(run_path)
+        # For train/dev, drop any qids that overlap with test batches (same logic as section 9).
         if split == "training14b_10pct_sample" and train_overlap_qids:
-            qid_col, _ = base_df.columns.tolist()
-            base_df = base_df[~base_df[qid_col].astype(str).isin(train_overlap_qids)]
-        fusion_curves[name][split] = _map_at_ks_for_run(base_df, qrels_split, map_ks)
+            qid_col, _ = run_df.columns.tolist()
+            run_df = run_df[~run_df[qid_col].astype(str).isin(train_overlap_qids)]
+        map_vals = _map_at_ks_for_run(run_df, qrels_split, medcpt_map_ks)
+        medcpt_map_curves[method_name][split] = map_vals
 
-    # 2) Fusion curves for each weight pair
-    union_qids = sorted(set(minilm_docs.keys()) | set(bge_docs.keys()), key=str)
-    for w_a, w_b in fusion_weights:
-        label = fusion_labels[(w_a, w_b)]
-        rows = []
-        for qid in union_qids:
-            docs_a = minilm_docs.get(qid, [])
-            docs_b = bge_docs.get(qid, [])
-            fused = _rrf_fuse_two_lists(
-                docs_a,
-                docs_b,
-                pool_a=50,
-                pool_b=50,
-                k_rrf=rrf_k,
-                w_a=w_a,
-                w_b=w_b,
-            )
-            for rank, doc in enumerate(fused, start=1):
-                rows.append((str(qid), doc))
-        if not rows:
-            continue
-        fused_df = pd.DataFrame(rows, columns=["qid", doc_col])
-        if split == "training14b_10pct_sample" and train_overlap_qids:
-            fused_df = fused_df[~fused_df["qid"].astype(str).isin(train_overlap_qids)]
-        fusion_curves[label][split] = _map_at_ks_for_run(fused_df, qrels_split, map_ks)
-
-# Plot: 2x3 grid, one panel per split (train + 4 tests), lines for base + fusions
 fig, axes = plt.subplots(2, 3, figsize=(16, 8), sharex=True, sharey=True)
 axes_flat = list(axes.flat)
 
-series_order = [
-    "MiniLM",
-    "BGE-m3",
-    "Gemma 2.5B",
-    "BGE-m3 only",
-    "Fusion w=(0.33,0.67)",
-    "Fusion w=(0.5,0.5)",
-    "Fusion w=(0.67,0.33)",
-    "MiniLM only",
-]
+all_vals_medcpt: list[float] = []
+for method_dict in medcpt_map_curves.values():
+    for split_vals in method_dict.values():
+        all_vals_medcpt.extend(split_vals.values())
 
-colors_fusion = {
-    "MiniLM": "#1f77b4",
-    "BGE-m3": "#ff7f0e",
-    "Gemma 2.5B": "#9467bd",
-    "BGE-m3 only": "#ffbb78",
-    "Fusion w=(0.33,0.67)": "#2ca02c",
-    "Fusion w=(0.5,0.5)": "#17becf",
-    "Fusion w=(0.67,0.33)": "#8c564b",
-    "MiniLM only": "#d62728",
+if all_vals_medcpt:
+    y_min_m = max(0.0, min(all_vals_medcpt) - 0.02)
+    y_max_m = min(1.0, max(all_vals_medcpt) + 0.02)
+else:
+    y_min_m, y_max_m = 0.0, 1.0
+
+colors_medcpt = {
+    "MedCPT rerank_hybrid_200": "#1f77b4",
+    "MedCPT snippet_rerank": "#ff7f0e",
 }
-
-# y-range
-all_vals = []
-for name in series_order:
-    for split_vals in fusion_curves.get(name, {}).values():
-        all_vals.extend(split_vals.values())
-y_min = max(0.0, min(all_vals) - 0.02) if all_vals else 0.0
-y_max = min(1.0, max(all_vals) + 0.02) if all_vals else 1.0
 
 for idx, split in enumerate(splits_rerank):
     ax = axes_flat[idx]
-    for name in series_order:
-        split_map = fusion_curves.get(name, {}).get(split)
-        if not split_map:
+    for method_name, method_dict in medcpt_map_curves.items():
+        if split not in method_dict:
             continue
-        ys = [split_map.get(k, 0.0) for k in map_ks]
+        vals = [method_dict[split].get(k, 0.0) for k in medcpt_map_ks]
         ax.plot(
-            map_ks,
-            ys,
+            medcpt_map_ks,
+            vals,
             marker="o",
-            linewidth=1.6,
-            color=colors_fusion.get(name, "#999999"),
-            label=name,
+            linewidth=1.8,
+            color=colors_medcpt[method_name],
+            label=method_name,
         )
     ax.set_title(split_labels.get(split, split), fontsize=14, fontweight="bold")
-    ax.set_ylim(y_min, y_max)
+    ax.set_ylim(y_min_m, y_max_m)
     ax.grid(True, axis="y")
     ax.grid(True, axis="x")
     if idx % 3 == 0:
         ax.set_ylabel("MAP@K")
     if idx >= 3:
         ax.set_xlabel("K")
-        ax.set_xticks(map_ks)
-        ax.set_xticklabels([str(k) for k in map_ks], rotation=90)
+        ax.set_xticks(medcpt_map_ks)
+        ax.set_xticklabels([str(k) for k in medcpt_map_ks], rotation=90)
 
-# Hide unused 6th panel if any
 for j in range(len(splits_rerank), len(axes_flat)):
     axes_flat[j].set_visible(False)
 
-from matplotlib.lines import Line2D
-legend_handles = [
-    Line2D([0], [0], color=colors_fusion[name], marker="o", linestyle="-", label=name)
-    for name in series_order
+from matplotlib.lines import Line2D as _Line2D_medcpt
+
+legend_medcpt_handles = [
+    _Line2D_medcpt([0], [0], color=colors_medcpt[name], marker="o", linestyle="-", label=name)
+    for name in colors_medcpt.keys()
 ]
 fig.legend(
-    handles=legend_handles,
-    labels=series_order,
+    handles=legend_medcpt_handles,
+    labels=list(colors_medcpt.keys()),
     loc="lower right",
     bbox_to_anchor=(1.02, 0.05),
-    fontsize=10,
+    fontsize=16,
 )
-
-fig.suptitle("RRF Fusion Sweep: MiniLM + BGE-m3 (MAP@K, k_rrf=60)", fontsize=16, fontweight="bold", y=1.02)
+fig.suptitle(
+    "MedCPT – MAP@K Curves (rerank_hybrid_200 vs snippet_rerank)",
+    fontsize=16,
+    fontweight="bold",
+    y=1.02,
+)
 plt.tight_layout(rect=[0, 0, 1, 0.95])
-fig_path = output_dir / "11_rrf_fusion_minilm_bge_m3_mapk.png"
+fig_path = output_dir / "08_medcpt_rerank_hybrid200_vs_snippet_mapk.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
+
+# %% [markdown]
+# ## 11. MedCPT – RRF Fusion Sweep: MAP@10 vs Weight (rerank_hybrid_200 + snippet_rerank)
+
+# %%
+# We reproduce the "MAP@10 vs weight config" line plots from `snippet_extraction_MedCPT.py`,
+# but only for our local MedCPT snippet reranker (no external MedCPT_bge-m3 dependency),
+# and using the qrels / overlap filtering already defined in this notebook.
+
+RUN_TOP = 100
+OUTPUT_TOP = 10
+RRF_KS = [60]
+RRF_WEIGHTS = [
+    (1.0, 0.0),
+    (0.9, 0.1),
+    (0.8, 0.2),
+    (0.7, 0.3),
+    (0.6, 0.4),
+    (0.5, 0.5),
+    (0.4, 0.6),
+    (0.3, 0.7),
+    (0.2, 0.8),
+    (0.1, 0.9),
+    (0.0, 1.0),
+]
+
+
+def _build_run_map(run_df: pd.DataFrame) -> dict[str, list[str]]:
+    qid_col, doc_col = run_df.columns.tolist()
+    run_map: dict[str, list[str]] = {}
+    for qid, group in run_df.groupby(qid_col, sort=False):
+        run_map[str(qid)] = group[doc_col].astype(str).tolist()
+    return run_map
+
+
+def _rrf_fuse_docs(
+    docs_hybrid: list[str],
+    docs_snippet: list[str],
+    k_rrf: int,
+    w_hybrid: float,
+    w_snippet: float,
+    run_top: int,
+    output_top: int,
+) -> list[str]:
+    hybrid_top = docs_hybrid[:run_top]
+    snippet_top = docs_snippet[:run_top]
+    rank_h = {d: i + 1 for i, d in enumerate(hybrid_top)}
+    rank_s = {d: i + 1 for i, d in enumerate(snippet_top)}
+    union = list(dict.fromkeys(hybrid_top + snippet_top))
+    scored: list[tuple[str, float]] = []
+    for d in union:
+        s = 0.0
+        rh = rank_h.get(d)
+        rs = rank_s.get(d)
+        if rh is not None:
+            s += w_hybrid / (k_rrf + rh)
+        if rs is not None:
+            s += w_snippet / (k_rrf + rs)
+        scored.append((d, s))
+    scored.sort(key=lambda x: (-x[1], x[0]))
+    return [d for d, _ in scored[:output_top]]
+
+
+def _ap10_for_fusion(
+    gold: dict[str, list[str]] | dict[str, set[str]],
+    run_hybrid: dict[str, list[str]],
+    run_snippet: dict[str, list[str]],
+    k_rrf: int,
+    w_hybrid: float,
+    w_snippet: float,
+) -> tuple[float, int]:
+    # gold is qid -> iterable of relevant doc ids
+    qids = [q for q in gold if q in run_hybrid and q in run_snippet and gold[q]]
+    if not qids:
+        return 0.0, 0
+    ap_vals: list[float] = []
+    for q in qids:
+        rels = set(gold[q])
+        fused_docs = _rrf_fuse_docs(
+            run_hybrid[q],
+            run_snippet[q],
+            k_rrf=k_rrf,
+            w_hybrid=w_hybrid,
+            w_snippet=w_snippet,
+            run_top=RUN_TOP,
+            output_top=OUTPUT_TOP,
+        )
+        ap_vals.append(_ap_at_k(fused_docs, rels, k=OUTPUT_TOP))
+    return (float(np.mean(ap_vals)) if ap_vals else 0.0, len(qids))
+
+
+# Build simple gold maps from qrels_by_split (after train/dev overlap filtering).
+gold_maps: dict[str, dict[str, set[str]]] = {}
+for split in splits_rerank:
+    qrels_split = qrels_by_split.get(split, {})
+    if not qrels_split:
+        continue
+    if split == "training14b_10pct_sample" and train_overlap_qids:
+        # Drop overlapping qids from train split golds
+        gold_maps[split] = {
+            qid: rels
+            for qid, rels in qrels_split.items()
+            if qid not in train_overlap_qids
+        }
+    else:
+        gold_maps[split] = qrels_split
+
+# Load MedCPT hybrid and snippet run maps.
+hybrid_run_maps: dict[str, dict[str, list[str]]] = {}
+snippet_run_maps: dict[str, dict[str, list[str]]] = {}
+
+for split in splits_rerank:
+    # hybrid (rerank_hybrid_200 uses poolR200_poolH200)
+    stem_h = f"best_rrf_{split}_top5000_rrf_poolR200_poolH200_k60"
+    path_h = (medcpt_dir / "rerank_hybrid_200" / "runs" / f"{stem_h}.tsv")
+    # snippet_rerank (same stem/pool config)
+    stem_s = f"best_rrf_{split}_top5000_rrf_poolR200_poolH200_k60"
+    path_s = (medcpt_dir / "snippet_rerank" / "runs" / f"{stem_s}.tsv")
+
+    if not path_h.exists() or not path_s.exists():
+        continue
+
+    df_h = _load_run(path_h)
+    df_s = _load_run(path_s)
+
+    if split == "training14b_10pct_sample" and train_overlap_qids:
+        qid_col, _ = df_h.columns.tolist()
+        mask = ~df_h[qid_col].astype(str).isin(train_overlap_qids)
+        df_h = df_h[mask]
+        mask = ~df_s[qid_col].astype(str).isin(train_overlap_qids)
+        df_s = df_s[mask]
+
+    hybrid_run_maps[split] = _build_run_map(df_h)
+    snippet_run_maps[split] = _build_run_map(df_s)
+
+# Sweep weights and compute MAP@10 per split and k_rrf
+rrf_rows: list[dict[str, object]] = []
+
+for split in splits_rerank:
+    gold = gold_maps.get(split)
+    run_h = hybrid_run_maps.get(split)
+    run_s = snippet_run_maps.get(split)
+    if not gold or not run_h or not run_s:
+        continue
+    for k_rrf in RRF_KS:
+        for w_h, w_s in RRF_WEIGHTS:
+            map10, n_q = _ap10_for_fusion(
+                gold=gold,
+                run_hybrid=run_h,
+                run_snippet=run_s,
+                k_rrf=k_rrf,
+                w_hybrid=w_h,
+                w_snippet=w_s,
+            )
+            rrf_rows.append(
+                {
+                    "split": split,
+                    "k_rrf": k_rrf,
+                    "w_hybrid": w_h,
+                    "w_snippet": w_s,
+                    "MAP@10": map10,
+                    "n_queries": n_q,
+                }
+            )
+
+rrf_results = pd.DataFrame(rrf_rows)
+if not rrf_results.empty:
+    rrf_results["weight_label"] = rrf_results.apply(
+        lambda r: f"({r['w_hybrid']:.1f},{r['w_snippet']:.1f})",
+        axis=1,
+    )
+
+weight_order = [f"({w[0]:.1f},{w[1]:.1f})" for w in RRF_WEIGHTS]
+
+# Line plot: MAP@10 vs weight config — one line per (k_rrf, snippet_label=MedCPT), one panel per split
+if not rrf_results.empty:
+    n_splits = rrf_results["split"].nunique()
+    n_cols = min(3, n_splits)
+    n_rows = (n_splits + n_cols - 1) // n_cols
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), sharey=True)
+    if n_splits == 1:
+        axes = np.array([axes])
+    axes_flat = axes.flat
+
+    for ax, (split, grp) in zip(axes_flat, rrf_results.groupby("split", sort=False)):
+        for k_rrf in sorted(grp["k_rrf"].unique()):
+            sub = grp[grp["k_rrf"] == k_rrf].set_index("weight_label").reindex(weight_order)
+            vals = sub["MAP@10"].values
+            ax.plot(
+                range(len(weight_order)),
+                vals,
+                marker="o",
+                linewidth=1.6,
+                label=f"k_rrf={k_rrf}, MedCPT",
+            )
+        ax.set_xticks(range(len(weight_order)))
+        ax.set_xticklabels(weight_order, rotation=45, ha="right")
+        n_q = int(grp["n_queries"].max())
+        ax.set_title(f"{split_labels.get(split, split)} (n={n_q})", fontsize=12, fontweight="bold")
+        ax.set_ylabel("MAP@10")
+        ax.set_xlabel("(w_hybrid, w_snippet)")
+        ax.grid(True, axis="y")
+    # Hide any unused axes
+    for ax in list(axes_flat)[n_splits:]:
+        ax.set_visible(False)
+
+    handles, labels = axes_flat[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", ncol=len(labels), bbox_to_anchor=(0.5, 1.05), fontsize=12)
+    fig.suptitle("MedCPT – MAP@10 vs RRF Weight (rerank_hybrid_200 + snippet_rerank)", fontsize=16, fontweight="bold", y=1.08)
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    fig_path = output_dir / "09_medcpt_rrf_fusion_map10_vs_weight.png"
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    print("Saved:", fig_path)
+    plt.show()
 
 # %%
