@@ -220,7 +220,7 @@ def fuse_rrf(
                 r = int(row["rank"])
                 scores[doc] = scores.get(doc, 0.0) + (float(w_dense) / (float(k_rrf) + r))
 
-        ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        ranked = sorted(scores.items(), key=lambda x: (-x[1], x[0]))
         run[str(qid)] = [doc for doc, _ in ranked[: int(k_out)]]
 
     return run
@@ -436,6 +436,7 @@ def _evaluate_single_config(
         "MRR@10": eval_summary.get("MRR@10", np.nan),
         "GMAP@10": eval_summary.get("GMAP@10", np.nan),
         "Success@10": eval_summary.get("Success@10", np.nan),
+        "MeanR@10": eval_summary.get("MeanR@10", np.nan),
     }
     for k in ks_eval:
         row[f"MeanR@{k}"] = metrics.get(f"MeanR@{k}", np.nan)
@@ -514,7 +515,12 @@ def main() -> None:
     ap.add_argument("--dense_root", required=True, help="Path to dense output folder (dense_*.parquet)")
 
     ap.add_argument("--train-json", dest="train_json", required=True)
-    ap.add_argument("--test_batch_jsons", nargs="+", required=True, help="List of 13B*_golden.json files")
+    ap.add_argument(
+        "--test_batch_jsons",
+        nargs="*",
+        default=[],
+        help="List of 13B*_golden.json files. Required when running with evaluation; optional in no-eval mode.",
+    )
 
     ap.add_argument("--out_dir", required=True)
 
@@ -636,7 +642,7 @@ def main() -> None:
             )
             runmap_to_tsv(best_run, runs_dir / f"best_rrf_{split}_top{k_out}.tsv")
         config = vars(args)
-        config.update({"ks_cap": list(ks_cap), "ks_eval": list(ks_eval)})
+        config.update({"ks_cap": list(fixed_ks), "ks_eval": list(ks_eval)})
         (out_dir / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
         print("No-eval mode: runs saved to", runs_dir)
         return
@@ -685,7 +691,7 @@ def main() -> None:
                     print(f"Error evaluating task {idx}: {e}")
 
     results_df = pd.DataFrame(rows)
-    results_df.to_csv(out_dir / "results_all.csv", index=False)
+    results_df.to_csv(out_dir / "metrics.csv", index=False)
 
     test_splits = [fp.stem for fp in test_files]
     if not test_splits:

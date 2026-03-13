@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import warnings
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -119,6 +120,20 @@ def _infer_role_from_run_id(
     return "unknown"
 
 
+def _short_run_label(run_id: str) -> str:
+    """Extract split name from run_id for compact legend (e.g. best_rrf_13B1_golden_top5000_... -> 13B1_golden)."""
+    if not run_id or len(run_id) <= 28:
+        return run_id
+    s = run_id
+    if s.startswith("best_rrf_"):
+        s = s[len("best_rrf_"):]
+    for sep in ("_top", "_rrf_"):
+        if sep in s:
+            s = s.split(sep)[0]
+            break
+    return s if s else run_id
+
+
 def _metrics_from_runs_dir(
     runs_dir: Path,
     gold_map: Dict[str, List[str]],
@@ -156,9 +171,12 @@ def load_metrics_from_dirs(
     ks_recall: Optional[Tuple[int, ...]] = None,
     train_batch_stems: Optional[Tuple[str, ...]] = None,
     test_batch_stems: Optional[Tuple[str, ...]] = None,
+    force_from_runs: bool = False,
 ) -> Tuple[pd.DataFrame, List[str]]:
     """Load and concatenate metrics from each dir. If a dir has no metrics.csv but has runs/*.tsv,
     compute metrics from runs when gold_map (and ks_recall) are provided.
+    When force_from_runs=True, always recompute from runs/*.tsv (ignoring metrics.csv) so that
+    custom ks_recall values are honoured.
     train_batch_stems/test_batch_stems are used to set role (train/test) from run_id when building from runs."""
     if ks_recall is None:
         ks_recall = RECALL_KS
@@ -174,7 +192,8 @@ def load_metrics_from_dirs(
                 p = p_alt
         runs_dir = d / "runs"
         label = labels[i] if labels and i < len(labels) else d.name
-        if p.exists():
+        use_runs = force_from_runs and runs_dir.is_dir() and list(runs_dir.glob("*.tsv")) and gold_map
+        if p.exists() and not use_runs:
             df = pd.read_csv(p)
             df["result_dir"] = str(d)
             df["dir_label"] = label
@@ -228,7 +247,7 @@ def plot_recall_curves(
     k_max: Optional[int] = None,
     log_x: bool = False,
 ) -> None:
-    """Plot recall (MeanR@k) curves: one line per (dir_label, run), x = k."""
+    """Plot recall (MeanR@k) curves: one line per (dir_label, run), x = k. Legend uses short split names when run_id is long."""
     if plt is None:
         return
     k_list = _meanr_columns_to_k_list(combined)
@@ -237,14 +256,18 @@ def plot_recall_curves(
     if not k_list:
         return
     metric_cols = [f"MeanR@{k}" for k in k_list]
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(11, 5))
     colors = plt.cm.tab10(np.linspace(0, 1, max(len(dir_labels), 1)))
     for (dir_lbl, run_id), grp in combined.groupby(["dir_label", "run"], sort=False):
         if grp.shape[0] != 1:
             vals = grp[metric_cols].mean().values
         else:
             vals = grp[metric_cols].iloc[0].values
-        label = f"{dir_lbl}: {run_id}" if len(dir_labels) > 1 or len(combined["run"].unique()) > 1 else run_id
+        short_run = _short_run_label(run_id)
+        if len(dir_labels) > 1 or len(combined["run"].unique()) > 1:
+            label = f"{dir_lbl}: {short_run}"
+        else:
+            label = short_run
         ax.plot(k_list, vals, marker="o", label=label, markersize=4)
     if log_x:
         ax.set_xscale("log")
@@ -253,7 +276,9 @@ def plot_recall_curves(
     ax.set_title("Recall curve comparison")
     ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=8)
     ax.grid(True, alpha=0.3)
-    plt.tight_layout()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close()
     print("Saved:", output_path)
@@ -293,14 +318,15 @@ def plot_map_curve(
     output_path: Path,
     log_x: bool = False,
 ) -> None:
-    """Plot MAP@k curve: one line per (dir_label, run_id), x = k."""
+    """Plot MAP@k curve: one line per (dir_label, run_id), x = k. Legend uses short split names when run_id is long."""
     if plt is None:
         return
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(11, 5))
     for (dir_lbl, run_id), map_vals in map_by_run.items():
         xs = [k for k in ks if k in map_vals]
         ys = [map_vals[k] for k in xs]
-        label = f"{dir_lbl}: {run_id}"
+        short_run = _short_run_label(run_id)
+        label = f"{dir_lbl}: {short_run}"
         ax.plot(xs, ys, marker="o", label=label, markersize=5)
     if log_x:
         ax.set_xscale("log")
@@ -309,7 +335,9 @@ def plot_map_curve(
     ax.set_title("MAP@K curve comparison")
     ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=8)
     ax.grid(True, alpha=0.3)
-    plt.tight_layout()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close()
     print("Saved:", output_path)
@@ -328,10 +356,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--recall-k-max", type=int, default=None, help="Max K for recall curve (default: use all in metrics).")
     parser.add_argument("--ks-recall", type=str, default="", help="Comma-separated K for MeanR@k when building metrics from runs (e.g. hybrid). Default: 50,100,200,...,5000.")
     parser.add_argument("--train-json", type=Path, default=None, help="Training questions JSON (for gold; required for MAP curve and for dirs that only have runs/).")
-    parser.add_argument("--test-batch-jsons", type=Path, nargs="*", default=None, help="Test batch JSONs (for gold, needed for MAP curve).")
+    parser.add_argument(
+        "--test-batch-jsons",
+        "--test_batch_jsons",
+        type=Path,
+        nargs="*",
+        default=None,
+        help="Test batch JSONs (for gold, needed for MAP curve). Supports both --test-batch-jsons and --test_batch_jsons.",
+    )
     parser.add_argument("--query-field", type=str, default="body", help="Query field in question JSONs.")
     parser.add_argument("--log-x", action="store_true", help="Use log scale for x-axis (K) in recall and MAP curves.")
     parser.add_argument("--plots-by-split", action="store_true", help="Output one recall and one MAP plot per split (train/test); uses 'role' from metrics, or 'label' if role missing.")
+    parser.add_argument("--force-from-runs", action="store_true", help="Recompute metrics from runs/*.tsv even when metrics.csv exists. Useful when --ks-recall differs from the K values in metrics.csv.")
     return parser.parse_args()
 
 
@@ -352,8 +388,11 @@ def main() -> None:
     figures_dir = output_dir / "figures"
     figures_dir.mkdir(parents=True, exist_ok=True)
 
-    # Dirs with runs/ but no metrics.csv need gold to build synthetic metrics
-    need_gold = any(
+    force_from_runs = getattr(args, "force_from_runs", False)
+
+    # Dirs with runs/ but no metrics.csv need gold to build synthetic metrics;
+    # also need gold when --force-from-runs is active.
+    need_gold = force_from_runs or any(
         not (d / "metrics.csv").exists() and (d / "runs").is_dir() and list((d / "runs").glob("*.tsv"))
         for d in dirs
     )
@@ -386,11 +425,32 @@ def main() -> None:
 
     combined, dir_labels = load_metrics_from_dirs(
         dirs, args.labels,
-        gold_map=gold_map if need_gold else None,
+        gold_map=gold_map if (need_gold or force_from_runs) else None,
         ks_recall=ks_recall,
         train_batch_stems=train_batch_stems,
         test_batch_stems=test_batch_stems,
+        force_from_runs=force_from_runs,
     )
+
+    # Normalize role where possible so --plots-by-split can group curves sensibly.
+    # Some upstream scripts may emit role="unknown" even though run/label clearly
+    # correspond to a train or test batch. When we have batch stems, try to fix that.
+    if "role" in combined.columns and (train_batch_stems or test_batch_stems):
+        def _fix_role(row: pd.Series) -> str:
+            role = str(row.get("role") or "").strip().lower()
+            if role and role not in ("unknown", "nan"):
+                return role
+            text = f"{row.get('run', '')} {row.get('label', '')}"
+            text_lower = str(text).lower()
+            for stem in test_batch_stems:
+                if str(stem).lower() in text_lower:
+                    return "test"
+            for stem in train_batch_stems:
+                if str(stem).lower() in text_lower:
+                    return "train"
+            return "unknown"
+
+        combined["role"] = combined.apply(_fix_role, axis=1)
 
     # Summary stats table (always)
     _write_compare_summary(combined, output_dir)
