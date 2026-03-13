@@ -114,7 +114,7 @@ methods_cfg = {
 }
 
 fig, axes = plt.subplots(2, 3, figsize=(16, 9), sharex=True, sharey=True)
-axes_flat = axes.flat
+axes_flat = list(axes.flat)
 
 global_ymin, global_ymax = 1.0, 0.0
 for split in splits:
@@ -169,8 +169,8 @@ for idx, split in enumerate(splits):
     ax.grid(True, axis="y")
     ax.grid(True, axis="x")
 
-last_ax = axes_flat[len(splits)]
-last_ax.axis("off")
+for j in range(len(splits), len(axes_flat)):
+    axes_flat[j].remove()
 
 handles, labels = axes_flat[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.92, 0.12), fontsize=18)
@@ -222,7 +222,7 @@ recall_cols_common = [f"MeanR@{k}" for k in k_vals_recall]
 print("Stage2+ K values (≤300):", k_vals_recall)
 
 fig, axes = plt.subplots(2, 3, figsize=(16, 9), sharex=True, sharey=True)
-axes_flat = axes.flat
+axes_flat = list(axes.flat)
 
 global_ymin, global_ymax = 1.0, 0.0
 for split in splits:
@@ -277,8 +277,8 @@ for idx, split in enumerate(splits):
     ax.grid(True, axis="y")
     ax.grid(True, axis="x")
 
-last_ax = axes_flat[len(splits)]
-last_ax.axis("off")
+for j in range(len(splits), len(axes_flat)):
+    axes_flat[j].remove()
 
 handles, labels = axes_flat[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.88, 0.12), fontsize=18)
@@ -458,7 +458,7 @@ for split in splits:
         map_curves[method_name][split] = map_vals
 
 fig, axes = plt.subplots(2, 3, figsize=(16, 9), sharex=True, sharey=True)
-axes_flat = axes.flat
+axes_flat = list(axes.flat)
 
 all_maps = []
 for method_dict in map_curves.values():
@@ -511,8 +511,8 @@ for idx, split in enumerate(splits):
     ax.grid(True, axis="y")
     ax.grid(True, axis="x")
 
-last_ax = axes_flat[len(splits)]
-last_ax.axis("off")
+for j in range(len(splits), len(axes_flat)):
+    axes_flat[j].remove()
 
 handles, labels = axes_flat[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.88, 0.12), fontsize=13)
@@ -658,6 +658,116 @@ plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
 
+
+# %%
+def _recall_at_k(docs: list[str], rels: set[str], k: int) -> float:
+    if not rels:
+        return 0.0
+    hits = sum(1 for d in docs[:k] if d in rels)
+    return hits / len(rels)
+
+recall_records = []
+for method_name, runs_dir in run_dirs.items():
+    for split in [dev_split] + test_splits:
+        qrels_split = qrels_by_split[split]
+        pattern = f"best_rrf_{split}_top5000"
+        candidates = list(runs_dir.glob(f"{pattern}*.tsv"))
+        if not candidates:
+            continue
+        run_path = candidates[0]
+        run_df = _load_run(run_path)
+        qid_col, doc_col = run_df.columns.tolist()
+        for qid, group in run_df.groupby(qid_col, sort=False):
+            rels = qrels_split.get(str(qid))
+            if not rels:
+                continue
+            docs = group[doc_col].tolist()
+            bucket = _gold_bucket(len(rels))
+            for k in map_ks:
+                recall_records.append({
+                    "method": method_name,
+                    "bucket": bucket,
+                    "k": k,
+                    "Recall@K": _recall_at_k(docs, set(rels), k),
+                })
+
+recall_pq_df = pd.DataFrame(recall_records)
+recall_summary = (
+    recall_pq_df.groupby(["method", "bucket", "k"], as_index=False)["Recall@K"]
+    .mean()
+)
+
+combined = summary.merge(recall_summary, on=["method", "bucket", "k"], how="outer")
+
+all_vals = list(combined["MAP@K"].dropna()) + list(combined["Recall@K"].dropna())
+y_min_c = max(0.0, min(all_vals) - 0.02) if all_vals else 0.0
+y_max_c = min(1.0, max(all_vals) + 0.02) if all_vals else 1.0
+
+method_colors = {name: f"C{i}" for i, name in enumerate(run_dirs)}
+
+fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=True, sharey=True)
+axes_flat = axes.flat
+
+for idx, bucket in enumerate(bucket_order):
+    ax = axes_flat[idx]
+    bucket_df = combined[combined["bucket"] == bucket]
+    if bucket_df.empty:
+        ax.set_visible(False)
+        continue
+    for method_name in run_dirs:
+        m_df = bucket_df[bucket_df["method"] == method_name].sort_values("k")
+        if m_df.empty:
+            continue
+        c = method_colors[method_name]
+        # Solid line for MAP@K
+        ax.plot(
+            m_df["k"],
+            m_df["MAP@K"],
+            color=c,
+            linewidth=2.0,
+        )
+        # Dashed, semi-transparent line for Recall@K
+        ax.plot(
+            m_df["k"],
+            m_df["Recall@K"],
+            color=c,
+            linewidth=2.0,
+            linestyle="--",
+            alpha=0.6,
+        )
+    n_bucket = bucket_counts.get(bucket, 0)
+    ax.set_title(f"|gold| = {bucket}, n={n_bucket}", fontweight="bold")
+    ax.set_ylim(y_min_c, y_max_c)
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+    if idx % 2 == 0:
+        ax.set_ylabel("Score")
+    if idx >= 2:
+        ax.set_xlabel("K")
+
+from matplotlib.lines import Line2D
+method_handles = [
+    Line2D([], [], color=method_colors[m], linewidth=2.0, label=m)
+    for m in run_dirs
+]
+style_handles = [
+    Line2D([], [], color="black", linewidth=1.8, linestyle="-", label="MAP@K"),
+    Line2D([], [], color="black", linewidth=1.8, linestyle="--", label="Recall@K"),
+]
+fig.legend(
+    handles=method_handles + style_handles,
+    loc="upper center",
+    ncol=len(run_dirs) + 2,
+    bbox_to_anchor=(0.5, 1.05),
+    fontsize=12,
+)
+
+plt.tight_layout(rect=[0, 0, 1, 0.95])
+fig_path = output_dir / "06b_mapk_recall_by_gold_bucket_all.png"
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
+
 # %% [markdown]
 # ## 9. MAP@K Curves – Rerankers Across Configs (Train + Test Splits)
 # Note: for the train/dev split we drop any queries whose IDs also appear in the
@@ -788,9 +898,9 @@ for idx, split in enumerate(splits_rerank):
         ax.set_xticks(map_ks)
         ax.set_xticklabels([str(k) for k in map_ks], rotation=90)
 
-# Hide unused last panel (6th subplot)
+# Remove unused 6th panel so it doesn't show
 for j in range(len(splits_rerank), len(axes_flat)):
-    axes_flat[j].set_visible(False)
+    axes_flat[j].remove()
 
 from matplotlib.lines import Line2D
 
@@ -889,7 +999,7 @@ for idx, split in enumerate(splits_rerank):
         ax.set_xticklabels([str(k) for k in medcpt_map_ks], rotation=90)
 
 for j in range(len(splits_rerank), len(axes_flat)):
-    axes_flat[j].set_visible(False)
+    axes_flat[j].remove()
 
 from matplotlib.lines import Line2D as _Line2D_medcpt
 
@@ -1097,9 +1207,9 @@ if not rrf_results.empty:
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), sharey=True)
     if n_splits == 1:
         axes = np.array([axes])
-    axes_flat = axes.flat
+    axes_flat = list(axes.flat)
 
-    for ax, (split, grp) in zip(axes_flat, rrf_results.groupby("split", sort=False)):
+    for idx, (ax, (split, grp)) in enumerate(zip(axes_flat, rrf_results.groupby("split", sort=False))):
         for k_rrf in sorted(grp["k_rrf"].unique()):
             sub = grp[grp["k_rrf"] == k_rrf].set_index("weight_label").reindex(weight_order)
             vals = sub["MAP@10"].values
@@ -1108,26 +1218,981 @@ if not rrf_results.empty:
                 vals,
                 marker="o",
                 linewidth=1.6,
-                label=f"k_rrf={k_rrf}, MedCPT",
             )
         ax.set_xticks(range(len(weight_order)))
         ax.set_xticklabels(weight_order, rotation=45, ha="right")
         n_q = int(grp["n_queries"].max())
         ax.set_title(f"{split_labels.get(split, split)} (n={n_q})", fontsize=12, fontweight="bold")
-        ax.set_ylabel("MAP@10")
-        ax.set_xlabel("(w_hybrid, w_snippet)")
+        if idx % n_cols == 0:
+            ax.set_ylabel("MAP@10")
+        if idx >= (n_rows - 1) * n_cols:
+            ax.set_xlabel("(w_hybrid, w_snippet)")
         ax.grid(True, axis="y")
-    # Hide any unused axes
-    for ax in list(axes_flat)[n_splits:]:
-        ax.set_visible(False)
+    # Remove any unused axes (e.g. 6th panel in a 2x3 grid)
+    for ax in axes_flat[n_splits:]:
+        ax.remove()
 
-    handles, labels = axes_flat[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=len(labels), bbox_to_anchor=(0.5, 1.05), fontsize=12)
-    fig.suptitle("MedCPT – MAP@10 vs RRF Weight (rerank_hybrid_200 + snippet_rerank)", fontsize=16, fontweight="bold", y=1.08)
+    fig.suptitle("docs and snippet fusion", fontsize=16, fontweight="bold", y=0.95)
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     fig_path = output_dir / "09_medcpt_rrf_fusion_map10_vs_weight.png"
     plt.savefig(fig_path, dpi=150, bbox_inches="tight")
     print("Saved:", fig_path)
     plt.show()
+
+# %% [markdown]
+# ## 12. MAP@K Curves – workflow_local_10pct_hpc_bge (rerank, rerank_body_rewrite_A, rerank_body_rewrite_B)
+
+# %%
+bge_local_dir = base_dir / "output" / "workflow_local_10pct_hpc_bge"
+
+bge_local_run_dirs = {
+    "no query rewriting": bge_local_dir / "rerank" / "runs",
+    "query rewriting A: only typo fixing and minimal grammatical edits": bge_local_dir / "rerank_body_rewrite_A" / "runs",
+    "query rewriting B: questions generic enrichment": bge_local_dir / "rerank_body_rewrite_B" / "runs",
+}
+
+bge_local_map_curves: dict[str, dict[str, dict[int, float]]] = defaultdict(dict)
+
+for split in splits_rerank:
+    qrels_split = qrels_by_split.get(split, {})
+    if not qrels_split:
+        continue
+    for method_name, runs_dir in bge_local_run_dirs.items():
+        candidates = list(runs_dir.glob(f"best_rrf_{split}_top*.tsv"))
+        if not candidates:
+            continue
+        run_path = candidates[0]
+        run_df = _load_run(run_path)
+        if split == train_split_id and train_overlap_qids:
+            qid_col, _ = run_df.columns.tolist()
+            run_df = run_df[~run_df[qid_col].astype(str).isin(train_overlap_qids)]
+        map_vals = _map_at_ks_for_run(run_df, qrels_split, map_ks)
+        bge_local_map_curves[method_name][split] = map_vals
+
+fig, axes = plt.subplots(2, 3, figsize=(16, 8), sharex=True, sharey=True)
+axes_flat = list(axes.flat)
+
+all_vals_bge = []
+for method_dict in bge_local_map_curves.values():
+    for split_vals in method_dict.values():
+        all_vals_bge.extend(split_vals.values())
+if all_vals_bge:
+    y_min_bge = max(0.0, min(all_vals_bge) - 0.02)
+    y_max_bge = min(1.0, max(all_vals_bge) + 0.02)
+else:
+    y_min_bge, y_max_bge = 0.0, 1.0
+
+colors_bge_local = {
+    "no query rewriting": "#1f77b4",
+    "query rewriting A: only typo fixing and minimal grammatical edits": "#ff7f0e",
+    "query rewriting B: questions generic enrichment": "#2ca02c",
+}
+
+for idx, split in enumerate(splits_rerank):
+    ax = axes_flat[idx]
+    for method_name, method_dict in bge_local_map_curves.items():
+        if split not in method_dict:
+            continue
+        vals = [method_dict[split].get(k, 0.0) for k in map_ks]
+        ax.plot(
+            map_ks,
+            vals,
+            marker="o",
+            linewidth=1.8,
+            color=colors_bge_local[method_name],
+            label=method_name,
+        )
+    ax.set_title(split_labels.get(split, split), fontsize=14, fontweight="bold")
+    ax.set_ylim(y_min_bge, y_max_bge)
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+    if idx % 3 == 0:
+        ax.set_ylabel("MAP@K")
+    if idx >= 3:
+        ax.set_xlabel("K")
+        ax.set_xticks(map_ks)
+        ax.set_xticklabels([str(k) for k in map_ks], rotation=90)
+
+for j in range(len(splits_rerank), len(axes_flat)):
+    axes_flat[j].remove()
+
+from matplotlib.lines import Line2D as _Line2D_bge
+legend_bge_handles = [
+    _Line2D_bge([0], [0], color=colors_bge_local[name], marker="o", linestyle="-", label=name)
+    for name in colors_bge_local
+]
+fig.legend(
+    handles=legend_bge_handles,
+    labels=list(colors_bge_local),
+    loc="upper center",
+    bbox_to_anchor=(0.5, 1.05),
+    fontsize=16,
+)
+fig.suptitle(
+    "MAP@K Curves, Query rewriting comparison",
+    fontsize=16,
+    fontweight="bold",
+    y=1.08,
+)
+plt.tight_layout(rect=[0, 0, 1, 0.95])
+fig_path = output_dir / "10_bge_local_rerank_mapk.png"
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
+
+# %% [markdown]
+# ## 13. Low Recall@2000 Questions – Hybrid Retrieval
+# Table of questions where hybrid retrieval Recall@2000 < 0.33, sorted by recall ascending.
+# Helps diagnose the hardest queries for our retrieval pipeline.
+
+# %%
+import re
+
+
+def _load_questions_full(path: Path):
+    """Load question metadata: type, word count, body text."""
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    out = {}
+    for q in data.get("questions", []):
+        qid = q.get("id")
+        if qid is None:
+            continue
+        qid = str(qid)
+        body = (q.get("body") or "").strip()
+        qtype = (q.get("type") or "unknown").lower()
+        word_count = len(re.findall(r"\w+", body))
+        out[qid] = {"type": qtype, "len_words": word_count, "question": body}
+    return out
+
+
+question_meta_by_split = {s: _load_questions_full(p) for s, p in qrels_paths.items()}
+
+RECALL_K = 2000
+RECALL_THRESHOLD = 0.33
+
+hybrid_runs_dir = workflow_dir / "hybrid" / "runs"
+
+low_recall_records = []
+for split in splits:
+    qrels_split = qrels_by_split.get(split, {})
+    if not qrels_split:
+        continue
+    meta = question_meta_by_split.get(split, {})
+
+    candidates = list(hybrid_runs_dir.glob(f"best_rrf_{split}_top*.tsv"))
+    if not candidates:
+        print(f"No hybrid run found for {split}")
+        continue
+    run_df = _load_run(candidates[0])
+    qid_col, doc_col = run_df.columns.tolist()
+
+    for qid, group in run_df.groupby(qid_col, sort=False):
+        qid_str = str(qid)
+        rels = qrels_split.get(qid_str)
+        if not rels:
+            continue
+        docs = group[doc_col].tolist()
+        recall = _recall_at_k(docs, set(rels), RECALL_K)
+        if recall >= RECALL_THRESHOLD:
+            continue
+        info = meta.get(qid_str, {})
+        low_recall_records.append({
+            "split": split_labels.get(split, split),
+            "qid": qid_str,
+            "type": info.get("type", "unknown"),
+            "len_words": info.get("len_words", np.nan),
+            "n_rel": len(rels),
+            f"Recall@{RECALL_K}": round(recall, 4),
+            "question": info.get("question", ""),
+        })
+
+low_recall_df = pd.DataFrame(low_recall_records)
+low_recall_df = low_recall_df.sort_values(f"Recall@{RECALL_K}").reset_index(drop=True)
+
+print(f"Questions with Recall@{RECALL_K} < {RECALL_THRESHOLD}: {len(low_recall_df)}")
+print(f"Splits represented: {low_recall_df['split'].value_counts().to_dict()}")
+print()
+
+display_cols = ["split", "qid", "type", "len_words", "n_rel", f"Recall@{RECALL_K}", "question"]
+with pd.option_context("display.max_rows", None, "display.max_colwidth", 120, "display.width", 200):
+    print(low_recall_df[display_cols].to_string(index=False))
+
+# %% [markdown]
+# ## 14. MAP@K Curves by Question Length – Rerank Only
+# First, inspect the overall question length distribution (dev + test merged),
+# and compute length cutoffs for top/mid/bottom 33%. Then plot MAP@K curves
+# by coarse length bins (short, mid, long).
+
+# %%
+# All-question length distribution (dev + test)
+all_lengths = []
+for split, meta in question_meta_by_split.items():
+    for info in meta.values():
+        lw = info.get("len_words")
+        if lw is None or (isinstance(lw, float) and np.isnan(lw)):
+            continue
+        all_lengths.append(int(lw))
+
+all_lengths = np.array(all_lengths, dtype=int)
+print("Total questions with length info (dev + test):", len(all_lengths))
+
+if len(all_lengths) > 0:
+    # Histogram
+    bins = np.arange(all_lengths.min() - 0.5, all_lengths.max() + 1.5, 1)
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.hist(all_lengths, bins=bins, color="#4c72b0", alpha=0.8, edgecolor="white")
+    ax.set_xlabel("Question length (words)")
+    ax.set_ylabel("# questions")
+    ax.set_title("Question Length Distribution (Dev + Test)")
+    step = max(1, int(np.ceil((all_lengths.max() - all_lengths.min()) / 10)))
+    ax.set_xticks(np.arange(all_lengths.min(), all_lengths.max() + 1, step))
+    plt.tight_layout()
+    fig_path = output_dir / "12a_all_question_length_hist.png"
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    print("Saved:", fig_path)
+    plt.show()
+
+    # 33% / 66% percentiles
+    p33 = int(np.percentile(all_lengths, 33))
+    p66 = int(np.percentile(all_lengths, 66))
+    print(f"Approx. tertile cutoffs (dev + test):")
+    print(f"  bottom 33% ≤ {p33} words")
+    print(f"  middle 33% between {p33+1} and {p66} words")
+    print(f"  top 33% ≥ {p66+1} words")
+else:
+    print("No question length values available.")
+
+# Rerank-only MAP@K by fixed bins (short/mid/long)
+rerank_runs_dir = workflow_dir / "rerank" / "runs"
+
+map_ks_len = [1, 3, 5, 10, 20, 30, 40, 50, 75, 100]
+
+
+def _len_bin_3way(n: float | int | None) -> str | None:
+    """Bin question length using empirical tertiles: ≤7, 8–10, ≥11 words."""
+    if n is None or (isinstance(n, float) and np.isnan(n)):
+        return None
+    n_int = int(n)
+    if n_int <= 7:
+        return "short (≤7)"
+    if n_int <= 10:
+        return "mid (8–10)"
+    return "long (≥11)"
+
+
+len_records: list[dict[str, object]] = []
+
+for split in [dev_split] + test_splits:
+    qrels_split = qrels_by_split.get(split, {})
+    if not qrels_split:
+        continue
+
+    meta_split = question_meta_by_split.get(split, {})
+    candidates = list(rerank_runs_dir.glob(f"best_rrf_{split}_top*.tsv"))
+    if not candidates:
+        print(f"No rerank run found for {split}")
+        continue
+
+    run_df = _load_run(candidates[0])
+    qid_col, doc_col = run_df.columns.tolist()
+
+    for qid, group in run_df.groupby(qid_col, sort=False):
+        qid_str = str(qid)
+        rels = qrels_split.get(qid_str)
+        if not rels:
+            continue
+
+        meta = meta_split.get(qid_str, {})
+        q_len = meta.get("len_words")
+        bin_label = _len_bin_3way(q_len)
+        if bin_label is None:
+            continue
+
+        docs = group[doc_col].tolist()
+        for k in map_ks_len:
+            ap = _ap_at_k(docs, set(rels), k)
+            len_records.append(
+                {
+                    "split": split,
+                    "qid": qid_str,
+                    "len_bin": bin_label,
+                    "k": k,
+                    "AP@K": ap,
+                }
+            )
+
+len_df = pd.DataFrame(len_records)
+print("Per-query AP@K rows (length-stratified, rerank only):", len(len_df))
+
+if not len_df.empty:
+    # Dev/train panel (single split)
+    dev_df = len_df[len_df["split"] == dev_split].copy()
+    # Test panel (all four test splits merged)
+    test_df = len_df[len_df["split"].isin(test_splits)].copy()
+
+    # Per-bin query counts (unique qids)
+    dev_counts = (
+        dev_df[["len_bin", "qid"]]
+        .drop_duplicates()
+        .groupby("len_bin")["qid"]
+        .nunique()
+        .to_dict()
+    )
+    test_counts = (
+        test_df[["len_bin", "qid"]]
+        .drop_duplicates()
+        .groupby("len_bin")["qid"]
+        .nunique()
+        .to_dict()
+    )
+
+    dev_summary = (
+        dev_df.groupby(["len_bin", "k"], as_index=False)["AP@K"]
+        .mean()
+        .rename(columns={"AP@K": "MAP@K"})
+    )
+    test_summary = (
+        test_df.groupby(["len_bin", "k"], as_index=False)["AP@K"]
+        .mean()
+        .rename(columns={"AP@K": "MAP@K"})
+    )
+
+    len_bin_order = ["short (≤7)", "mid (8–10)", "long (≥11)"]
+    colors_len = {
+        "short (≤7)": "#1f77b4",
+        "mid (8–10)": "#ff7f0e",
+        "long (≥11)": "#2ca02c",
+    }
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharex=True, sharey=True)
+
+    # Dev/train panel
+    ax = axes[0]
+    for bin_label in len_bin_order:
+        sub = dev_summary[dev_summary["len_bin"] == bin_label].sort_values("k")
+        if sub.empty:
+            continue
+        n_q = dev_counts.get(bin_label, 0)
+        ax.plot(
+            sub["k"],
+            sub["MAP@K"],
+            marker="o",
+            color=colors_len[bin_label],
+            label=f"{bin_label} (n={n_q})",
+        )
+    ax.set_title("dev", fontweight="bold")
+    ax.set_xlabel("K")
+    ax.set_ylabel("MAP@K")
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+    ax.legend(
+        loc="upper right",
+        fontsize=12,
+        title="",
+    )
+
+    # Test panel (all four test splits merged)
+    ax = axes[1]
+    for bin_label in len_bin_order:
+        sub = test_summary[test_summary["len_bin"] == bin_label].sort_values("k")
+        if sub.empty:
+            continue
+        n_q = test_counts.get(bin_label, 0)
+        ax.plot(
+            sub["k"],
+            sub["MAP@K"],
+            marker="o",
+            color=colors_len[bin_label],
+            label=f"{bin_label} (n={n_q})",
+        )
+    ax.set_title("Test (13B1–13B4 merged)", fontweight="bold")
+    ax.set_xlabel("K")
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+    ax.legend(
+        loc="upper right",
+        fontsize=12,
+        title="",
+    )
+
+    fig.suptitle(
+        "MAP@K by Question Length",
+        fontsize=14,
+        fontweight="bold",
+        y=0.97,
+    )
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    fig_path = output_dir / "12_rerank_mapk_by_length_bins.png"
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    print("Saved:", fig_path)
+    plt.show()
+else:
+    print("No per-query rerank metrics available for length-stratified MAP@K.")
+
+# %%
+
+# %% [markdown]
+# ## 15. MAP@K Curves by Question Length – Rerank vs Hybrid
+# Compare rerank vs hybrid runs, stratified by question length bins:
+# short (≤6 words), mid (7–14 words), long (≥15 words).
+# Two panels: dev/train split vs all four test splits merged.
+# Rerank uses solid lines; hybrid uses dashed lines with the same colors (per length bin).
+
+# %%
+hybrid_runs_dir = workflow_dir / "hybrid" / "runs"
+
+map_ks_len_compare = [1, 3, 5, 10, 20, 30, 40, 50, 75, 100]
+
+len_compare_records: list[dict[str, object]] = []
+
+for split in [dev_split] + test_splits:
+    qrels_split = qrels_by_split.get(split, {})
+    if not qrels_split:
+        continue
+
+    meta_split = question_meta_by_split.get(split, {})
+
+    for method_name, runs_dir in [("Rerank", rerank_runs_dir), ("Hybrid", hybrid_runs_dir)]:
+        candidates = list(runs_dir.glob(f"best_rrf_{split}_top*.tsv"))
+        if not candidates:
+            print(f"No {method_name.lower()} run found for {split}")
+            continue
+
+        run_df = _load_run(candidates[0])
+        qid_col, doc_col = run_df.columns.tolist()
+
+        for qid, group in run_df.groupby(qid_col, sort=False):
+            qid_str = str(qid)
+            rels = qrels_split.get(qid_str)
+            if not rels:
+                continue
+
+            meta = meta_split.get(qid_str, {})
+            q_len = meta.get("len_words")
+            bin_label = _len_bin_3way(q_len)
+            if bin_label is None:
+                continue
+
+            docs = group[doc_col].tolist()
+            for k in map_ks_len_compare:
+                ap = _ap_at_k(docs, set(rels), k)
+                len_compare_records.append(
+                    {
+                        "split": split,
+                        "method": method_name,
+                        "qid": qid_str,
+                        "len_bin": bin_label,
+                        "k": k,
+                        "AP@K": ap,
+                    }
+                )
+
+len_compare_df = pd.DataFrame(len_compare_records)
+print("Per-query AP@K rows (length-stratified, rerank vs hybrid):", len(len_compare_df))
+
+if not len_compare_df.empty:
+    dev_df_cmp = len_compare_df[len_compare_df["split"] == dev_split].copy()
+    test_df_cmp = len_compare_df[len_compare_df["split"].isin(test_splits)].copy()
+
+    dev_counts_cmp = (
+        dev_df_cmp[["len_bin", "qid"]]
+        .drop_duplicates()
+        .groupby("len_bin")["qid"]
+        .nunique()
+        .to_dict()
+    )
+    test_counts_cmp = (
+        test_df_cmp[["len_bin", "qid"]]
+        .drop_duplicates()
+        .groupby("len_bin")["qid"]
+        .nunique()
+        .to_dict()
+    )
+
+    dev_summary_cmp = (
+        dev_df_cmp.groupby(["method", "len_bin", "k"], as_index=False)["AP@K"]
+        .mean()
+        .rename(columns={"AP@K": "MAP@K"})
+    )
+    test_summary_cmp = (
+        test_df_cmp.groupby(["method", "len_bin", "k"], as_index=False)["AP@K"]
+        .mean()
+        .rename(columns={"AP@K": "MAP@K"})
+    )
+
+    len_bin_order_cmp = ["short (≤7)", "mid (8–10)", "long (≥11)"]
+    colors_len_cmp = {
+        "short (≤7)": "#1f77b4",
+        "mid (8–10)": "#ff7f0e",
+        "long (≥11)": "#2ca02c",
+    }
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharex=True, sharey=True)
+
+    # Dev/train panel
+    ax = axes[0]
+    for bin_label in len_bin_order_cmp:
+        for method_name, linestyle in [("Rerank", "-"), ("Hybrid", "--")]:
+            sub = dev_summary_cmp[
+                (dev_summary_cmp["len_bin"] == bin_label)
+                & (dev_summary_cmp["method"] == method_name)
+            ].sort_values("k")
+            if sub.empty:
+                continue
+            ax.plot(
+                sub["k"],
+                sub["MAP@K"],
+                linestyle=linestyle,
+                color=colors_len_cmp[bin_label],
+            )
+    ax.set_title("dev", fontweight="bold")
+    ax.set_xlabel("K")
+    ax.set_ylabel("MAP@K")
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+
+    # Color legend for dev (length bins with n)
+    from matplotlib.lines import Line2D as _Line2D_len
+
+    dev_color_handles = [
+        _Line2D_len(
+            [], [],
+            color=colors_len_cmp[bin_label],
+            linestyle="-",
+            label=f"{bin_label} (n={dev_counts_cmp.get(bin_label, 0)})",
+        )
+        for bin_label in len_bin_order_cmp
+        if dev_counts_cmp.get(bin_label, 0) > 0
+    ]
+    if dev_color_handles:
+        ax.legend(
+            handles=dev_color_handles,
+            loc="upper right",
+            fontsize=12,
+        )
+
+    # Test panel (all four test splits merged)
+    ax = axes[1]
+    for bin_label in len_bin_order_cmp:
+        for method_name, linestyle in [("Rerank", "-"), ("Hybrid", "--")]:
+            sub = test_summary_cmp[
+                (test_summary_cmp["len_bin"] == bin_label)
+                & (test_summary_cmp["method"] == method_name)
+            ].sort_values("k")
+            if sub.empty:
+                continue
+            ax.plot(
+                sub["k"],
+                sub["MAP@K"],
+                linestyle=linestyle,
+                color=colors_len_cmp[bin_label],
+            )
+    ax.set_title("Test (13B1–13B4 merged)", fontweight="bold")
+    ax.set_xlabel("K")
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+
+    # Color legend for test (length bins with n)
+    test_color_handles = [
+        _Line2D_len(
+            [], [],
+            color=colors_len_cmp[bin_label],
+            linestyle="-",
+            label=f"{bin_label} (n={test_counts_cmp.get(bin_label, 0)})",
+        )
+        for bin_label in len_bin_order_cmp
+        if test_counts_cmp.get(bin_label, 0) > 0
+    ]
+    if test_color_handles:
+        ax.legend(
+            handles=test_color_handles,
+            loc="upper right",
+            fontsize=12,
+        )
+
+    # Global legend for line styles (methods) – same n, so no counts here
+    style_handles = [
+        _Line2D_len([], [], color="black", linestyle="-", label="Rerank"),
+        _Line2D_len([], [], color="black", linestyle="--", label="Hybrid"),
+    ]
+    fig.legend(
+        handles=style_handles,
+        loc="upper center",
+        ncol=2,
+        bbox_to_anchor=(0.5, 0.93),
+        fontsize=12,
+        title="",
+    )
+
+    fig.suptitle(
+        "MAP@K by Question Length – Rerank vs Retrieval",
+        fontsize=14,
+        fontweight="bold",
+        y=0.98,
+    )
+    plt.tight_layout(rect=[0, 0, 1, 0.9])
+    fig_path = output_dir / "13_rerank_vs_hybrid_mapk_by_length_bins.png"
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    print("Saved:", fig_path)
+    plt.show()
+else:
+    print("No per-query metrics available for length-stratified rerank vs hybrid MAP@K.")
+
+# %%
+
+#
+# %% [markdown]
+# ## 16. Rerank MAP@K and Recall@K Curves by Question Length
+# Rerank-only curves using `output/workflow_baseline_full_run_both_routes/rerank`
+# runs, recomputing both MAP@K and Recall@K directly from the run files.
+# MAP@K uses K ∈ {10, 20, 30, 40, 50, 75, 100, 150, 200}; Recall@K is computed
+# on the same K values so both curves are defined smoothly on [10, 200].
+# Two panels: dev/train vs all four test splits merged; solid = MAP@K,
+# dashed = Recall@K; colors = length bins (short ≤7, mid 8–10, long ≥11).
+
+# %%
+ks_rerank_len = [1, 5, 10, 20, 30, 40, 50, 75, 100, 150, 200]
+
+rerank_len_records: list[dict[str, object]] = []
+
+for split in [dev_split] + test_splits:
+    qrels_split = qrels_by_split.get(split, {})
+    if not qrels_split:
+        continue
+
+    meta_split = question_meta_by_split.get(split, {})
+    candidates = list(rerank_runs_dir.glob(f"best_rrf_{split}_top*.tsv"))
+    if not candidates:
+        print(f"No rerank run found for {split} (MAP/Recall-by-length).")
+        continue
+
+    run_df = _load_run(candidates[0])
+    qid_col, doc_col = run_df.columns.tolist()
+
+    for qid, group in run_df.groupby(qid_col, sort=False):
+        qid_str = str(qid)
+        rels = qrels_split.get(qid_str)
+        if not rels:
+            continue
+
+        meta = meta_split.get(qid_str, {})
+        q_len = meta.get("len_words")
+        bin_label = _len_bin_3way(q_len)
+        if bin_label is None:
+            continue
+
+        docs = group[doc_col].tolist()
+        for k in ks_rerank_len:
+            rerank_len_records.append(
+                {
+                    "split": split,
+                    "qid": qid_str,
+                    "len_bin": bin_label,
+                    "k": k,
+                    "MAP@K": _ap_at_k(docs, set(rels), k),
+                    "Recall@K": _recall_at_k(docs, set(rels), k),
+                }
+            )
+
+rerank_len_df = pd.DataFrame(rerank_len_records)
+print("Per-query MAP@K/Recall@K rows (rerank, length-stratified):", len(rerank_len_df))
+
+if not rerank_len_df.empty:
+    dev_df_r = rerank_len_df[rerank_len_df["split"] == dev_split].copy()
+    test_df_r = rerank_len_df[rerank_len_df["split"].isin(test_splits)].copy()
+
+    # Per-bin query counts (for legends)
+    dev_counts_r = (
+        dev_df_r[["len_bin", "qid"]]
+        .drop_duplicates()
+        .groupby("len_bin")["qid"]
+        .nunique()
+        .to_dict()
+    )
+    test_counts_r = (
+        test_df_r[["len_bin", "qid"]]
+        .drop_duplicates()
+        .groupby("len_bin")["qid"]
+        .nunique()
+        .to_dict()
+    )
+
+    dev_summary_r = (
+        dev_df_r.groupby(["len_bin", "k"], as_index=False)[["MAP@K", "Recall@K"]]
+        .mean()
+    )
+    test_summary_r = (
+        test_df_r.groupby(["len_bin", "k"], as_index=False)[["MAP@K", "Recall@K"]]
+        .mean()
+    )
+
+    len_bin_order_r = ["short (≤7)", "mid (8–10)", "long (≥11)"]
+    colors_len_r = {
+        "short (≤7)": "#1f77b4",
+        "mid (8–10)": "#ff7f0e",
+        "long (≥11)": "#2ca02c",
+    }
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharex=True, sharey=True)
+
+    # Dev/train panel
+    ax = axes[0]
+    for bin_label in len_bin_order_r:
+        sub = dev_summary_r[dev_summary_r["len_bin"] == bin_label].sort_values("k")
+        if sub.empty:
+            continue
+        ax.plot(
+            sub["k"],
+            sub["MAP@K"],
+            linestyle="-",
+            color=colors_len_r[bin_label],
+        )
+        ax.plot(
+            sub["k"],
+            sub["Recall@K"],
+            linestyle="--",
+            color=colors_len_r[bin_label],
+        )
+    ax.set_title("dev", fontweight="bold")
+    ax.set_xlabel("K")
+    ax.set_ylabel("Score")
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+
+    from matplotlib.lines import Line2D as _Line2D_rerank_len
+
+    dev_color_handles_r = [
+        _Line2D_rerank_len(
+            [], [],
+            color=colors_len_r[bin_label],
+            linestyle="-",
+            label=f"{bin_label} (n={dev_counts_r.get(bin_label, 0)})",
+        )
+        for bin_label in len_bin_order_r
+        if dev_counts_r.get(bin_label, 0) > 0
+    ]
+    if dev_color_handles_r:
+        ax.legend(
+            handles=dev_color_handles_r,
+            loc="lower right",
+            fontsize=12,
+            title="",
+        )
+
+    # Test panel
+    ax = axes[1]
+    for bin_label in len_bin_order_r:
+        sub = test_summary_r[test_summary_r["len_bin"] == bin_label].sort_values("k")
+        if sub.empty:
+            continue
+        ax.plot(
+            sub["k"],
+            sub["MAP@K"],
+            linestyle="-",
+            color=colors_len_r[bin_label],
+        )
+        ax.plot(
+            sub["k"],
+            sub["Recall@K"],
+            linestyle="--",
+            color=colors_len_r[bin_label],
+        )
+    ax.set_title("Test (13B1–13B4 merged)", fontweight="bold")
+    ax.set_xlabel("K")
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+
+    test_color_handles_r = [
+        _Line2D_rerank_len(
+            [], [],
+            color=colors_len_r[bin_label],
+            linestyle="-",
+            label=f"{bin_label} (n={test_counts_r.get(bin_label, 0)})",
+        )
+        for bin_label in len_bin_order_r
+        if test_counts_r.get(bin_label, 0) > 0
+    ]
+    if test_color_handles_r:
+        ax.legend(
+            handles=test_color_handles_r,
+            loc="lower right",
+            fontsize=12,
+            title="",
+        )
+
+    # Global legend for style (MAP vs Recall)
+    style_handles_r = [
+        _Line2D_rerank_len([], [], color="black", linestyle="-", label="MAP@K"),
+        _Line2D_rerank_len([], [], color="black", linestyle="--", label="Recall@K"),
+    ]
+    fig.legend(
+        handles=style_handles_r,
+        loc="upper center",
+        ncol=2,
+        bbox_to_anchor=(0.5, 0.83),
+        fontsize=14,
+        title="",
+    )
+
+    fig.suptitle(
+        "Rerank MAP@K and Recall@K by Question Length",
+        fontsize=14,
+        fontweight="bold",
+        y=0.88,
+    )
+    plt.tight_layout(rect=[0, 0, 1, 0.82])
+    fig_path = output_dir / "14_rerank_mapk_recall_by_length_bins.png"
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    print("Saved:", fig_path)
+    plt.show()
+else:
+    print("No per-query rerank metrics available for combined MAP@K/Recall@K curves.")
+
+# %% [markdown]
+# ## 17. Hybrid Recall@K Curves by Question Length
+# Stage-1 hybrid retrieval only, Recall@K curves stratified by question length:
+# short (≤7 words), mid (8–10 words), long (≥11 words).
+# Two panels: dev/train split vs all four test splits merged.
+
+# %%
+recall_ks_len = [10, 50, 100, 200, 300, 400, 500, 1000, 2000]
+
+hybrid_recall_len_records: list[dict[str, object]] = []
+
+for split in [dev_split] + test_splits:
+    qrels_split = qrels_by_split.get(split, {})
+    if not qrels_split:
+        continue
+
+    meta_split = question_meta_by_split.get(split, {})
+    candidates = list(hybrid_runs_dir.glob(f"best_rrf_{split}_top*.tsv"))
+    if not candidates:
+        print(f"No hybrid run found for {split} (recall-by-length).")
+        continue
+
+    run_df = _load_run(candidates[0])
+    qid_col, doc_col = run_df.columns.tolist()
+
+    for qid, group in run_df.groupby(qid_col, sort=False):
+        qid_str = str(qid)
+        rels = qrels_split.get(qid_str)
+        if not rels:
+            continue
+
+        meta = meta_split.get(qid_str, {})
+        q_len = meta.get("len_words")
+        bin_label = _len_bin_3way(q_len)
+        if bin_label is None:
+            continue
+
+        docs = group[doc_col].tolist()
+        for k in recall_ks_len:
+            hybrid_recall_len_records.append(
+                {
+                    "split": split,
+                    "qid": qid_str,
+                    "len_bin": bin_label,
+                    "k": k,
+                    "Recall@K": _recall_at_k(docs, set(rels), k),
+                }
+            )
+
+hybrid_recall_len_df = pd.DataFrame(hybrid_recall_len_records)
+print("Per-query Recall@K rows (hybrid, length-stratified):", len(hybrid_recall_len_df))
+
+if not hybrid_recall_len_df.empty:
+    dev_rec_df = hybrid_recall_len_df[hybrid_recall_len_df["split"] == dev_split].copy()
+    test_rec_df = hybrid_recall_len_df[hybrid_recall_len_df["split"].isin(test_splits)].copy()
+
+    dev_counts_rec = (
+        dev_rec_df[["len_bin", "qid"]]
+        .drop_duplicates()
+        .groupby("len_bin")["qid"]
+        .nunique()
+        .to_dict()
+    )
+    test_counts_rec = (
+        test_rec_df[["len_bin", "qid"]]
+        .drop_duplicates()
+        .groupby("len_bin")["qid"]
+        .nunique()
+        .to_dict()
+    )
+
+    dev_rec_summary = (
+        dev_rec_df.groupby(["len_bin", "k"], as_index=False)["Recall@K"]
+        .mean()
+        .rename(columns={"Recall@K": "MeanRecall@K"})
+    )
+    test_rec_summary = (
+        test_rec_df.groupby(["len_bin", "k"], as_index=False)["Recall@K"]
+        .mean()
+        .rename(columns={"Recall@K": "MeanRecall@K"})
+    )
+
+    len_bin_order_rec = ["short (≤7)", "mid (8–10)", "long (≥11)"]
+    colors_len_rec = {
+        "short (≤7)": "#1f77b4",
+        "mid (8–10)": "#ff7f0e",
+        "long (≥11)": "#2ca02c",
+    }
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharex=True, sharey=True)
+
+    # Dev/train panel
+    ax = axes[0]
+    for bin_label in len_bin_order_rec:
+        sub = dev_rec_summary[dev_rec_summary["len_bin"] == bin_label].sort_values("k")
+        if sub.empty:
+            continue
+        n_q = dev_counts_rec.get(bin_label, 0)
+        ax.plot(
+            sub["k"],
+            sub["MeanRecall@K"],
+            marker="o",
+            color=colors_len_rec[bin_label],
+            label=f"{bin_label} (n={n_q})",
+        )
+    ax.set_title("dev", fontweight="bold")
+    ax.set_xlabel("K")
+    ax.set_ylabel("Mean Recall@K")
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+    ax.legend(loc="lower right", fontsize=12, title="")
+
+    # Test panel (all four test splits merged)
+    ax = axes[1]
+    for bin_label in len_bin_order_rec:
+        sub = test_rec_summary[test_rec_summary["len_bin"] == bin_label].sort_values("k")
+        if sub.empty:
+            continue
+        n_q = test_counts_rec.get(bin_label, 0)
+        ax.plot(
+            sub["k"],
+            sub["MeanRecall@K"],
+            marker="o",
+            color=colors_len_rec[bin_label],
+            label=f"{bin_label} (n={n_q})",
+        )
+    ax.set_title("Test (13B1–13B4 merged)", fontweight="bold")
+    ax.set_xlabel("K")
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+    ax.legend(loc="lower right", fontsize=12, title="")
+
+    fig.suptitle(
+        "Retrieval Recall@K by Question Length",
+        fontsize=14,
+        fontweight="bold",
+        y=0.92,
+    )
+    plt.tight_layout(rect=[0, 0, 1, 0.92])
+    fig_path = output_dir / "14_hybrid_recall_by_length_bins.png"
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    print("Saved:", fig_path)
+    plt.show()
+else:
+    print("No per-query hybrid Recall@K metrics available for length-stratified curves.")
 
 # %%

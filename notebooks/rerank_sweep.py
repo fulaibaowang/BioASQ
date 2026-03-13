@@ -357,7 +357,7 @@ print("Saved:", jacc_path)
 # %%
 from collections import defaultdict
 
-rrf_k = 60
+rrf_k = 10
 fusion_pool_top = 100  # truncation for each reranker; set None to use full lists
 fusion_weights = [
     (0.0, 1.0),
@@ -584,6 +584,7 @@ plt.show()
 # %%
 # We now extend the RRF fusion to three rerankers simultaneously:
 # MiniLM, BGE-m3 len512, and Gemma 2.5B.
+rrf_k = 10
 
 fusion3_weights = [
     (0.0, 0.0, 1.0),  # Gemma only
