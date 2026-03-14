@@ -16,13 +16,32 @@
 #
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Allow overriding the shared-scripts root via env (e.g. when vendoring into another project).
+# If SHARED_SCRIPTS_DIR is set, treat it as SCRIPT_DIR; otherwise use this script's directory.
+if [ -n "${SHARED_SCRIPTS_DIR:-}" ]; then
+  SCRIPT_DIR="$SHARED_SCRIPTS_DIR"
+else
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
+# Resolve REPO_ROOT portably by walking up until we find .git (works regardless of shared_scripts depth).
+_d="$SCRIPT_DIR"
+while [ "$_d" != "/" ]; do
+  [ -d "$_d/.git" ] && break
+  _d="$(dirname "$_d")"
+done
+if [ "$_d" = "/" ]; then
+  echo "Warning: could not locate .git repo root; falling back to SCRIPT_DIR as working directory." >&2
+  REPO_ROOT="$SCRIPT_DIR"
+else
+  REPO_ROOT="$_d"
+fi
 
 # Parse -c / --config, --no-rerank, --no-rrf-fusion, --snippet-rrf, --run-both-routes, --no-generation*, -h / --help
 CONFIG_FILE=""
-RUN_RERANK=1
-RUN_RRF_FUSION=1
+# Allow environment to override defaults (and keep CLI flags as explicit overrides below).
+RUN_RERANK="${RUN_RERANK:-1}"
+RUN_RRF_FUSION="${RUN_RRF_FUSION:-1}"
 SNIPPET_RRF=0
 RUN_BOTH_ROUTES=0
 RUN_GENERATION_BASELINE="${RUN_GENERATION_BASELINE:-1}"
@@ -100,6 +119,7 @@ while [ $# -gt 0 ]; do
       echo "Env toggles:"
       echo "  RUN_BASELINE=0|1        Control baseline evidence/generation route (default 1)."
       echo "  RUN_SNIPPET_RRF=0|1     Control snippet-rrf route (steps 6–7, evidence_snippet/, generation_snippet/)."
+      echo "  RUN_RRF_FUSION=0|1      Control Hybrid+Rerank RRF fusion (default 1; 0 is same as --no-rrf-fusion)."
       echo "  RUN_GENERATION_BASELINE=0|1   Run generation for baseline route (default 1)."
       echo "  RUN_GENERATION_SNIPPET=0|1    Run generation for snippet route (default 1)."
       echo ""
@@ -195,6 +215,13 @@ RERANK_HYBRID_200_OUT="$WORKFLOW_OUTPUT_DIR/rerank_hybrid_200"
 SNIPPET_RERANK_OUT="$WORKFLOW_OUTPUT_DIR/snippet_rerank"
 SNIPPET_RRF_OUT="$WORKFLOW_OUTPUT_DIR/snippet_rrf"
 
+# BM25 method name used by hybrid stage: default to RM3, but switch to plain BM25 when RM3 is disabled.
+if [ "${BM25_DISABLE_RM3:-0}" = "1" ]; then
+  BM25_METHOD_FOR_HYBRID="BM25"
+else
+  BM25_METHOD_FOR_HYBRID="BM25_RM3"
+fi
+
 mkdir -p "$BM25_OUT" "$DENSE_OUT" "$HYBRID_OUT"
 
 # Step count for progress (3 = retrieval only, 4 = + reranker, 5 = + RRF fusion; 7 = + snippet extraction + final RRF)
@@ -240,6 +267,7 @@ BM25_ARGS=(
 [ -n "${BM25_RM3_FB_TERMS:-}" ] && BM25_ARGS+=(--rm3_fb_terms "$BM25_RM3_FB_TERMS")
 [ -n "${BM25_RM3_LAMBDA:-}" ] && BM25_ARGS+=(--rm3_lambda "$BM25_RM3_LAMBDA")
 [ "${BM25_INCLUDE_BASELINE:-0}" = "1" ] && BM25_ARGS+=(--include_bm25)
+[ "${BM25_DISABLE_RM3:-0}" = "1" ] && BM25_ARGS+=(--disable_rm3)
 [ "${BM25_NO_EVAL:-0}" = "1" ] && BM25_ARGS+=(--no_eval)
 [ "${BM25_SAVE_RUNS:-1}" = "1" ] && BM25_ARGS+=(--save_runs)
 [ "${BM25_SAVE_PER_QUERY:-0}" = "1" ] && BM25_ARGS+=(--save_per_query)
@@ -304,6 +332,7 @@ fi
 # ----- Hybrid -----
 HYBRID_ARGS=(
   --bm25_runs_dir "$BM25_OUT/runs"
+  --bm25_method "$BM25_METHOD_FOR_HYBRID"
   --bm25_topk "$BM25_TOP_K"
   --dense_root "$DENSE_OUT"
   --train-json "$TRAIN_JSON"
@@ -342,7 +371,9 @@ if [ -n "${DOCS_JSONL:-}" ] && [ "$RUN_RERANK" = "1" ]; then
   STEP_RERANK_START=$(date +%s)
   # Only consider rerank "complete" when metrics.csv exists; partial TSVs allow resume in rerank_stage2.py
   RERANK_RESULTS_EXIST=0
-  [ -f "$RERANK_OUT/metrics.csv" ] && RERANK_RESULTS_EXIST=1
+  if [ -f "$RERANK_OUT/metrics.csv" ] || [ -n "$(find "$RERANK_OUT/runs" -maxdepth 1 -name '*.tsv' 2>/dev/null | head -1)" ]; then
+    RERANK_RESULTS_EXIST=1
+  fi
 
   RERANK_FIGS_EXIST=0
   [ -n "$(find "$RERANK_OUT/figures" -maxdepth 1 -name 'hybrid_reranker_recall_map10_*.png' 2>/dev/null | head -1)" ] && RERANK_FIGS_EXIST=1
@@ -714,8 +745,15 @@ _DOCS_JSONL_OK=0
     fi
     for _route in $_ROUTES_LIST; do
       if [ "$_route" = "baseline" ]; then
-        _EVIDENCE_RUNS_DIR="$RERANK_HYBRID_OUT/runs"
-        _EVIDENCE_POST_DIR="$RERANK_HYBRID_OUT"
+        # When RRF fusion is enabled, baseline evidence uses Hybrid+Rerank runs.
+        # When RUN_RRF_FUSION=0, fall back to raw Rerank runs so downstream steps still work.
+        if [ "$RUN_RRF_FUSION" = "1" ]; then
+          _EVIDENCE_RUNS_DIR="$RERANK_HYBRID_OUT/runs"
+          _EVIDENCE_POST_DIR="$RERANK_HYBRID_OUT"
+        else
+          _EVIDENCE_RUNS_DIR="$RERANK_OUT/runs"
+          _EVIDENCE_POST_DIR="$RERANK_OUT"
+        fi
         _EVIDENCE_SUBDIR="evidence_baseline"
         _GEN_SUBDIR="generation_baseline"
         _USE_SNIPPET_CTX=0
@@ -762,7 +800,7 @@ _DOCS_JSONL_OK=0
           --run-path "$_tsv" \
           --query-json "$_query_json" \
           --output-path "$_post_json" \
-          --top-k 10
+          --top-k "${EVIDENCE_TOP_K:-10}"
       else
         echo "[Evidence] Post-rerank JSON ($_split)... (skip: output exists)"
       fi
