@@ -78,11 +78,14 @@ SNIPPET_WINDOWS_DIR = WORKFLOW_OUTPUT / "snippet_rerank" / "windows"
 
 # Output root for this listwise experiment (designed for non-interactive HPC runs)
 LISTWISE_OUT = WORKFLOW_OUTPUT / "listwise_rankzephyr_test"
-RUNS_OUT = LISTWISE_OUT / "runs"
 FIG_OUT = LISTWISE_OUT / "figures"
+# Separate output dirs for single-window vs sliding-window
+RUNS_SINGLE = LISTWISE_OUT / "runs_single_window"
+RUNS_SLIDING = LISTWISE_OUT / "runs_sliding_window"
 LISTWISE_OUT.mkdir(parents=True, exist_ok=True)
-RUNS_OUT.mkdir(parents=True, exist_ok=True)
 FIG_OUT.mkdir(parents=True, exist_ok=True)
+RUNS_SINGLE.mkdir(parents=True, exist_ok=True)
+RUNS_SLIDING.mkdir(parents=True, exist_ok=True)
 
 # Data paths - can be overridden via environment variables
 TRAIN_JSON = Path(os.environ.get(
@@ -98,8 +101,18 @@ TEST_JSONS = [
     for i in range(1, 5)  # 13B1 to 13B4
 ]
 
-TOP_K_DOCS = 20
-TOP_K_RERANK = 15  # ~3000-3200 tokens at P95, safely within 4096 context
+TOP_K_DOCS = 50  # Load top-50 for sliding window pool
+TOP_K_RERANK = 15  # Single-window: top-15 docs, one pass
+
+# Sliding window config
+SLIDING_POOL = 50      # Pool of docs to consider
+SLIDING_WINDOW = 15    # Window size (docs per pass)
+SLIDING_STRIDE = 5     # Step between windows
+
+# Safety: truncate snippets longer than this to guarantee we fit in context.
+# Budget: 4096 - 230 (prompt) - 50 (query) - 15*5 (numbering) = 3741 tokens for snippets
+# Per snippet: 3741 / 15 ≈ 249 tokens max
+MAX_SNIPPET_TOKENS = 250
 
 print("Runtime env:")
 print(f"  VLLM_ENABLE_V1_MULTIPROCESSING={os.environ.get('VLLM_ENABLE_V1_MULTIPROCESSING')}")
@@ -331,9 +344,13 @@ if len(qid_to_query) == 0:
     print(f"  Expected TEST_JSONS at: {[p.resolve() for p in TEST_JSONS]}")
 
 # %%
-k = TOP_K_RERANK
-print(f"Using k = {k} docs/snippets for listwise reranking")
+# Analyze token counts for both single-window and sliding-window scenarios
+print(f"Configurations:")
+print(f"  Single-window: k={TOP_K_RERANK} docs/snippets")
+print(f"  Sliding-window: pool={SLIDING_POOL}, window={SLIDING_WINDOW}, stride={SLIDING_STRIDE}")
 
+# Analyze for single window (k=15) - this is the per-window token count
+k_analysis = TOP_K_RERANK  # Window size for both approaches
 total_input_tokens_per_query = []
 
 for split, data in splits_data.items():
@@ -341,7 +358,7 @@ for split, data in splits_data.items():
         query_text = qid_to_query.get(qid, "")
         query_tokens = estimate_query_token_len(tokenizer, query_text)
         
-        top_k_docnos = data["top_docs_per_query"][qid][:k]
+        top_k_docnos = data["top_docs_per_query"][qid][:k_analysis]
         snippet_tokens = 0
         for docno in top_k_docnos:
             if docno in doc_snippets:
@@ -353,7 +370,11 @@ for split, data in splits_data.items():
         total_input_tokens_per_query.append(total)
 
 stats_prompt = {
-    "k": int(k),
+    "window_size": int(k_analysis),
+    "single_window_k": int(TOP_K_RERANK),
+    "sliding_pool": int(SLIDING_POOL),
+    "sliding_window": int(SLIDING_WINDOW),
+    "sliding_stride": int(SLIDING_STRIDE),
     "mean": float(np.mean(total_input_tokens_per_query)),
     "median": float(np.median(total_input_tokens_per_query)),
     "p95": float(np.percentile(total_input_tokens_per_query, 95)),
@@ -365,7 +386,7 @@ stats_prompt["context_limit"] = int(context_limit)
 stats_prompt["n_over_limit"] = int(over_limit)
 stats_prompt["n_total"] = int(len(total_input_tokens_per_query))
 
-print("Estimated total input tokens (query + snippets + prompt overhead):")
+print("Estimated total input tokens per window (query + snippets + prompt overhead):")
 for k_stat, v in stats_prompt.items():
     print(f"  {k_stat}: {v}")
 
@@ -439,18 +460,30 @@ if RANKLLM_AVAILABLE:
     print("Reranker initialized")
 
 # %%
+def truncate_snippet(snippet: str, max_tokens: int, tokenizer) -> str:
+    """Truncate snippet to max_tokens if it exceeds the limit."""
+    tokens = tokenizer.encode(snippet, add_special_tokens=False)
+    if len(tokens) <= max_tokens:
+        return snippet
+    truncated_tokens = tokens[:max_tokens]
+    return tokenizer.decode(truncated_tokens, skip_special_tokens=True)
+
+
 def build_requests_for_split(
     split: str,
     data: dict,
     qid_to_query: Dict[str, str],
     k: int,
-) -> Tuple[List["Request"], List[Tuple[str, List[str]]]]:
+    tokenizer,
+    max_snippet_tokens: int,
+) -> Tuple[List["Request"], List[Tuple[str, List[str]]], int]:
     """
     Build RankLLM Request objects for each query in the split.
-    Returns: (list of Request, list of (qid, [docnos in order]))
+    Returns: (list of Request, list of (qid, [docnos in order]), n_truncated)
     """
     requests = []
     qid_docno_order = []
+    n_truncated = 0
     
     for qid, top_docnos in data["top_docs_per_query"].items():
         query_text = qid_to_query.get(qid, "")
@@ -465,6 +498,11 @@ def build_requests_for_split(
         for rank, docno in enumerate(top_k_docnos, start=1):
             if docno in doc_snippets:
                 snippet = doc_snippets[docno]
+                # Truncate if too long
+                orig_len = len(tokenizer.encode(snippet, add_special_tokens=False))
+                if orig_len > max_snippet_tokens:
+                    snippet = truncate_snippet(snippet, max_snippet_tokens, tokenizer)
+                    n_truncated += 1
                 candidates.append(Candidate(docid=docno, doc={"text": snippet}, score=0.0))
                 valid_docnos.append(docno)
         
@@ -476,7 +514,7 @@ def build_requests_for_split(
         requests.append(req)
         qid_docno_order.append((qid, valid_docnos))
     
-    return requests, qid_docno_order
+    return requests, qid_docno_order, n_truncated
 
 
 def rerank_and_build_run(
@@ -486,6 +524,7 @@ def rerank_and_build_run(
 ) -> Dict[str, List[str]]:
     """
     Run the reranker on requests and build run_map[qid] = [docno_1, docno_2, ...].
+    Single-window mode: just rerank once.
     """
     if not requests:
         return {}
@@ -499,48 +538,127 @@ def rerank_and_build_run(
     
     return run_map
 
+
+def rerank_sliding_window(
+    reranker,
+    requests: List["Request"],
+    qid_docno_order: List[Tuple[str, List[str]]],
+    window_size: int,
+    stride: int,
+) -> Dict[str, List[str]]:
+    """
+    Run the reranker with sliding window and build run_map[qid] = [docno_1, docno_2, ...].
+    RankLLM's rerank_batch supports window_size and step parameters.
+    """
+    if not requests:
+        return {}
+
+    # RankLLM sliding window: rank_end = pool size, window_size and step control the sliding
+    pool_size = len(requests[0].candidates) if requests else 0
+    results = reranker.rerank_batch(
+        requests=requests,
+        rank_start=0,
+        rank_end=pool_size,
+        window_size=window_size,
+        step=stride,
+    )
+    
+    run_map: Dict[str, List[str]] = {}
+    for (qid, _original_docnos), result in zip(qid_docno_order, results):
+        reranked_docnos = [str(c.docid) for c in result.candidates]
+        run_map[qid] = reranked_docnos
+    
+    return run_map
+
 # %%
-listwise_runs: Dict[str, Dict[str, List[str]]] = {}
+# Run both single-window and sliding-window approaches
+single_window_runs: Dict[str, Dict[str, List[str]]] = {}
+sliding_window_runs: Dict[str, Dict[str, List[str]]] = {}
+
+# For single-window: use TOP_K_RERANK docs
+k_single = TOP_K_RERANK
+# For sliding-window: use SLIDING_POOL docs
+k_sliding = SLIDING_POOL
+
+total_truncated_single = 0
+total_truncated_sliding = 0
 
 if RANKLLM_AVAILABLE:
     for split, data in tqdm(splits_data.items(), desc="Reranking splits"):
-        print(f"\n--- Reranking {split} ---")
-        requests, qid_docno_order = build_requests_for_split(split, data, qid_to_query, k)
-        print(f"  Built {len(requests)} requests")
+        print(f"\n{'='*60}")
+        print(f"--- Processing {split} ---")
         
-        if requests:
-            run_map = rerank_and_build_run(reranker, requests, qid_docno_order)
-            listwise_runs[split] = run_map
+        # === Single-Window Reranking (top-15, one pass) ===
+        print(f"\n[Single Window] k={k_single}")
+        requests_single, qid_docno_single, n_trunc_single = build_requests_for_split(
+            split, data, qid_to_query, k_single, tokenizer, MAX_SNIPPET_TOKENS
+        )
+        total_truncated_single += n_trunc_single
+        print(f"  Built {len(requests_single)} requests ({n_trunc_single} snippets truncated)")
+        
+        if requests_single:
+            run_map = rerank_and_build_run(reranker, requests_single, qid_docno_single)
+            single_window_runs[split] = run_map
             print(f"  Reranked {len(run_map)} queries")
         else:
-            listwise_runs[split] = {}
+            single_window_runs[split] = {}
             print("  No valid requests")
+        
+        # === Sliding-Window Reranking (pool=50, window=15, stride=5) ===
+        print(f"\n[Sliding Window] pool={k_sliding}, window={SLIDING_WINDOW}, stride={SLIDING_STRIDE}")
+        requests_sliding, qid_docno_sliding, n_trunc_sliding = build_requests_for_split(
+            split, data, qid_to_query, k_sliding, tokenizer, MAX_SNIPPET_TOKENS
+        )
+        total_truncated_sliding += n_trunc_sliding
+        print(f"  Built {len(requests_sliding)} requests ({n_trunc_sliding} snippets truncated)")
+        
+        if requests_sliding:
+            run_map = rerank_sliding_window(
+                reranker, requests_sliding, qid_docno_sliding,
+                window_size=SLIDING_WINDOW, stride=SLIDING_STRIDE
+            )
+            sliding_window_runs[split] = run_map
+            print(f"  Reranked {len(run_map)} queries")
+        else:
+            sliding_window_runs[split] = {}
+            print("  No valid requests")
+
+    print(f"\nTotal snippets truncated (single-window): {total_truncated_single}")
+    print(f"Total snippets truncated (sliding-window): {total_truncated_sliding}")
 else:
     print("Skipping reranking (RankLLM not available)")
     print("Creating dummy runs from baseline order for demonstration...")
     for split, data in splits_data.items():
-        run_map = {}
+        run_map_single = {}
+        run_map_sliding = {}
         for qid, top_docnos in data["top_docs_per_query"].items():
-            run_map[qid] = top_docnos[:k]
-        listwise_runs[split] = run_map
+            run_map_single[qid] = top_docnos[:k_single]
+            run_map_sliding[qid] = top_docnos[:k_sliding]
+        single_window_runs[split] = run_map_single
+        sliding_window_runs[split] = run_map_sliding
 
-# Save listwise runs to disk as TSV (one file per split)
-for split, run_map in listwise_runs.items():
-    rows = []
-    for qid, docnos in run_map.items():
-        for rank, docno in enumerate(docnos, start=1):
-            # Score is optional for evaluation; use a simple decreasing score.
-            score = float(len(docnos) - rank + 1)
-            rows.append({"qid": qid, "docno": docno, "rank": rank, "score": score})
-    if not rows:
-        continue
-    df_split = pd.DataFrame(rows)
-    out_path = RUNS_OUT / f"{split}.tsv"
-    df_split.to_csv(out_path, sep="\t", index=False)
-    print(f"Saved listwise run for split {split} to {out_path}")
+
+def save_runs_to_tsv(runs: Dict[str, Dict[str, List[str]]], out_dir: Path, label: str):
+    """Save run_map to TSV files (one per split)."""
+    for split, run_map in runs.items():
+        rows = []
+        for qid, docnos in run_map.items():
+            for rank, docno in enumerate(docnos, start=1):
+                score = float(len(docnos) - rank + 1)
+                rows.append({"qid": qid, "docno": docno, "rank": rank, "score": score})
+        if not rows:
+            continue
+        df_split = pd.DataFrame(rows)
+        out_path = out_dir / f"{split}.tsv"
+        df_split.to_csv(out_path, sep="\t", index=False)
+        print(f"Saved {label} run for {split} to {out_path}")
+
+
+save_runs_to_tsv(single_window_runs, RUNS_SINGLE, "single-window")
+save_runs_to_tsv(sliding_window_runs, RUNS_SLIDING, "sliding-window")
 
 # %% [markdown]
-# ## 7) Evaluation: Compare MAP@10 baseline vs listwise
+# ## 7) Evaluation: Compare MAP@10 baseline vs single-window vs sliding-window
 
 # %%
 _, gold_map = build_topics_and_gold(all_questions)
@@ -557,33 +675,46 @@ for split, data in splits_data.items():
         print(f"{split}: no gold found, skipping")
         continue
     
+    # Baseline
     baseline_metrics, _ = evaluate_run(gold_for_split, baseline_run_map)
     baseline_map10 = baseline_metrics.get("MAP@10", 0.0)
     baseline_mrr10 = baseline_metrics.get("MRR@10", 0.0)
     
-    listwise_run_map = listwise_runs.get(split, {})
-    gold_for_listwise = {qid: gold_map[qid] for qid in listwise_run_map if qid in gold_map}
-    
-    if gold_for_listwise:
-        listwise_metrics, _ = evaluate_run(gold_for_listwise, listwise_run_map)
-        listwise_map10 = listwise_metrics.get("MAP@10", 0.0)
-        listwise_mrr10 = listwise_metrics.get("MRR@10", 0.0)
+    # Single-window
+    single_run_map = single_window_runs.get(split, {})
+    gold_for_single = {qid: gold_map[qid] for qid in single_run_map if qid in gold_map}
+    if gold_for_single:
+        single_metrics, _ = evaluate_run(gold_for_single, single_run_map)
+        single_map10 = single_metrics.get("MAP@10", 0.0)
+        single_mrr10 = single_metrics.get("MRR@10", 0.0)
     else:
-        listwise_map10 = 0.0
-        listwise_mrr10 = 0.0
+        single_map10 = 0.0
+        single_mrr10 = 0.0
     
-    delta_map10 = listwise_map10 - baseline_map10
-    delta_mrr10 = listwise_mrr10 - baseline_mrr10
+    # Sliding-window
+    sliding_run_map = sliding_window_runs.get(split, {})
+    gold_for_sliding = {qid: gold_map[qid] for qid in sliding_run_map if qid in gold_map}
+    if gold_for_sliding:
+        sliding_metrics, _ = evaluate_run(gold_for_sliding, sliding_run_map)
+        sliding_map10 = sliding_metrics.get("MAP@10", 0.0)
+        sliding_mrr10 = sliding_metrics.get("MRR@10", 0.0)
+    else:
+        sliding_map10 = 0.0
+        sliding_mrr10 = 0.0
     
     results_rows.append({
         "split": split,
         "n_queries": len(gold_for_split),
         "baseline_MAP@10": baseline_map10,
-        "listwise_MAP@10": listwise_map10,
-        "delta_MAP@10": delta_map10,
+        "single_MAP@10": single_map10,
+        "sliding_MAP@10": sliding_map10,
+        "delta_single_MAP@10": single_map10 - baseline_map10,
+        "delta_sliding_MAP@10": sliding_map10 - baseline_map10,
         "baseline_MRR@10": baseline_mrr10,
-        "listwise_MRR@10": listwise_mrr10,
-        "delta_MRR@10": delta_mrr10,
+        "single_MRR@10": single_mrr10,
+        "sliding_MRR@10": sliding_mrr10,
+        "delta_single_MRR@10": single_mrr10 - baseline_mrr10,
+        "delta_sliding_MRR@10": sliding_mrr10 - baseline_mrr10,
     })
 
 results_df = pd.DataFrame(results_rows)
@@ -596,35 +727,39 @@ print(f"Saved metrics to {metrics_path}")
 
 # %%
 if len(results_df) > 0:
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     
     x = np.arange(len(results_df))
-    width = 0.35
+    width = 0.25
     
+    # Left: MAP@10 comparison (3 bars)
     ax1 = axes[0]
-    ax1.bar(x - width/2, results_df["baseline_MAP@10"], width, label="Baseline (rerank_hybrid_200)")
-    ax1.bar(x + width/2, results_df["listwise_MAP@10"], width, label="Listwise (RankZephyr)")
+    ax1.bar(x - width, results_df["baseline_MAP@10"], width, label="Baseline", color="steelblue")
+    ax1.bar(x, results_df["single_MAP@10"], width, label=f"Single (k={TOP_K_RERANK})", color="coral")
+    ax1.bar(x + width, results_df["sliding_MAP@10"], width, label=f"Sliding (pool={SLIDING_POOL}, w={SLIDING_WINDOW}, s={SLIDING_STRIDE})", color="seagreen")
     ax1.set_xlabel("Split")
     ax1.set_ylabel("MAP@10")
-    ax1.set_title("MAP@10: Baseline vs Listwise Reranker")
+    ax1.set_title("MAP@10: Baseline vs Single-Window vs Sliding-Window")
     ax1.set_xticks(x)
     ax1.set_xticklabels(results_df["split"], rotation=45, ha="right")
-    ax1.legend()
+    ax1.legend(loc="upper left", fontsize=8)
     ax1.grid(axis="y", alpha=0.3)
     
+    # Right: Delta MAP@10 (both single and sliding vs baseline)
     ax2 = axes[1]
-    colors = ["green" if d > 0 else "red" for d in results_df["delta_MAP@10"]]
-    ax2.bar(x, results_df["delta_MAP@10"], color=colors)
+    ax2.bar(x - width/2, results_df["delta_single_MAP@10"], width, label="Single - Baseline", color="coral")
+    ax2.bar(x + width/2, results_df["delta_sliding_MAP@10"], width, label="Sliding - Baseline", color="seagreen")
     ax2.axhline(0, color="black", linewidth=0.5)
     ax2.set_xlabel("Split")
     ax2.set_ylabel("Delta MAP@10")
-    ax2.set_title("MAP@10 Improvement (Listwise - Baseline)")
+    ax2.set_title("MAP@10 Improvement over Baseline")
     ax2.set_xticks(x)
     ax2.set_xticklabels(results_df["split"], rotation=45, ha="right")
+    ax2.legend(loc="upper left", fontsize=8)
     ax2.grid(axis="y", alpha=0.3)
     
     plt.tight_layout()
-    fig_path = FIG_OUT / "map10_baseline_vs_listwise.png"
+    fig_path = FIG_OUT / "map10_baseline_vs_single_vs_sliding.png"
     fig.savefig(fig_path, dpi=150)
     plt.close(fig)
     print(f"Saved MAP@10 comparison figure to {fig_path}")
@@ -633,12 +768,14 @@ if len(results_df) > 0:
 # ## Summary
 #
 # This notebook:
-# 1. Loaded top-20 docs per query from `rerank_hybrid_200/runs`
+# 1. Loaded top-50 docs per query from `rerank_hybrid_200/runs`
 # 2. Retrieved top-1 snippet per doc from `snippet_rerank/windows`
-# 3. Plotted token length histogram to choose k for listwise reranking
-# 4. Ran listwise reranking with RankZephyr 7B V1 Full on top-k snippets
-# 5. Compared MAP@10 per split: baseline vs listwise reranked
+# 3. Plotted token length histogram to analyze token distribution
+# 4. Ran two RankZephyr 7B reranking approaches:
+#    - **Single-window**: top-15 docs, one pass
+#    - **Sliding-window**: pool=50, window=15, stride=5
+# 5. Compared MAP@10 per split: baseline vs single-window vs sliding-window
 #
 # **Key findings:**
-# - See the results table above for per-split comparison
-# - Positive delta = RankZephyr listwise reranking improved over baseline
+# - See the results table and figure for per-split comparison
+# - Sliding window considers more docs and may surface relevant docs from deeper ranks
