@@ -55,6 +55,14 @@ WORKFLOW_OUTPUT = Path("..") / "output" / "workflow_baseline_full_run_both_route
 RERANK_HYBRID_200_RUNS = WORKFLOW_OUTPUT / "rerank_hybrid_200" / "runs"
 SNIPPET_WINDOWS_DIR = WORKFLOW_OUTPUT / "snippet_rerank" / "windows"
 
+# Output root for this listwise experiment (designed for non-interactive HPC runs)
+LISTWISE_OUT = WORKFLOW_OUTPUT / "listwise_test"
+RUNS_OUT = LISTWISE_OUT / "runs"
+FIG_OUT = LISTWISE_OUT / "figures"
+LISTWISE_OUT.mkdir(parents=True, exist_ok=True)
+RUNS_OUT.mkdir(parents=True, exist_ok=True)
+FIG_OUT.mkdir(parents=True, exist_ok=True)
+
 TRAIN_JSON = Path("..") / "data" / "BioASQ-training14b" / "training14b_10pct_sample.json"
 TEST_JSONS = [
     Path("..") / "data" / "Task13BGoldenEnriched" / f"13B{i}_golden.json"
@@ -214,7 +222,10 @@ ax.set_ylabel("Count")
 ax.set_title(f"Histogram of Snippet Token Lengths (all splits, n={len(all_token_lengths)})")
 ax.legend()
 plt.tight_layout()
-plt.show()
+hist_path = FIG_OUT / "snippet_token_hist.png"
+fig.savefig(hist_path, dpi=150)
+plt.close(fig)
+print(f"Saved snippet token histogram to {hist_path}")
 
 # %% [markdown]
 # ## 5) Choose k and estimate total input token count
@@ -260,15 +271,26 @@ for split, data in splits_data.items():
         total = query_tokens + snippet_tokens + prompt_overhead
         total_input_tokens_per_query.append(total)
 
-print(f"Estimated total input tokens (query + {k} snippets + ~50 prompt overhead):")
-print(f"  Mean:   {np.mean(total_input_tokens_per_query):.1f}")
-print(f"  Median: {np.median(total_input_tokens_per_query):.1f}")
-print(f"  P95:    {np.percentile(total_input_tokens_per_query, 95):.1f}")
-print(f"  Max:    {np.max(total_input_tokens_per_query):.1f}")
-
+stats_prompt = {
+    "k": int(k),
+    "mean": float(np.mean(total_input_tokens_per_query)),
+    "median": float(np.median(total_input_tokens_per_query)),
+    "p95": float(np.percentile(total_input_tokens_per_query, 95)),
+    "max": float(np.max(total_input_tokens_per_query)),
+}
 context_limit = 4096
 over_limit = sum(1 for t in total_input_tokens_per_query if t > context_limit)
-print(f"\nQueries exceeding {context_limit} tokens: {over_limit}/{len(total_input_tokens_per_query)}")
+stats_prompt["context_limit"] = int(context_limit)
+stats_prompt["n_over_limit"] = int(over_limit)
+stats_prompt["n_total"] = int(len(total_input_tokens_per_query))
+
+print("Estimated total input tokens (query + snippets + prompt overhead):")
+for k_stat, v in stats_prompt.items():
+    print(f"  {k_stat}: {v}")
+
+prompt_stats_path = LISTWISE_OUT / "prompt_token_stats.json"
+prompt_stats_path.write_text(json.dumps(stats_prompt, indent=2), encoding="utf-8")
+print(f"Saved prompt token stats to {prompt_stats_path}")
 
 # %% [markdown]
 # ## 6) Listwise Reranker (RankLLM + LiT5-Distill-base-v2)
@@ -291,12 +313,14 @@ except ImportError as e:
 # %%
 if RANKLLM_AVAILABLE:
     print(f"Initializing LiT5 reranker with model: {MODEL_NAME}")
+    # Settings chosen for a single L4 (24GB) GPU: conservative batch size,
+    # short context, and no sliding beyond the top-k snippets.
     model_coordinator = RankFiDDistill(
         model=MODEL_NAME,
         context_size=150,
         window_size=k,
         stride=k,
-        batch_size=8,
+        batch_size=4,
         device="cuda",
         precision="bfloat16",
     )
@@ -386,6 +410,21 @@ else:
             run_map[qid] = top_docnos[:k]
         listwise_runs[split] = run_map
 
+# Save listwise runs to disk as TSV (one file per split)
+for split, run_map in listwise_runs.items():
+    rows = []
+    for qid, docnos in run_map.items():
+        for rank, docno in enumerate(docnos, start=1):
+            # Score is optional for evaluation; use a simple decreasing score.
+            score = float(len(docnos) - rank + 1)
+            rows.append({"qid": qid, "docno": docno, "rank": rank, "score": score})
+    if not rows:
+        continue
+    df_split = pd.DataFrame(rows)
+    out_path = RUNS_OUT / f"{split}.tsv"
+    df_split.to_csv(out_path, sep="\t", index=False)
+    print(f"Saved listwise run for split {split} to {out_path}")
+
 # %% [markdown]
 # ## 7) Evaluation: Compare MAP@10 baseline vs listwise
 
@@ -437,6 +476,10 @@ results_df = pd.DataFrame(results_rows)
 print("\n=== Evaluation Results ===")
 print(results_df.to_string(index=False))
 
+metrics_path = LISTWISE_OUT / "metrics.csv"
+results_df.to_csv(metrics_path, index=False)
+print(f"Saved metrics to {metrics_path}")
+
 # %%
 if len(results_df) > 0:
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
@@ -467,7 +510,10 @@ if len(results_df) > 0:
     ax2.grid(axis="y", alpha=0.3)
     
     plt.tight_layout()
-    plt.show()
+    fig_path = FIG_OUT / "map10_baseline_vs_listwise.png"
+    fig.savefig(fig_path, dpi=150)
+    plt.close(fig)
+    print(f"Saved MAP@10 comparison figure to {fig_path}")
 
 # %% [markdown]
 # ## Summary
