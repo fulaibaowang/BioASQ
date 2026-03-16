@@ -10,6 +10,10 @@
 # syntax=docker/dockerfile:1
 FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 
+# Avoid interactive prompts (e.g. tzdata) during apt install in CI
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
 # -----
 # System packages + Python 3.11 (RankLLM recommends 3.11)
 # -----
@@ -54,16 +58,32 @@ RUN python3 -m pip install --no-cache-dir \
     torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # -----
+# Pin transformers to 4.44.x (rank-llm uses find_pruneable_heads_and_indices,
+# which was removed in transformers >= 4.45).
+# Install BEFORE rank-llm so it doesn't get overwritten.
+# -----
+RUN python3 -m pip install --no-cache-dir "transformers>=4.44,<4.45"
+
+# -----
 # RankLLM without [all] to avoid vLLM and its torch==2.6.0 pin.
 # LiT5 (RankFiDDistill) does not require vLLM.
 # -----
-RUN python3 -m pip install --no-cache-dir rank-llm
+RUN python3 -m pip install --no-cache-dir --no-deps rank-llm
+# Install rank-llm's other deps (excluding transformers, torch which we control).
+# Use --ignore-installed to avoid failures on distutils-installed packages (e.g. blinker).
+RUN python3 -m pip install --no-cache-dir --ignore-installed \
+    accelerate \
+    dacite \
+    ftfy \
+    pyserini \
+    sentencepiece \
+    tiktoken \
+    openai
 
 # -----
 # Rest of deps for the listwise notebook (paths, eval, tokenizer, plots)
 # -----
 RUN python3 -m pip install --no-cache-dir \
-    transformers \
     pandas \
     numpy \
     matplotlib \
