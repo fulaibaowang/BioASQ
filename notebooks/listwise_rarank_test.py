@@ -1,0 +1,484 @@
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.1
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
+
+# %% [markdown]
+# # Listwise Reranking on Snippets (LiT5-Distill-base-v2)
+#
+# This notebook:
+# 1. Loads top-k docs from `rerank_hybrid_200/runs` and top-1 snippet per doc from `snippet_rerank/windows`
+# 2. Plots a token-length histogram to help choose k (number of docs/snippets for listwise reranking)
+# 3. Runs a listwise reranker (RankLLM + LiT5-Distill-base-v2) on the snippets
+# 4. Evaluates MAP@10 and compares with the baseline per split
+
+# %% [markdown]
+# ## 1) Setup and Paths
+
+# %%
+from __future__ import annotations
+
+import json
+import re
+from collections import defaultdict
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from tqdm.auto import tqdm
+
+# %%
+import sys
+sys.path.insert(0, str(Path("..") / "scripts" / "public" / "shared_scripts"))
+
+from retrieval_eval.common import (
+    build_topics_and_gold,
+    evaluate_run,
+    load_questions,
+    normalize_pmid,
+    run_df_to_run_map,
+)
+
+# %%
+WORKFLOW_OUTPUT = Path("..") / "output" / "workflow_baseline_full_run_both_routes"
+RERANK_HYBRID_200_RUNS = WORKFLOW_OUTPUT / "rerank_hybrid_200" / "runs"
+SNIPPET_WINDOWS_DIR = WORKFLOW_OUTPUT / "snippet_rerank" / "windows"
+
+TRAIN_JSON = Path("..") / "data" / "BioASQ-training14b" / "training14b_10pct_sample.json"
+TEST_JSONS = [
+    Path("..") / "data" / "Task13BGoldenEnriched" / f"13B{i}_golden.json"
+    for i in range(1, 5)  # 13B1 to 13B4
+]
+
+TOP_K_DOCS = 20
+TOP_K_RERANK = 10
+
+print("Paths configured:")
+print(f"  RERANK_HYBRID_200_RUNS: {RERANK_HYBRID_200_RUNS.resolve()}")
+print(f"  SNIPPET_WINDOWS_DIR:    {SNIPPET_WINDOWS_DIR.resolve()}")
+
+# %% [markdown]
+# ## 2) Helper: Parse split from run stem
+
+# %%
+def parse_split_from_run_stem(run_stem: str) -> Optional[str]:
+    """
+    Extract the split name from a run file stem like:
+      best_rrf_13B1_golden_top5000_rrf_poolR200_poolH200_k60
+    Returns: 13B1_golden (or None if no match)
+    """
+    m = re.fullmatch(
+        r"best_rrf_(.+)_top\d+(?:_rrf_pool(?:\d+_k\d+|R\d+_poolH\d+_k\d+))?",
+        run_stem,
+    )
+    return m.group(1) if m else None
+
+
+def load_run_tsv(path: Path) -> pd.DataFrame:
+    """Load a run TSV and return DataFrame with qid, docno, rank columns."""
+    df = pd.read_csv(path, sep="\t")
+    cols = {c.lower(): c for c in df.columns}
+    qid_col = cols.get("qid") or cols.get("query_id") or df.columns[0]
+    doc_col = cols.get("docno") or cols.get("docid") or cols.get("doc") or df.columns[1]
+    rank_col = cols.get("rank")
+
+    out = pd.DataFrame({
+        "qid": df[qid_col].astype(str),
+        "docno": df[doc_col].astype(str).map(normalize_pmid),
+    })
+    if rank_col:
+        out["rank"] = df[rank_col].astype(int)
+    else:
+        out["rank"] = out.groupby("qid").cumcount() + 1
+    return out.sort_values(["qid", "rank"]).reset_index(drop=True)
+
+
+print("Helpers defined.")
+
+# %% [markdown]
+# ## 3) Load top-k docs per query and top-1 snippet per doc
+
+# %%
+def load_windows_jsonl(path: Path) -> Dict[Tuple[str, str], Tuple[str, float]]:
+    """
+    Load windows JSONL and return (qid, docno) -> (best_window_text, ce_score).
+    Keeps only the top-1 window per (qid, docno) by ce_score.
+    """
+    best: Dict[Tuple[str, str], Tuple[str, float]] = {}
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            rec = json.loads(line)
+            qid = str(rec["qid"])
+            docno = normalize_pmid(rec["docno"])
+            text = rec["window_text"]
+            score = float(rec["ce_score"])
+            key = (qid, docno)
+            if key not in best or score > best[key][1]:
+                best[key] = (text, score)
+    return best
+
+
+# %%
+run_files = sorted(RERANK_HYBRID_200_RUNS.glob("*.tsv"))
+print(f"Found {len(run_files)} run files in {RERANK_HYBRID_200_RUNS}")
+
+splits_data: Dict[str, dict] = {}
+
+for run_path in run_files:
+    split = parse_split_from_run_stem(run_path.stem)
+    if split is None:
+        print(f"  Skipping {run_path.name} (could not parse split)")
+        continue
+    
+    windows_path = SNIPPET_WINDOWS_DIR / f"{split}.jsonl"
+    if not windows_path.exists():
+        print(f"  Skipping {split}: windows file not found at {windows_path}")
+        continue
+    
+    run_df = load_run_tsv(run_path)
+    windows = load_windows_jsonl(windows_path)
+    
+    top_docs_per_query: Dict[str, List[str]] = {}
+    for qid, g in run_df.groupby("qid", sort=False):
+        top_docs_per_query[str(qid)] = g.head(TOP_K_DOCS)["docno"].tolist()
+    
+    snippets_per_query: Dict[str, Dict[str, str]] = {}
+    for qid, docnos in top_docs_per_query.items():
+        snippets_per_query[qid] = {}
+        for docno in docnos:
+            key = (qid, docno)
+            if key in windows:
+                snippets_per_query[qid][docno] = windows[key][0]
+    
+    splits_data[split] = {
+        "run_df": run_df,
+        "top_docs_per_query": top_docs_per_query,
+        "snippets_per_query": snippets_per_query,
+        "run_path": run_path,
+    }
+    n_queries = len(top_docs_per_query)
+    n_snippets = sum(len(v) for v in snippets_per_query.values())
+    print(f"  Loaded {split}: {n_queries} queries, {n_snippets} snippets (top-{TOP_K_DOCS} docs)")
+
+print(f"\nTotal splits loaded: {len(splits_data)}")
+
+# %% [markdown]
+# ## 4) Tokenizer and histogram of snippet token lengths
+
+# %%
+from transformers import AutoTokenizer
+
+MODEL_NAME = "castorini/LiT5-Distill-base-v2"
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+print(f"Loaded tokenizer for {MODEL_NAME}")
+
+# %%
+all_token_lengths = []
+
+for split, data in splits_data.items():
+    for qid, doc_snippets in data["snippets_per_query"].items():
+        for docno, snippet_text in doc_snippets.items():
+            tokens = tokenizer.encode(snippet_text, add_special_tokens=False)
+            all_token_lengths.append(len(tokens))
+
+print(f"Total snippets across all splits: {len(all_token_lengths)}")
+print(f"Token length stats:")
+print(f"  Min:    {np.min(all_token_lengths)}")
+print(f"  Max:    {np.max(all_token_lengths)}")
+print(f"  Mean:   {np.mean(all_token_lengths):.1f}")
+print(f"  Median: {np.median(all_token_lengths):.1f}")
+print(f"  P90:    {np.percentile(all_token_lengths, 90):.1f}")
+print(f"  P95:    {np.percentile(all_token_lengths, 95):.1f}")
+print(f"  P99:    {np.percentile(all_token_lengths, 99):.1f}")
+
+# %%
+fig, ax = plt.subplots(figsize=(10, 5))
+ax.hist(all_token_lengths, bins=50, edgecolor="black", alpha=0.7)
+ax.axvline(np.mean(all_token_lengths), color="red", linestyle="--", label=f"Mean: {np.mean(all_token_lengths):.1f}")
+ax.axvline(np.percentile(all_token_lengths, 95), color="orange", linestyle="--", label=f"P95: {np.percentile(all_token_lengths, 95):.1f}")
+ax.set_xlabel("Snippet Token Length")
+ax.set_ylabel("Count")
+ax.set_title(f"Histogram of Snippet Token Lengths (all splits, n={len(all_token_lengths)})")
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# ## 5) Choose k and estimate total input token count
+
+# %%
+def estimate_query_token_len(tokenizer, query_text: str) -> int:
+    return len(tokenizer.encode(query_text, add_special_tokens=False))
+
+
+all_questions: List[dict] = []
+if TRAIN_JSON.exists():
+    all_questions.extend(load_questions(TRAIN_JSON))
+for p in TEST_JSONS:
+    if p.exists():
+        all_questions.extend(load_questions(p))
+
+qid_to_query: Dict[str, str] = {}
+for q in all_questions:
+    qid = str(q.get("id") or q.get("qid"))
+    query_text = str(q.get("body") or q.get("query") or q.get("question") or "")
+    qid_to_query[qid] = query_text
+
+print(f"Loaded {len(qid_to_query)} queries from train/test JSONs")
+
+# %%
+k = TOP_K_RERANK
+print(f"Using k = {k} docs/snippets for listwise reranking")
+
+total_input_tokens_per_query = []
+
+for split, data in splits_data.items():
+    for qid, doc_snippets in data["snippets_per_query"].items():
+        query_text = qid_to_query.get(qid, "")
+        query_tokens = estimate_query_token_len(tokenizer, query_text)
+        
+        top_k_docnos = data["top_docs_per_query"][qid][:k]
+        snippet_tokens = 0
+        for docno in top_k_docnos:
+            if docno in doc_snippets:
+                snippet_tokens += len(tokenizer.encode(doc_snippets[docno], add_special_tokens=False))
+        
+        prompt_overhead = 50
+        total = query_tokens + snippet_tokens + prompt_overhead
+        total_input_tokens_per_query.append(total)
+
+print(f"Estimated total input tokens (query + {k} snippets + ~50 prompt overhead):")
+print(f"  Mean:   {np.mean(total_input_tokens_per_query):.1f}")
+print(f"  Median: {np.median(total_input_tokens_per_query):.1f}")
+print(f"  P95:    {np.percentile(total_input_tokens_per_query, 95):.1f}")
+print(f"  Max:    {np.max(total_input_tokens_per_query):.1f}")
+
+context_limit = 4096
+over_limit = sum(1 for t in total_input_tokens_per_query if t > context_limit)
+print(f"\nQueries exceeding {context_limit} tokens: {over_limit}/{len(total_input_tokens_per_query)}")
+
+# %% [markdown]
+# ## 6) Listwise Reranker (RankLLM + LiT5-Distill-base-v2)
+#
+# RankLLM provides listwise reranking with T5 models. We use `rank_llm` to rerank the top-k snippets.
+# For LiT5-Distill models, we use the `RankFiDDistill` class which implements FiD-style listwise reranking.
+
+# %%
+try:
+    from rank_llm.data import Request, Candidate, Query
+    from rank_llm.rerank import Reranker
+    from rank_llm.rerank.listwise.rank_fid import RankFiDDistill
+    RANKLLM_AVAILABLE = True
+    print("RankLLM imported successfully")
+except ImportError as e:
+    print(f"RankLLM not available: {e}")
+    print("Install with: pip install rank-llm")
+    RANKLLM_AVAILABLE = False
+
+# %%
+if RANKLLM_AVAILABLE:
+    print(f"Initializing LiT5 reranker with model: {MODEL_NAME}")
+    model_coordinator = RankFiDDistill(
+        model=MODEL_NAME,
+        context_size=150,
+        window_size=k,
+        stride=k,
+        batch_size=8,
+        device="cuda",
+        precision="bfloat16",
+    )
+    reranker = Reranker(model_coordinator)
+    print("Reranker initialized")
+
+# %%
+def build_requests_for_split(
+    split: str,
+    data: dict,
+    qid_to_query: Dict[str, str],
+    k: int,
+) -> Tuple[List["Request"], List[Tuple[str, List[str]]]]:
+    """
+    Build RankLLM Request objects for each query in the split.
+    Returns: (list of Request, list of (qid, [docnos in order]))
+    """
+    requests = []
+    qid_docno_order = []
+    
+    for qid, top_docnos in data["top_docs_per_query"].items():
+        query_text = qid_to_query.get(qid, "")
+        if not query_text:
+            continue
+        
+        top_k_docnos = top_docnos[:k]
+        doc_snippets = data["snippets_per_query"].get(qid, {})
+        
+        candidates = []
+        valid_docnos = []
+        for rank, docno in enumerate(top_k_docnos, start=1):
+            if docno in doc_snippets:
+                snippet = doc_snippets[docno]
+                candidates.append(Candidate(docid=docno, doc={"text": snippet}, score=0.0))
+                valid_docnos.append(docno)
+        
+        if not candidates:
+            continue
+        
+        query_obj = Query(text=query_text, qid=qid)
+        req = Request(query=query_obj, candidates=candidates)
+        requests.append(req)
+        qid_docno_order.append((qid, valid_docnos))
+    
+    return requests, qid_docno_order
+
+
+def rerank_and_build_run(
+    reranker: "Reranker",
+    requests: List["Request"],
+    qid_docno_order: List[Tuple[str, List[str]]],
+) -> Dict[str, List[str]]:
+    """
+    Run the reranker on requests and build run_map[qid] = [docno_1, docno_2, ...].
+    """
+    results = reranker.rerank_batch(requests, rank_start=0, rank_end=len(requests[0].candidates) if requests else 10)
+    
+    run_map: Dict[str, List[str]] = {}
+    for (qid, _original_docnos), result in zip(qid_docno_order, results):
+        reranked_docnos = [str(c.docid) for c in result.candidates]
+        run_map[qid] = reranked_docnos
+    
+    return run_map
+
+# %%
+listwise_runs: Dict[str, Dict[str, List[str]]] = {}
+
+if RANKLLM_AVAILABLE:
+    for split, data in tqdm(splits_data.items(), desc="Reranking splits"):
+        print(f"\n--- Reranking {split} ---")
+        requests, qid_docno_order = build_requests_for_split(split, data, qid_to_query, k)
+        print(f"  Built {len(requests)} requests")
+        
+        if requests:
+            run_map = rerank_and_build_run(reranker, requests, qid_docno_order)
+            listwise_runs[split] = run_map
+            print(f"  Reranked {len(run_map)} queries")
+        else:
+            listwise_runs[split] = {}
+            print("  No valid requests")
+else:
+    print("Skipping reranking (RankLLM not available)")
+    print("Creating dummy runs from baseline order for demonstration...")
+    for split, data in splits_data.items():
+        run_map = {}
+        for qid, top_docnos in data["top_docs_per_query"].items():
+            run_map[qid] = top_docnos[:k]
+        listwise_runs[split] = run_map
+
+# %% [markdown]
+# ## 7) Evaluation: Compare MAP@10 baseline vs listwise
+
+# %%
+_, gold_map = build_topics_and_gold(all_questions)
+print(f"Gold relevance loaded for {len(gold_map)} queries")
+
+# %%
+results_rows = []
+
+for split, data in splits_data.items():
+    baseline_run_map = run_df_to_run_map(data["run_df"])
+    gold_for_split = {qid: gold_map[qid] for qid in baseline_run_map if qid in gold_map}
+    
+    if not gold_for_split:
+        print(f"{split}: no gold found, skipping")
+        continue
+    
+    baseline_metrics, _ = evaluate_run(gold_for_split, baseline_run_map)
+    baseline_map10 = baseline_metrics.get("MAP@10", 0.0)
+    baseline_mrr10 = baseline_metrics.get("MRR@10", 0.0)
+    
+    listwise_run_map = listwise_runs.get(split, {})
+    gold_for_listwise = {qid: gold_map[qid] for qid in listwise_run_map if qid in gold_map}
+    
+    if gold_for_listwise:
+        listwise_metrics, _ = evaluate_run(gold_for_listwise, listwise_run_map)
+        listwise_map10 = listwise_metrics.get("MAP@10", 0.0)
+        listwise_mrr10 = listwise_metrics.get("MRR@10", 0.0)
+    else:
+        listwise_map10 = 0.0
+        listwise_mrr10 = 0.0
+    
+    delta_map10 = listwise_map10 - baseline_map10
+    delta_mrr10 = listwise_mrr10 - baseline_mrr10
+    
+    results_rows.append({
+        "split": split,
+        "n_queries": len(gold_for_split),
+        "baseline_MAP@10": baseline_map10,
+        "listwise_MAP@10": listwise_map10,
+        "delta_MAP@10": delta_map10,
+        "baseline_MRR@10": baseline_mrr10,
+        "listwise_MRR@10": listwise_mrr10,
+        "delta_MRR@10": delta_mrr10,
+    })
+
+results_df = pd.DataFrame(results_rows)
+print("\n=== Evaluation Results ===")
+print(results_df.to_string(index=False))
+
+# %%
+if len(results_df) > 0:
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    
+    x = np.arange(len(results_df))
+    width = 0.35
+    
+    ax1 = axes[0]
+    ax1.bar(x - width/2, results_df["baseline_MAP@10"], width, label="Baseline (rerank_hybrid_200)")
+    ax1.bar(x + width/2, results_df["listwise_MAP@10"], width, label="Listwise (LiT5)")
+    ax1.set_xlabel("Split")
+    ax1.set_ylabel("MAP@10")
+    ax1.set_title("MAP@10: Baseline vs Listwise Reranker")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(results_df["split"], rotation=45, ha="right")
+    ax1.legend()
+    ax1.grid(axis="y", alpha=0.3)
+    
+    ax2 = axes[1]
+    colors = ["green" if d > 0 else "red" for d in results_df["delta_MAP@10"]]
+    ax2.bar(x, results_df["delta_MAP@10"], color=colors)
+    ax2.axhline(0, color="black", linewidth=0.5)
+    ax2.set_xlabel("Split")
+    ax2.set_ylabel("Delta MAP@10")
+    ax2.set_title("MAP@10 Improvement (Listwise - Baseline)")
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(results_df["split"], rotation=45, ha="right")
+    ax2.grid(axis="y", alpha=0.3)
+    
+    plt.tight_layout()
+    plt.show()
+
+# %% [markdown]
+# ## Summary
+#
+# This notebook:
+# 1. Loaded top-20 docs per query from `rerank_hybrid_200/runs`
+# 2. Retrieved top-1 snippet per doc from `snippet_rerank/windows`
+# 3. Plotted token length histogram to choose k for listwise reranking
+# 4. Ran listwise reranking with LiT5-Distill-base-v2 on top-k snippets
+# 5. Compared MAP@10 per split: baseline vs listwise reranked
+#
+# **Key findings:**
+# - See the results table above for per-split comparison
+# - Positive delta = listwise reranking improved over baseline
