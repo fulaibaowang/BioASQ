@@ -27,6 +27,18 @@
 # %%
 from __future__ import annotations
 
+import os
+
+# Keep plotting headless-friendly and avoid known vLLM/tokenizers multiprocessing issues.
+os.environ.setdefault("MPLBACKEND", "Agg")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+# vLLM 0.11.0 enables V1 multiprocessing by default; disable it here because
+# this notebook-style script executes top-level code and is not structured around
+# a __main__ guard / spawn-safe entrypoint.
+os.environ.setdefault("VLLM_ENABLE_V1_MULTIPROCESSING", "0")
+# If multiprocessing is enabled later, prefer spawn over fork for CUDA safety.
+os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
+
 import json
 import re
 from collections import defaultdict
@@ -81,6 +93,10 @@ TEST_JSONS = [
 TOP_K_DOCS = 20
 TOP_K_RERANK = 10
 
+print("Runtime env:")
+print(f"  VLLM_ENABLE_V1_MULTIPROCESSING={os.environ.get('VLLM_ENABLE_V1_MULTIPROCESSING')}")
+print(f"  VLLM_WORKER_MULTIPROC_METHOD={os.environ.get('VLLM_WORKER_MULTIPROC_METHOD')}")
+print(f"  TOKENIZERS_PARALLELISM={os.environ.get('TOKENIZERS_PARALLELISM')}")
 print("Paths configured:")
 print(f"  REPO_ROOT:              {_REPO_ROOT}")
 print(f"  RERANK_HYBRID_200_RUNS: {RERANK_HYBRID_200_RUNS.resolve()}")
