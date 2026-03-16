@@ -106,7 +106,7 @@ TOP_K_RERANK = 15  # Single-window: top-15 docs, one pass
 
 # Sliding window config
 SLIDING_POOL = 50      # Pool of docs to consider
-SLIDING_WINDOW = 15    # Window size (docs per pass)
+SLIDING_WINDOW = 10    # Window size (docs per pass)
 SLIDING_STRIDE = 5     # Step between windows
 
 # Safety: truncate snippets longer than this to guarantee we fit in context.
