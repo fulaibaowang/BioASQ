@@ -99,7 +99,7 @@ TEST_JSONS = [
 ]
 
 TOP_K_DOCS = 20
-TOP_K_RERANK = 10
+TOP_K_RERANK = 15  # ~3000-3200 tokens at P95, safely within 4096 context
 
 print("Runtime env:")
 print(f"  VLLM_ENABLE_V1_MULTIPROCESSING={os.environ.get('VLLM_ENABLE_V1_MULTIPROCESSING')}")
