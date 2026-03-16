@@ -58,24 +58,28 @@ RUN python3 -m pip install --no-cache-dir \
     torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # -----
-# Pin transformers to 4.44.x (rank-llm uses find_pruneable_heads_and_indices,
-# which was removed in transformers >= 4.45).
-# Install BEFORE rank-llm so it doesn't get overwritten.
+# Pin transformers + tokenizers to compatible versions FIRST.
+# transformers 4.44.x needs tokenizers ~0.19.x; rank-llm uses
+# find_pruneable_heads_and_indices which was removed in transformers >= 4.45.
 # -----
-RUN python3 -m pip install --no-cache-dir "transformers>=4.44,<4.45"
+RUN python3 -m pip install --no-cache-dir \
+    "transformers==4.44.2" \
+    "tokenizers>=0.19,<0.20"
 
 # -----
 # RankLLM without [all] to avoid vLLM and its torch==2.6.0 pin.
 # LiT5 (RankFiDDistill) does not require vLLM.
+# Install with --no-deps so it doesn't override our pinned transformers/tokenizers.
 # -----
 RUN python3 -m pip install --no-cache-dir --no-deps rank-llm
-# Install rank-llm's other deps (excluding transformers, torch which we control).
+
+# Install rank-llm's other deps (excluding transformers, torch, tokenizers which we control).
 # Use --ignore-installed to avoid failures on distutils-installed packages (e.g. blinker).
+# Exclude pyserini for now (it pulls incompatible tokenizers); LiT5 doesn't need it.
 RUN python3 -m pip install --no-cache-dir --ignore-installed \
     accelerate \
     dacite \
     ftfy \
-    pyserini \
     sentencepiece \
     tiktoken \
     openai
