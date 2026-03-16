@@ -13,12 +13,12 @@
 # ---
 
 # %% [markdown]
-# # Listwise Reranking on Snippets (LiT5-Distill-base-v2)
+# # Listwise Reranking on Snippets (RankZephyr 7B V1 Full)
 #
 # This notebook:
 # 1. Loads top-k docs from `rerank_hybrid_200/runs` and top-1 snippet per doc from `snippet_rerank/windows`
 # 2. Plots a token-length histogram to help choose k (number of docs/snippets for listwise reranking)
-# 3. Runs a listwise reranker (RankLLM + LiT5-Distill-base-v2) on the snippets
+# 3. Runs a listwise reranker (RankLLM + RankZephyr 7B V1 Full) on the snippets
 # 4. Evaluates MAP@10 and compares with the baseline per split
 
 # %% [markdown]
@@ -26,6 +26,18 @@
 
 # %%
 from __future__ import annotations
+
+import os
+
+# Keep plotting headless-friendly and avoid known vLLM/tokenizers multiprocessing issues.
+os.environ.setdefault("MPLBACKEND", "Agg")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+# vLLM 0.11.0 enables V1 multiprocessing by default; disable it here because
+# this notebook-style script executes top-level code and is not structured around
+# a __main__ guard / spawn-safe entrypoint.
+os.environ.setdefault("VLLM_ENABLE_V1_MULTIPROCESSING", "0")
+# If multiprocessing is enabled later, prefer spawn over fork for CUDA safety.
+os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
 
 import json
 import re
@@ -65,22 +77,34 @@ RERANK_HYBRID_200_RUNS = WORKFLOW_OUTPUT / "rerank_hybrid_200" / "runs"
 SNIPPET_WINDOWS_DIR = WORKFLOW_OUTPUT / "snippet_rerank" / "windows"
 
 # Output root for this listwise experiment (designed for non-interactive HPC runs)
-LISTWISE_OUT = WORKFLOW_OUTPUT / "listwise_test"
+LISTWISE_OUT = WORKFLOW_OUTPUT / "listwise_rankzephyr_test"
 RUNS_OUT = LISTWISE_OUT / "runs"
 FIG_OUT = LISTWISE_OUT / "figures"
 LISTWISE_OUT.mkdir(parents=True, exist_ok=True)
 RUNS_OUT.mkdir(parents=True, exist_ok=True)
 FIG_OUT.mkdir(parents=True, exist_ok=True)
 
-TRAIN_JSON = _REPO_ROOT / "data" / "BioASQ-training14b" / "training14b_10pct_sample.json"
+# Data paths - can be overridden via environment variables
+TRAIN_JSON = Path(os.environ.get(
+    "TRAIN_JSON",
+    str(_REPO_ROOT / "example" / "training14b_10pct_sample.json")
+))
+_TEST_JSONS_DIR = Path(os.environ.get(
+    "TEST_JSONS_DIR",
+    str(_REPO_ROOT / "bioasq_data" / "Task13BGoldenEnriched")
+))
 TEST_JSONS = [
-    _REPO_ROOT / "data" / "Task13BGoldenEnriched" / f"13B{i}_golden.json"
+    _TEST_JSONS_DIR / f"13B{i}_golden.json"
     for i in range(1, 5)  # 13B1 to 13B4
 ]
 
 TOP_K_DOCS = 20
 TOP_K_RERANK = 10
 
+print("Runtime env:")
+print(f"  VLLM_ENABLE_V1_MULTIPROCESSING={os.environ.get('VLLM_ENABLE_V1_MULTIPROCESSING')}")
+print(f"  VLLM_WORKER_MULTIPROC_METHOD={os.environ.get('VLLM_WORKER_MULTIPROC_METHOD')}")
+print(f"  TOKENIZERS_PARALLELISM={os.environ.get('TOKENIZERS_PARALLELISM')}")
 print("Paths configured:")
 print(f"  REPO_ROOT:              {_REPO_ROOT}")
 print(f"  RERANK_HYBRID_200_RUNS: {RERANK_HYBRID_200_RUNS.resolve()}")
@@ -201,9 +225,12 @@ print(f"\nTotal splits loaded: {len(splits_data)}")
 # %%
 from transformers import AutoTokenizer
 
-MODEL_NAME = "castorini/LiT5-Distill-base-v2"
+MODEL_NAME = "castorini/rank_zephyr_7b_v1_full"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+RANKZEPHYR_CONTEXT_SIZE = 4096
+
 print(f"Loaded tokenizer for {MODEL_NAME}")
+print(f"Using RankZephyr context size: {RANKZEPHYR_CONTEXT_SIZE}")
 
 # %%
 all_token_lengths = []
@@ -275,11 +302,21 @@ def estimate_query_token_len(tokenizer, query_text: str) -> int:
 
 
 all_questions: List[dict] = []
+print("\nLoading questions from JSON files:")
 if TRAIN_JSON.exists():
-    all_questions.extend(load_questions(TRAIN_JSON))
+    qs = load_questions(TRAIN_JSON)
+    all_questions.extend(qs)
+    print(f"  TRAIN_JSON: loaded {len(qs)} questions")
+else:
+    print(f"  TRAIN_JSON: NOT FOUND at {TRAIN_JSON}")
+
 for p in TEST_JSONS:
     if p.exists():
-        all_questions.extend(load_questions(p))
+        qs = load_questions(p)
+        all_questions.extend(qs)
+        print(f"  {p.name}: loaded {len(qs)} questions")
+    else:
+        print(f"  {p.name}: NOT FOUND at {p}")
 
 qid_to_query: Dict[str, str] = {}
 for q in all_questions:
@@ -287,7 +324,11 @@ for q in all_questions:
     query_text = str(q.get("body") or q.get("query") or q.get("question") or "")
     qid_to_query[qid] = query_text
 
-print(f"Loaded {len(qid_to_query)} queries from train/test JSONs")
+print(f"\nTotal: {len(qid_to_query)} queries loaded from train/test JSONs")
+if len(qid_to_query) == 0:
+    print("WARNING: No queries loaded! Check that the data/ directory is mounted correctly.")
+    print(f"  Expected TRAIN_JSON at: {TRAIN_JSON.resolve()}")
+    print(f"  Expected TEST_JSONS at: {[p.resolve() for p in TEST_JSONS]}")
 
 # %%
 k = TOP_K_RERANK
@@ -306,7 +347,8 @@ for split, data in splits_data.items():
             if docno in doc_snippets:
                 snippet_tokens += len(tokenizer.encode(doc_snippets[docno], add_special_tokens=False))
         
-        prompt_overhead = 50
+        # Rough allowance for RankZephyr listwise prompt formatting / instructions.
+        prompt_overhead = 200
         total = query_tokens + snippet_tokens + prompt_overhead
         total_input_tokens_per_query.append(total)
 
@@ -317,7 +359,7 @@ stats_prompt = {
     "p95": float(np.percentile(total_input_tokens_per_query, 95)),
     "max": float(np.max(total_input_tokens_per_query)),
 }
-context_limit = 4096
+context_limit = RANKZEPHYR_CONTEXT_SIZE
 over_limit = sum(1 for t in total_input_tokens_per_query if t > context_limit)
 stats_prompt["context_limit"] = int(context_limit)
 stats_prompt["n_over_limit"] = int(over_limit)
@@ -332,16 +374,21 @@ prompt_stats_path.write_text(json.dumps(stats_prompt, indent=2), encoding="utf-8
 print(f"Saved prompt token stats to {prompt_stats_path}")
 
 # %% [markdown]
-# ## 6) Listwise Reranker (RankLLM + LiT5-Distill-base-v2)
+# ## 6) Listwise Reranker (RankLLM + RankZephyr 7B V1 Full)
 #
-# RankLLM provides listwise reranking with T5 models. We use `rank_llm` to rerank the top-k snippets.
-# For LiT5-Distill models, we use the `RankFiDDistill` class which implements FiD-style listwise reranking.
+# RankLLM provides listwise reranking with open-source listwise LLM rerankers.
+# For RankZephyr, we use the Zephyr-specific reranker path and avoid the generic
+# `Reranker` import because current RankLLM releases can eagerly import the LiT5
+# code path, which may conflict with the newer Transformers stack bundled in the
+# official vLLM image.
 
 # %%
 try:
+    import inspect
+
     from rank_llm.data import Request, Candidate, Query
-    from rank_llm.rerank import Reranker
-    from rank_llm.rerank.listwise.rank_fid import RankFiDDistill
+    from rank_llm.rerank.listwise import ZephyrReranker
+
     RANKLLM_AVAILABLE = True
     print("RankLLM imported successfully")
 except ImportError as e:
@@ -349,21 +396,46 @@ except ImportError as e:
     print("Install with: pip install rank-llm")
     RANKLLM_AVAILABLE = False
 
+
+def build_zephyr_reranker(model_name: str, context_size: int = 4096):
+    """
+    Create a Zephyr reranker while being tolerant to small API changes across
+    RankLLM versions. The official docs show `ZephyrReranker()` directly, but we
+    try to pass the explicit model name / context size when the constructor
+    exposes matching parameters.
+    """
+    sig = inspect.signature(ZephyrReranker)
+    params = sig.parameters
+
+    candidate_kwargs = {}
+    if "model" in params:
+        candidate_kwargs["model"] = model_name
+    elif "model_path" in params:
+        candidate_kwargs["model_path"] = model_name
+
+    if "context_size" in params:
+        candidate_kwargs["context_size"] = context_size
+
+    attempts = []
+    if candidate_kwargs:
+        attempts.append(candidate_kwargs)
+    attempts.append({})
+
+    last_err = None
+    for kwargs in attempts:
+        try:
+            print(f"Trying ZephyrReranker init with kwargs={kwargs}")
+            return ZephyrReranker(**kwargs)
+        except TypeError as e:
+            last_err = e
+            continue
+
+    raise last_err if last_err is not None else RuntimeError("Could not initialize ZephyrReranker")
+
 # %%
 if RANKLLM_AVAILABLE:
-    print(f"Initializing LiT5 reranker with model: {MODEL_NAME}")
-    # Settings chosen for a single L4 (24GB) GPU: conservative batch size,
-    # short context, and no sliding beyond the top-k snippets.
-    model_coordinator = RankFiDDistill(
-        model=MODEL_NAME,
-        context_size=150,
-        window_size=k,
-        stride=k,
-        batch_size=4,
-        device="cuda",
-        precision="bfloat16",
-    )
-    reranker = Reranker(model_coordinator)
+    print(f"Initializing RankZephyr reranker with model: {MODEL_NAME}")
+    reranker = build_zephyr_reranker(MODEL_NAME, context_size=RANKZEPHYR_CONTEXT_SIZE)
     print("Reranker initialized")
 
 # %%
@@ -408,14 +480,17 @@ def build_requests_for_split(
 
 
 def rerank_and_build_run(
-    reranker: "Reranker",
+    reranker,
     requests: List["Request"],
     qid_docno_order: List[Tuple[str, List[str]]],
 ) -> Dict[str, List[str]]:
     """
     Run the reranker on requests and build run_map[qid] = [docno_1, docno_2, ...].
     """
-    results = reranker.rerank_batch(requests, rank_start=0, rank_end=len(requests[0].candidates) if requests else 10)
+    if not requests:
+        return {}
+
+    results = reranker.rerank_batch(requests=requests, rank_start=0, rank_end=len(requests[0].candidates))
     
     run_map: Dict[str, List[str]] = {}
     for (qid, _original_docnos), result in zip(qid_docno_order, results):
@@ -528,7 +603,7 @@ if len(results_df) > 0:
     
     ax1 = axes[0]
     ax1.bar(x - width/2, results_df["baseline_MAP@10"], width, label="Baseline (rerank_hybrid_200)")
-    ax1.bar(x + width/2, results_df["listwise_MAP@10"], width, label="Listwise (LiT5)")
+    ax1.bar(x + width/2, results_df["listwise_MAP@10"], width, label="Listwise (RankZephyr)")
     ax1.set_xlabel("Split")
     ax1.set_ylabel("MAP@10")
     ax1.set_title("MAP@10: Baseline vs Listwise Reranker")
@@ -561,9 +636,9 @@ if len(results_df) > 0:
 # 1. Loaded top-20 docs per query from `rerank_hybrid_200/runs`
 # 2. Retrieved top-1 snippet per doc from `snippet_rerank/windows`
 # 3. Plotted token length histogram to choose k for listwise reranking
-# 4. Ran listwise reranking with LiT5-Distill-base-v2 on top-k snippets
+# 4. Ran listwise reranking with RankZephyr 7B V1 Full on top-k snippets
 # 5. Compared MAP@10 per split: baseline vs listwise reranked
 #
 # **Key findings:**
 # - See the results table above for per-split comparison
-# - Positive delta = listwise reranking improved over baseline
+# - Positive delta = RankZephyr listwise reranking improved over baseline
