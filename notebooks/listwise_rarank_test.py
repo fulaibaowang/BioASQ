@@ -207,12 +207,25 @@ print(f"Loaded tokenizer for {MODEL_NAME}")
 
 # %%
 all_token_lengths = []
+short_snippets: List[dict] = []
+SHORT_LEN_THRESHOLD = 5  # investigate very short snippets
 
 for split, data in splits_data.items():
     for qid, doc_snippets in data["snippets_per_query"].items():
         for docno, snippet_text in doc_snippets.items():
             tokens = tokenizer.encode(snippet_text, add_special_tokens=False)
-            all_token_lengths.append(len(tokens))
+            tlen = len(tokens)
+            all_token_lengths.append(tlen)
+            if tlen <= SHORT_LEN_THRESHOLD:
+                short_snippets.append(
+                    {
+                        "split": split,
+                        "qid": qid,
+                        "docno": docno,
+                        "token_len": tlen,
+                        "snippet": snippet_text,
+                    }
+                )
 
 print(f"Total snippets across all splits: {len(all_token_lengths)}")
 print(f"Token length stats:")
@@ -223,6 +236,20 @@ print(f"  Median: {np.median(all_token_lengths):.1f}")
 print(f"  P90:    {np.percentile(all_token_lengths, 90):.1f}")
 print(f"  P95:    {np.percentile(all_token_lengths, 95):.1f}")
 print(f"  P99:    {np.percentile(all_token_lengths, 99):.1f}")
+print(f"  Very short (<= {SHORT_LEN_THRESHOLD} tokens): {len(short_snippets)}")
+
+if short_snippets:
+    print("\nExamples of very short snippets (first 10):")
+    for rec in short_snippets[:10]:
+        print(
+            f"[{rec['split']}] qid={rec['qid']} docno={rec['docno']} "
+            f"len={rec['token_len']} snippet={rec['snippet']!r}"
+        )
+    short_path = LISTWISE_OUT / "short_snippets.jsonl"
+    with short_path.open("w", encoding="utf-8") as f:
+        for rec in short_snippets:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    print(f"\nSaved all very short snippets (len <= {SHORT_LEN_THRESHOLD}) to {short_path}")
 
 # %%
 fig, ax = plt.subplots(figsize=(10, 5))
