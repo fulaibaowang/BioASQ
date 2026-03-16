@@ -58,13 +58,16 @@ RUN python3 -m pip install --no-cache-dir \
     torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # -----
-# Pin transformers + tokenizers to compatible versions FIRST.
-# transformers 4.44.x needs tokenizers ~0.19.x; rank-llm uses
-# find_pruneable_heads_and_indices which was removed in transformers >= 4.45.
+# Install all HuggingFace ecosystem packages together so pip resolves them consistently.
+# transformers 4.44.x needs tokenizers ~0.19.x and huggingface-hub <1.0;
+# rank-llm uses find_pruneable_heads_and_indices which was removed in transformers >= 4.45.
 # -----
 RUN python3 -m pip install --no-cache-dir \
     "transformers==4.44.2" \
-    "tokenizers>=0.19,<0.20"
+    "tokenizers>=0.19,<0.20" \
+    "huggingface-hub>=0.23,<1.0" \
+    "accelerate<1.0" \
+    sentencepiece
 
 # -----
 # RankLLM without [all] to avoid vLLM and its torch==2.6.0 pin.
@@ -73,16 +76,14 @@ RUN python3 -m pip install --no-cache-dir \
 # -----
 RUN python3 -m pip install --no-cache-dir --no-deps rank-llm
 
-# Install rank-llm's other deps (excluding transformers, torch, tokenizers which we control).
+# Install rank-llm's remaining deps (excluding HF ecosystem which we already installed).
 # Use --ignore-installed to avoid failures on distutils-installed packages (e.g. blinker).
-# Exclude pyserini for now (it pulls incompatible tokenizers); LiT5 doesn't need it.
 RUN python3 -m pip install --no-cache-dir --ignore-installed \
-    accelerate \
     dacite \
     ftfy \
-    sentencepiece \
     tiktoken \
-    openai
+    openai \
+    python-dotenv
 
 # -----
 # Rest of deps for the listwise notebook (paths, eval, tokenizer, plots)
@@ -94,6 +95,24 @@ RUN python3 -m pip install --no-cache-dir \
     tqdm \
     jupyterlab
 
+# -----
+# Diagnostic verification: fail the build if critical imports don't work.
+# This catches dependency issues at build time, not runtime.
+# -----
+RUN python3 -c "\
+import sys; \
+print('Python:', sys.version); \
+import torch; print('torch:', torch.__version__); \
+import transformers; print('transformers:', transformers.__version__); \
+import tokenizers; print('tokenizers:', tokenizers.__version__); \
+import huggingface_hub; print('huggingface_hub:', huggingface_hub.__version__); \
+import accelerate; print('accelerate:', accelerate.__version__); \
+from transformers import AutoTokenizer; print('AutoTokenizer: ok'); \
+from rank_llm.data import Request, Candidate, Query; print('rank_llm.data: ok'); \
+from rank_llm.rerank import Reranker; print('rank_llm.rerank.Reranker: ok'); \
+from rank_llm.rerank.listwise.rank_fid import RankFiDDistill; print('RankFiDDistill: ok'); \
+print('All imports OK')"
+
 # Optional: project code is mounted at /app; ensure shared_scripts can be used
 # by running from repo root: docker run -v $(pwd):/app -w /app ...
-CMD ["bash", "-lc", "python3 -c \"import torch; from rank_llm.rerank.listwise.rank_fid import RankFiDDistill; print('torch', torch.__version__); print('cuda', torch.cuda.is_available()); print('RankFiDDistill ok')\""]
+CMD ["bash", "-lc", "python3 -c \"import torch; print('torch', torch.__version__); print('cuda available', torch.cuda.is_available())\""]
