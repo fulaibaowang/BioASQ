@@ -39,8 +39,17 @@ import pandas as pd
 from tqdm.auto import tqdm
 
 # %%
+# Determine repo root from script location so paths work from any working directory.
+# When run as a script: __file__ is defined.
+# When run in a notebook: fall back to cwd-based ".." (notebook is in notebooks/).
+try:
+    _SCRIPT_DIR = Path(__file__).resolve().parent  # notebooks/
+    _REPO_ROOT = _SCRIPT_DIR.parent
+except NameError:
+    _REPO_ROOT = Path("..").resolve()
+
 import sys
-sys.path.insert(0, str(Path("..") / "scripts" / "public" / "shared_scripts"))
+sys.path.insert(0, str(_REPO_ROOT / "scripts" / "public" / "shared_scripts"))
 
 from retrieval_eval.common import (
     build_topics_and_gold,
@@ -51,7 +60,7 @@ from retrieval_eval.common import (
 )
 
 # %%
-WORKFLOW_OUTPUT = Path("..") / "output" / "workflow_baseline_full_run_both_routes"
+WORKFLOW_OUTPUT = _REPO_ROOT / "output" / "workflow_baseline_full_run_both_routes"
 RERANK_HYBRID_200_RUNS = WORKFLOW_OUTPUT / "rerank_hybrid_200" / "runs"
 SNIPPET_WINDOWS_DIR = WORKFLOW_OUTPUT / "snippet_rerank" / "windows"
 
@@ -63,9 +72,9 @@ LISTWISE_OUT.mkdir(parents=True, exist_ok=True)
 RUNS_OUT.mkdir(parents=True, exist_ok=True)
 FIG_OUT.mkdir(parents=True, exist_ok=True)
 
-TRAIN_JSON = Path("..") / "data" / "BioASQ-training14b" / "training14b_10pct_sample.json"
+TRAIN_JSON = _REPO_ROOT / "data" / "BioASQ-training14b" / "training14b_10pct_sample.json"
 TEST_JSONS = [
-    Path("..") / "data" / "Task13BGoldenEnriched" / f"13B{i}_golden.json"
+    _REPO_ROOT / "data" / "Task13BGoldenEnriched" / f"13B{i}_golden.json"
     for i in range(1, 5)  # 13B1 to 13B4
 ]
 
@@ -73,8 +82,11 @@ TOP_K_DOCS = 20
 TOP_K_RERANK = 10
 
 print("Paths configured:")
+print(f"  REPO_ROOT:              {_REPO_ROOT}")
 print(f"  RERANK_HYBRID_200_RUNS: {RERANK_HYBRID_200_RUNS.resolve()}")
 print(f"  SNIPPET_WINDOWS_DIR:    {SNIPPET_WINDOWS_DIR.resolve()}")
+print(f"  TRAIN_JSON exists:      {TRAIN_JSON.exists()} ({TRAIN_JSON})")
+print(f"  TEST_JSONS exist:       {[p.exists() for p in TEST_JSONS]}")
 
 # %% [markdown]
 # ## 2) Helper: Parse split from run stem
