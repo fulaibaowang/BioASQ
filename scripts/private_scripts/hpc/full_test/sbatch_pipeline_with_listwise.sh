@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH -J pipeline_listwise
-#SBATCH -p frida
-#SBATCH --time=48:00:00
+#SBATCH -p dev
+#SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=16
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
-#SBATCH --mem=256G
-#SBATCH --gres=gpu:L4:1
+#SBATCH --mem=128G
+#SBATCH --gres=gpu:1
 
 set -euo pipefail
 
@@ -17,12 +17,12 @@ mkdir -p logs
 # Paths / inputs
 # -----------------------------
 MAIN_CONTAINER="/shared/home/yun.wang/biolab/yun/bioasq_08.03.26.sqfs"
-LISTWISE_CONTAINER="/shared/home/yun.wang/biolab/yun/bioasq_listwise.sqfs"
+LISTWISE_CONTAINER="/shared/home/yun.wang/biolab/yun/bioasqlistwisereranker_16.03.26v3.sqfs"
 WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
 
 # Pipeline config (must have RUN_SNIPPET_RRF=1 or use --run-both-routes)
-PIPELINE_CONFIG="scripts/private_scripts/hpc/full_test/config_full_pubmed_sharded_gpus.env"
+PIPELINE_CONFIG="scripts/private_scripts/hpc/full_test/config_full_pubmed_sharded.env"
 
 echo "Starting job ${SLURM_JOB_ID} on $(hostname) at $(date)"
 echo "Config: ${PIPELINE_CONFIG}"
