@@ -72,7 +72,7 @@ from retrieval_eval.common import (
 )
 
 # %%
-WORKFLOW_OUTPUT = _REPO_ROOT / "output" / "workflow_baseline_full_run_both_routes"
+WORKFLOW_OUTPUT = _REPO_ROOT / "output" / "workflow_baseline_full_run_both_routes_gemma"
 RERANK_HYBRID_200_RUNS = WORKFLOW_OUTPUT / "rerank_hybrid_200" / "runs"
 SNIPPET_WINDOWS_DIR = WORKFLOW_OUTPUT / "snippet_rerank" / "windows"
 
