@@ -1,13 +1,12 @@
 #!/bin/bash
 #SBATCH -J pipeline_full_pubmed_sharded
-#SBATCH -p amd
-#SBATCH --time=24:00:00
-#SBATCH --mem=64G
+#SBATCH -p dev
+#SBATCH --time=12:00:00
+#SBATCH --gres=gpu:A100_80GB:1
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=256G
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
-#SBATCH --cpus-per-task=4
-
-##SBATCH --gres=gpu:1
 
 set -euo pipefail
 
@@ -24,7 +23,7 @@ WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
 
 # Pipeline config
-PIPELINE_CONFIG="scripts/private_scripts/hpc/full_test/config_full_pubmed_sharded.env"
+PIPELINE_CONFIG="scripts/private_scripts/hpc/bioasq_runs/config.env"
 
 echo "Starting job ${SLURM_JOB_ID} on $(hostname) at $(date)"
 echo "Running pipeline script with config: ${PIPELINE_CONFIG}"

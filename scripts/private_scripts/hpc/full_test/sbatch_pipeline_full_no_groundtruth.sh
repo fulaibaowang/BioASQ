@@ -51,12 +51,12 @@ srun \
   bash -lc "
     set -euo pipefail
 
-    # --- Shared HF cache on /pubmed ---
+    # --- Shared HF cache on /pubmed (HF_HOME only to avoid TRANSFORMERS_CACHE deprecation warning) ---
     export HF_HOME='/pubmed/_hf_cache'
     export HF_HUB_CACHE=\"\$HF_HOME/hub\"
-    export TRANSFORMERS_CACHE=\"\$HF_HOME/transformers\"
     export SENTENCE_TRANSFORMERS_HOME=\"\$HF_HOME/sentence_transformers\"
-    mkdir -p \"\$HF_HOME\" \"\$HF_HUB_CACHE\" \"\$TRANSFORMERS_CACHE\" \"\$SENTENCE_TRANSFORMERS_HOME\"
+    unset TRANSFORMERS_CACHE 2>/dev/null || true
+    mkdir -p \"\$HF_HOME\" \"\$HF_HUB_CACHE\" \"\$HF_HOME/transformers\" \"\$SENTENCE_TRANSFORMERS_HOME\"
     echo \"[cache] HF_HOME=\$HF_HOME\"
 
     export OMP_NUM_THREADS=8
