@@ -2,7 +2,7 @@
 #SBATCH -J pipeline_listwise
 #SBATCH -p dev
 #SBATCH --time=12:00:00
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=4
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
 #SBATCH --mem=128G
