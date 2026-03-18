@@ -18,3 +18,4 @@ runs_dense/
 .vscode/
 .venv/
 report/
+bioasq14_output/

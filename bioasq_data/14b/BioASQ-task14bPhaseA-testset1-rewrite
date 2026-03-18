@@ -1,0 +1,564 @@
+{
+  "questions": [
+    {
+      "id": "69ac745885870e396d000065",
+      "type": "factoid",
+      "body": "What is the prevalence of primary adrenal insufficiency?",
+      "body_smart_rewrite": "What is the prevalence of primary adrenal insufficiency?",
+      "body_rerank_rewrite": "What is the prevalence of primary adrenal insufficiency?"
+    },
+    {
+      "id": "69a8afae85870e396d00003d",
+      "type": "summary",
+      "body": "What is adductor canal syndrome?",
+      "body_smart_rewrite": "Adductor canal syndrome: causes, symptoms, diagnosis, and management of saphenous nerve entrapment in the adductor canal",
+      "body_rerank_rewrite": "What is adductor canal syndrome?"
+    },
+    {
+      "id": "69a7fe5285870e396d000030",
+      "type": "list",
+      "body": "What are the main types of DNA damage induced by UV radiation?",
+      "body_smart_rewrite": "What are the main types of DNA damage induced by UV radiation?",
+      "body_rerank_rewrite": "What are the main types of DNA damage induced by UV radiation?"
+    },
+    {
+      "id": "67ed4d9918b1e36f2e0000f6",
+      "type": "list",
+      "body": "What are indications of quetiapine?",
+      "body_smart_rewrite": "What are the approved and common clinical indications for quetiapine?",
+      "body_rerank_rewrite": "What are indications of quetiapine?"
+    },
+    {
+      "id": "69adec7285870e396d000074",
+      "type": "factoid",
+      "body": "In GBM, which cell state is associated with the loss of Neurofibromin (NF1)?",
+      "body_smart_rewrite": "In glioblastoma (GBM), which tumor cell state is associated with loss of neurofibromin 1 (NF1)?",
+      "body_rerank_rewrite": "In glioblastoma (GBM), which tumor cell state is associated with loss of neurofibromin 1 (NF1)?"
+    },
+    {
+      "id": "69ac1e6885870e396d00005b",
+      "type": "factoid",
+      "body": "What the recurrence percentage for Cushing's Disease?",
+      "body_smart_rewrite": "What is the recurrence rate of Cushing disease after treatment or remission?",
+      "body_rerank_rewrite": "What is the recurrence rate of Cushing disease?"
+    },
+    {
+      "id": "69acae9485870e396d00006b",
+      "type": "factoid",
+      "body": "What causes neuronal ceroid lipofuscinoses (NCLs)?",
+      "body_smart_rewrite": "What are the genetic causes and disease mechanisms of neuronal ceroid lipofuscinoses (NCLs; Batten disease)?",
+      "body_rerank_rewrite": "What causes neuronal ceroid lipofuscinoses (NCLs; Batten disease)?"
+    },
+    {
+      "id": "69a7f6fa85870e396d000021",
+      "type": "yesno",
+      "body": "Does the PI4KIIalpha of Drosophila melanogaster show homology with that of Homo sapiens?",
+      "body_smart_rewrite": "Does Drosophila melanogaster PI4KIIalpha show homology to human PI4KIIalpha in Homo sapiens?",
+      "body_rerank_rewrite": "Does Drosophila melanogaster PI4KIIalpha show homology to human PI4KIIalpha?"
+    },
+    {
+      "id": "67d7fe4e18b1e36f2e000045",
+      "type": "list",
+      "body": "Vitamin deficiencies in severe alcoholism.",
+      "body_smart_rewrite": "Which vitamin deficiencies are most common in severe alcoholism and alcohol use disorder?",
+      "body_rerank_rewrite": "Vitamin deficiencies in severe alcoholism."
+    },
+    {
+      "id": "69ade3c185870e396d000073",
+      "type": "yesno",
+      "body": "Can tumor cells be reprogrammed into immune cells?",
+      "body_smart_rewrite": "Can tumor cells be reprogrammed into immune cells?",
+      "body_rerank_rewrite": "Can tumor cells be reprogrammed into immune cells?"
+    },
+    {
+      "id": "69ac608a85870e396d000063",
+      "type": "list",
+      "body": "What are the typically biomedical characteristics of primary adrenal insufficiency?",
+      "body_smart_rewrite": "What are the common clinical features and laboratory findings of primary adrenal insufficiency?",
+      "body_rerank_rewrite": "What are the typically biomedical characteristics of primary adrenal insufficiency?"
+    },
+    {
+      "id": "69acbf7185870e396d00006f",
+      "type": "list",
+      "body": "Please list the common clinical characteristic of the Heidenhain variant of Creutzfeldt–Jakob disease (HvCJD)",
+      "body_smart_rewrite": "What are the common clinical features of the Heidenhain variant of Creutzfeldt–Jakob disease (HvCJD)?",
+      "body_rerank_rewrite": "What are the common clinical features of the Heidenhain variant of Creutzfeldt–Jakob disease (HvCJD)?"
+    },
+    {
+      "id": "69a7faa485870e396d000026",
+      "type": "yesno",
+      "body": "Does whole-chromosome silencing occur in somatic cells?",
+      "body_smart_rewrite": "Does whole-chromosome silencing occur in somatic cells?",
+      "body_rerank_rewrite": "Does whole-chromosome silencing occur in somatic cells?"
+    },
+    {
+      "id": "67e2c98518b1e36f2e000096",
+      "type": "summary",
+      "body": "Are eating disorders common in male adolescents?",
+      "body_smart_rewrite": "Are eating disorders common in male adolescents?",
+      "body_rerank_rewrite": "Are eating disorders common in male adolescents?"
+    },
+    {
+      "id": "69abc5e285870e396d000056",
+      "type": "factoid",
+      "body": "What is the estimated incidence of endogenous Cushing's Syndrome in the human population?",
+      "body_smart_rewrite": "What is the estimated incidence of endogenous Cushing's Syndrome in the human population?",
+      "body_rerank_rewrite": "What is the estimated incidence of endogenous Cushing's Syndrome in the human population?"
+    },
+    {
+      "id": "69a7002085870e396d00001a",
+      "type": "list",
+      "body": "Please list the types of medication errors",
+      "body_smart_rewrite": "What are the main types and classifications of medication errors?",
+      "body_rerank_rewrite": "Please list the types of medication errors"
+    },
+    {
+      "id": "69a7fe1e85870e396d00002f",
+      "type": "factoid",
+      "body": "What is the most common genotoxic factor that humans are exposed to?",
+      "body_smart_rewrite": "What is the most common genotoxic factor that humans are exposed to?",
+      "body_rerank_rewrite": "What is the most common genotoxic factor that humans are exposed to?"
+    },
+    {
+      "id": "69a5df9a85870e396d000011",
+      "type": "list",
+      "body": "What are the recommended screening tests to diagnose the presence of Cushing's Syndrome?",
+      "body_smart_rewrite": "What are the recommended screening tests to diagnose the presence of Cushing's Syndrome?",
+      "body_rerank_rewrite": "What are the recommended screening tests to diagnose the presence of Cushing's Syndrome?"
+    },
+    {
+      "id": "69a86f1285870e396d000036",
+      "type": "yesno",
+      "body": "Is Seborrhea a condition that affects the gastrointestinal tract?",
+      "body_smart_rewrite": "Is seborrhea a skin disorder rather than a gastrointestinal condition?",
+      "body_rerank_rewrite": "Is Seborrhea a condition that affects the gastrointestinal tract?"
+    },
+    {
+      "id": "69a6cb2d85870e396d000019",
+      "type": "summary",
+      "body": "What impact could biosynthetic meat have on human health?",
+      "body_smart_rewrite": "What impact could biosynthetic meat have on human health?",
+      "body_rerank_rewrite": "What impact could biosynthetic meat have on human health?"
+    },
+    {
+      "id": "69ac16e485870e396d000059",
+      "type": "list",
+      "body": "What are common blood cell changes caused by elevated cortisol levels?",
+      "body_smart_rewrite": "What are common blood cell changes caused by elevated cortisol levels?",
+      "body_rerank_rewrite": "What are common blood cell changes caused by elevated cortisol levels?"
+    },
+    {
+      "id": "69aacfcc85870e396d000040",
+      "type": "yesno",
+      "body": "is Rheumatic heart disease caused by Staphylococcus Aureus?",
+      "body_smart_rewrite": "Is rheumatic heart disease caused by Staphylococcus aureus?",
+      "body_rerank_rewrite": "Is rheumatic heart disease caused by Staphylococcus aureus?"
+    },
+    {
+      "id": "69a7f6ba85870e396d000020",
+      "type": "list",
+      "body": "In which organisms is a PI4KIIalpha (PI4KIIα) orthologue present?",
+      "body_smart_rewrite": "In which organisms or species is a PI4KIIalpha / PI4KIIα orthologue found?",
+      "body_rerank_rewrite": "In which organisms is a PI4KIIalpha / PI4KIIα orthologue present?"
+    },
+    {
+      "id": "69ad09eb85870e396d000071",
+      "type": "summary",
+      "body": "How often is hypertension present in patients with Cushing's Syndrome?",
+      "body_smart_rewrite": "How often is hypertension present in patients with Cushing's Syndrome?",
+      "body_rerank_rewrite": "How often is hypertension present in patients with Cushing's Syndrome?"
+    },
+    {
+      "id": "69a4ca8a85870e396d000006",
+      "type": "list",
+      "body": "Please list the FDA approved Janus kinase inhibitors",
+      "body_smart_rewrite": "Which Janus kinase (JAK) inhibitors are FDA approved?",
+      "body_rerank_rewrite": "Please list the FDA approved Janus kinase inhibitors"
+    },
+    {
+      "id": "69a7455485870e396d00001b",
+      "type": "summary",
+      "body": "How does protein localization to lipid droplets occur?",
+      "body_smart_rewrite": "How does protein localization to lipid droplets occur?",
+      "body_rerank_rewrite": "How does protein localization to lipid droplets occur?"
+    },
+    {
+      "id": "69ac767585870e396d000067",
+      "type": "summary",
+      "body": "How do glucocorticoid withdrawal syndrome's symptoms evolve over time after surgical remission of Cushing's Syndrome?",
+      "body_smart_rewrite": "How do glucocorticoid withdrawal syndrome's symptoms evolve over time after surgical remission of Cushing's Syndrome?",
+      "body_rerank_rewrite": "How do glucocorticoid withdrawal syndrome's symptoms evolve over time after surgical remission of Cushing's Syndrome?"
+    },
+    {
+      "id": "69acaf9185870e396d00006d",
+      "type": "summary",
+      "body": "Relative to intestinal disease, what are HETE and HODE",
+      "body_smart_rewrite": "What are HETE and HODE, and what is their role in intestinal disease?",
+      "body_rerank_rewrite": "What are HETE and HODE in intestinal disease?"
+    },
+    {
+      "id": "69a7fd8885870e396d00002d",
+      "type": "yesno",
+      "body": "Can proteins acquire new functions after forming amyloid structures?",
+      "body_smart_rewrite": "Can proteins acquire new functions after forming amyloid structures?",
+      "body_rerank_rewrite": "Can proteins acquire new functions after forming amyloid structures?"
+    },
+    {
+      "id": "69ac725c85870e396d000064",
+      "type": "factoid",
+      "body": "How often do patients fail to self-administer hydrocortisone injections in cases of acute adrenal crisis?",
+      "body_smart_rewrite": "How often do patients fail to self-administer hydrocortisone injections in cases of acute adrenal crisis?",
+      "body_rerank_rewrite": "How often do patients fail to self-administer hydrocortisone injections in cases of acute adrenal crisis?"
+    },
+    {
+      "id": "69a86f0185870e396d000035",
+      "type": "factoid",
+      "body": "What is a trichoscope used for?",
+      "body_smart_rewrite": "What is trichoscopy used for in dermatology, and what does a trichoscope examine?",
+      "body_rerank_rewrite": "What is a trichoscope used for?"
+    },
+    {
+      "id": "69a6a75785870e396d000018",
+      "type": "factoid",
+      "body": "How many kinases belong to the serine/arginine kinase family of the human kinome?",
+      "body_smart_rewrite": "How many kinases belong to the serine/arginine kinase family of the human kinome?",
+      "body_rerank_rewrite": "How many kinases belong to the serine/arginine kinase family of the human kinome?"
+    },
+    {
+      "id": "69ab1e8885870e396d000051",
+      "type": "list",
+      "body": "What are the subtypes of Cushing Syndrome?",
+      "body_smart_rewrite": "What are the major subtypes of Cushing syndrome?",
+      "body_rerank_rewrite": "What are the subtypes of Cushing Syndrome?"
+    },
+    {
+      "id": "69a8abfb85870e396d000039",
+      "type": "list",
+      "body": "What are the symptoms of TAFRO syndrome?",
+      "body_smart_rewrite": "What are the common clinical features and symptoms of TAFRO syndrome?",
+      "body_rerank_rewrite": "What are the symptoms of TAFRO syndrome?"
+    },
+    {
+      "id": "69a7fbc485870e396d00002a",
+      "type": "list",
+      "body": "What are the most common diseases caused by dysfunction of the ubiquitin system?",
+      "body_smart_rewrite": "What are the most common diseases caused by dysfunction of the ubiquitin system?",
+      "body_rerank_rewrite": "What are the most common diseases caused by dysfunction of the ubiquitin system?"
+    },
+    {
+      "id": "69abbbb285870e396d000052",
+      "type": "summary",
+      "body": "What is the cortisol awakening response (CAR)?",
+      "body_smart_rewrite": "What is the cortisol awakening response (CAR), and how is it defined?",
+      "body_rerank_rewrite": "What is the cortisol awakening response (CAR)?"
+    },
+    {
+      "id": "69a4cc6f85870e396d000009",
+      "type": "factoid",
+      "body": "What  type of  blood cell has  CD19 as a surface biomarker?",
+      "body_smart_rewrite": "Which blood cell type expresses CD19 as a surface marker?",
+      "body_rerank_rewrite": "Which type of blood cell expresses CD19 as a surface marker?"
+    },
+    {
+      "id": "69a7fac085870e396d000027",
+      "type": "list",
+      "body": "What are the most common vectors used in gene therapy?",
+      "body_smart_rewrite": "What are the most common vectors used in gene therapy?",
+      "body_rerank_rewrite": "What are the most common vectors used in gene therapy?"
+    },
+    {
+      "id": "69abbd6185870e396d000053",
+      "type": "factoid",
+      "body": "What is the time to diagnosis for adrenal Cushing's Syndrome?",
+      "body_smart_rewrite": "What is the time to diagnosis for adrenal Cushing's Syndrome?",
+      "body_rerank_rewrite": "What is the time to diagnosis for adrenal Cushing's Syndrome?"
+    },
+    {
+      "id": "69acaef085870e396d00006c",
+      "type": "factoid",
+      "body": "What is the indication for Brineura?",
+      "body_smart_rewrite": "What is Brineura indicated for, and which disease does it treat?",
+      "body_rerank_rewrite": "What is Brineura indicated for?"
+    },
+    {
+      "id": "69a7ff2785870e396d000031",
+      "type": "factoid",
+      "body": "What is the primary energy source for cancer cells?",
+      "body_smart_rewrite": "What is the primary energy source for cancer cells?",
+      "body_rerank_rewrite": "What is the primary energy source for cancer cells?"
+    },
+    {
+      "id": "69a66cb085870e396d000016",
+      "type": "yesno",
+      "body": "Are adrenocortical secretory tumors in humans mostly a hereditary disorder?",
+      "body_smart_rewrite": "Are adrenocortical secretory tumors in humans mostly a hereditary disorder?",
+      "body_rerank_rewrite": "Are adrenocortical secretory tumors in humans mostly a hereditary disorder?"
+    },
+    {
+      "id": "69a4cacf85870e396d000007",
+      "type": "summary",
+      "body": "Please describe alopecia areata.",
+      "body_smart_rewrite": "Alopecia areata overview: clinical features, pathogenesis, and treatment",
+      "body_rerank_rewrite": "Please describe alopecia areata."
+    },
+    {
+      "id": "69a7f72985870e396d000022",
+      "type": "list",
+      "body": "What is the intracellular localization of PI4KIIalpha in human cells?",
+      "body_smart_rewrite": "What is the intracellular localization of PI4KIIalpha / PI4KIIα in human cells?",
+      "body_rerank_rewrite": "What is the intracellular localization of PI4KIIalpha / PI4KIIα in human cells?"
+    },
+    {
+      "id": "69ac747685870e396d000066",
+      "type": "factoid",
+      "body": "What is the prevalence of secondary adrenal insufficiency?",
+      "body_smart_rewrite": "What is the prevalence of secondary adrenal insufficiency?",
+      "body_rerank_rewrite": "What is the prevalence of secondary adrenal insufficiency?"
+    },
+    {
+      "id": "69acc29385870e396d000070",
+      "type": "factoid",
+      "body": "SynNeurGe classification system is associated with what disease?",
+      "body_smart_rewrite": "Which disease is the SynNeurGe classification system used to classify?",
+      "body_rerank_rewrite": "Which disease is associated with the SynNeurGe classification system?"
+    },
+    {
+      "id": "69a8012b85870e396d000034",
+      "type": "summary",
+      "body": "How is the pathogenic prion protein formed from the normal prion protein?",
+      "body_smart_rewrite": "How is the pathogenic prion protein formed from the normal prion protein?",
+      "body_rerank_rewrite": "How is the pathogenic prion protein formed from the normal prion protein?"
+    },
+    {
+      "id": "69ab1c0285870e396d000050",
+      "type": "factoid",
+      "body": "What is the average delay in the diagnosis of Cushing's Syndrome?",
+      "body_smart_rewrite": "What is the average delay in the diagnosis of Cushing's Syndrome?",
+      "body_rerank_rewrite": "What is the average delay in the diagnosis of Cushing's Syndrome?"
+    },
+    {
+      "id": "69a8ab8585870e396d000038",
+      "type": "factoid",
+      "body": "Which of the 5 senses does otospongiosis affect?",
+      "body_smart_rewrite": "Which sense is affected by otospongiosis (otosclerosis)?",
+      "body_rerank_rewrite": "Which sense is affected by otospongiosis (otosclerosis)?"
+    },
+    {
+      "id": "69a7f79685870e396d000024",
+      "type": "summary",
+      "body": "How is terminal differentiation regulated?",
+      "body_smart_rewrite": "How is terminal differentiation regulated?",
+      "body_rerank_rewrite": "How is terminal differentiation regulated?"
+    },
+    {
+      "id": "69ac49a685870e396d00005f",
+      "type": "list",
+      "body": "What are the common symptoms of adrenal insufficiency?",
+      "body_smart_rewrite": "What are the common signs and symptoms of adrenal insufficiency?",
+      "body_rerank_rewrite": "What are the common symptoms of adrenal insufficiency?"
+    },
+    {
+      "id": "69acb0c885870e396d00006e",
+      "type": "factoid",
+      "body": "Krabbe disease, also known as globoid-cell leukodystrophy is thought to results from what toxic metabolite?",
+      "body_smart_rewrite": "In Krabbe disease (globoid cell leukodystrophy), which toxic metabolite is thought to accumulate?",
+      "body_rerank_rewrite": "In Krabbe disease (globoid cell leukodystrophy), which toxic metabolite is implicated?"
+    },
+    {
+      "id": "69a7491c85870e396d00001c",
+      "type": "summary",
+      "body": "How do cancer cells attack the cells of the immune system?",
+      "body_smart_rewrite": "How do cancer cells attack the cells of the immune system?",
+      "body_rerank_rewrite": "How do cancer cells attack the cells of the immune system?"
+    },
+    {
+      "id": "69ac4ff785870e396d000061",
+      "type": "summary",
+      "body": "When and how does an Addisonian crisis manifest?",
+      "body_smart_rewrite": "When and how does an Addisonian crisis manifest?",
+      "body_rerank_rewrite": "When and how does an Addisonian crisis manifest?"
+    },
+    {
+      "id": "69a8aeb485870e396d00003c",
+      "type": "yesno",
+      "body": "Is Calcium dyshomeostasis  assoiciated with Huntington's disease?",
+      "body_smart_rewrite": "Is calcium dyshomeostasis associated with Huntington disease?",
+      "body_rerank_rewrite": "Is calcium dyshomeostasis associated with Huntington disease?"
+    },
+    {
+      "id": "69a7fc6785870e396d00002b",
+      "type": "list",
+      "body": "What are the most common mechanisms leading to amyloid formation?",
+      "body_smart_rewrite": "What are the most common mechanisms leading to amyloid formation?",
+      "body_rerank_rewrite": "What are the most common mechanisms leading to amyloid formation?"
+    },
+    {
+      "id": "69ac5fd085870e396d000062",
+      "type": "summary",
+      "body": "How is acute adrenal crisis treated?",
+      "body_smart_rewrite": "What is the treatment of acute adrenal crisis (Addisonian crisis)?",
+      "body_rerank_rewrite": "How is acute adrenal crisis treated?"
+    },
+    {
+      "id": "69a8adf785870e396d00003b",
+      "type": "yesno",
+      "body": "is Paracoccidioidomycosis caused by a parasite?",
+      "body_smart_rewrite": "Is paracoccidioidomycosis caused by a parasite or by a fungus?",
+      "body_rerank_rewrite": "Is paracoccidioidomycosis caused by a parasite or a fungus?"
+    },
+    {
+      "id": "699ef80a85870e396d000003",
+      "type": "list",
+      "body": "What are the most common bacteria in the human skin microbiome?",
+      "body_smart_rewrite": "What are the most common bacteria in the human skin microbiome?",
+      "body_rerank_rewrite": "What are the most common bacteria in the human skin microbiome?"
+    },
+    {
+      "id": "69abc0a585870e396d000055",
+      "type": "factoid",
+      "body": "What is the mean time to diagnosis for ectopic Cushing's Syndrome?",
+      "body_smart_rewrite": "What is the mean time to diagnosis for ectopic Cushing's Syndrome?",
+      "body_rerank_rewrite": "What is the mean time to diagnosis for ectopic Cushing's Syndrome?"
+    },
+    {
+      "id": "67e1488918b1e36f2e000072",
+      "type": "summary",
+      "body": "What is the realtionship between survivin and nasopharyngeal cancer?",
+      "body_smart_rewrite": "What is the relationship between survivin (BIRC5) expression and nasopharyngeal carcinoma?",
+      "body_rerank_rewrite": "What is the relationship between survivin (BIRC5) and nasopharyngeal cancer?"
+    },
+    {
+      "id": "69a7f7d385870e396d000025",
+      "type": "yesno",
+      "body": "Is the inactive X chromosome (Barr body) less susceptible to genotoxic damage or mutations than the active X chromosome?",
+      "body_smart_rewrite": "Is the inactive X chromosome (Barr body) less susceptible to genotoxic damage or mutations than the active X chromosome?",
+      "body_rerank_rewrite": "Is the inactive X chromosome (Barr body) less susceptible to genotoxic damage or mutations than the active X chromosome?"
+    },
+    {
+      "id": "69ac49c685870e396d000060",
+      "type": "summary",
+      "body": "What are the causes of the different categories of adrenal insufficiency?",
+      "body_smart_rewrite": "What are the causes of primary, secondary, and tertiary adrenal insufficiency?",
+      "body_rerank_rewrite": "What are the causes of the different categories of adrenal insufficiency?"
+    },
+    {
+      "id": "69a4cc0a85870e396d000008",
+      "type": "list",
+      "body": "Please list the common side effects of Kymriah",
+      "body_smart_rewrite": "What are the common adverse effects and side effects of Kymriah (tisagenlecleucel)?",
+      "body_rerank_rewrite": "What are the common side effects of Kymriah (tisagenlecleucel)?"
+    },
+    {
+      "id": "69a8001f85870e396d000033",
+      "type": "list",
+      "body": "Which factors trigger eustress responses in the body?",
+      "body_smart_rewrite": "Which factors trigger eustress responses in the body?",
+      "body_rerank_rewrite": "Which factors trigger eustress responses in the body?"
+    },
+    {
+      "id": "69a669b585870e396d000014",
+      "type": "yesno",
+      "body": "Is Cushing Syndrome present in canine populations?",
+      "body_smart_rewrite": "Is Cushing Syndrome present in canine populations?",
+      "body_rerank_rewrite": "Is Cushing Syndrome present in canine populations?"
+    },
+    {
+      "id": "67d975da18b1e36f2e000050",
+      "type": "yesno",
+      "body": "Does a zoonosis affect humans?",
+      "body_smart_rewrite": "Can zoonotic diseases be transmitted from animals to humans?",
+      "body_rerank_rewrite": "Does a zoonosis affect humans?"
+    },
+    {
+      "id": "69a7f75385870e396d000023",
+      "type": "summary",
+      "body": "How do larval salivary glands differ from adult salivary glands in Drosophila melanogaster?",
+      "body_smart_rewrite": "How do larval salivary glands differ from adult salivary glands in Drosophila melanogaster?",
+      "body_rerank_rewrite": "How do larval salivary glands differ from adult salivary glands in Drosophila melanogaster?"
+    },
+    {
+      "id": "69ac409485870e396d00005d",
+      "type": "factoid",
+      "body": "How often is leukocytosis present in patients with Cushing's Syndrome?",
+      "body_smart_rewrite": "How often is leukocytosis present in patients with Cushing's Syndrome?",
+      "body_rerank_rewrite": "How often is leukocytosis present in patients with Cushing's Syndrome?"
+    },
+    {
+      "id": "69a8acd085870e396d00003a",
+      "type": "list",
+      "body": "What are the hallmarks of Acro-cardio-facial syndrome (ACFS)",
+      "body_smart_rewrite": "What are the characteristic clinical features and hallmarks of acro-cardio-facial syndrome (ACFS)?",
+      "body_rerank_rewrite": "What are the hallmarks of acro-cardio-facial syndrome (ACFS)?"
+    },
+    {
+      "id": "69a7f62f85870e396d00001d",
+      "type": "summary",
+      "body": "What are the effects of D-amino acids on human health?",
+      "body_smart_rewrite": "What are the effects of D-amino acids on human health?",
+      "body_rerank_rewrite": "What are the effects of D-amino acids on human health?"
+    },
+    {
+      "id": "69abbf7f85870e396d000054",
+      "type": "factoid",
+      "body": "What is the mean time to diagnosis for pituitary Chushing's Syndrome?",
+      "body_smart_rewrite": "What is the mean time to diagnosis for pituitary Cushing disease?",
+      "body_rerank_rewrite": "What is the mean time to diagnosis for pituitary Cushing disease?"
+    },
+    {
+      "id": "67e0043b18b1e36f2e000066",
+      "type": "yesno",
+      "body": "Has Vitamin D therapy been shown to improve cognitive function in Alzheimers disease?",
+      "body_smart_rewrite": "Has Vitamin D therapy been shown to improve cognitive function in Alzheimers disease?",
+      "body_rerank_rewrite": "Has Vitamin D therapy been shown to improve cognitive function in Alzheimers disease?"
+    },
+    {
+      "id": "69a7fd0785870e396d00002c",
+      "type": "yesno",
+      "body": "Can AlphaFold be used in a reverse manner to predict a possible amino acid sequence from a desired protein structure (inverse protein folding)?",
+      "body_smart_rewrite": "Can AlphaFold be used for inverse protein folding, that is, predicting amino acid sequence from a target protein structure?",
+      "body_rerank_rewrite": "Can AlphaFold be used for inverse protein folding from structure to sequence?"
+    },
+    {
+      "id": "69a66b8085870e396d000015",
+      "type": "yesno",
+      "body": "Is Cushing syndrome present in feline populations?",
+      "body_smart_rewrite": "Is Cushing syndrome present in feline populations?",
+      "body_rerank_rewrite": "Is Cushing syndrome present in feline populations?"
+    },
+    {
+      "id": "69aa28fb85870e396d00003f",
+      "type": "yesno",
+      "body": "Is Heck's disease caused by a bacterium?",
+      "body_smart_rewrite": "Is Heck disease (focal epithelial hyperplasia) caused by bacteria or by a virus?",
+      "body_rerank_rewrite": "Is Heck disease (focal epithelial hyperplasia) caused by bacteria or by a virus?"
+    },
+    {
+      "id": "69a607be85870e396d000012",
+      "type": "yesno",
+      "body": "Is situs inversus totalis compatible with life?",
+      "body_smart_rewrite": "Is situs inversus totalis compatible with life?",
+      "body_rerank_rewrite": "Is situs inversus totalis compatible with life?"
+    },
+    {
+      "id": "69ac203585870e396d00005c",
+      "type": "factoid",
+      "body": "What is the treatment of choice for Cushing's Disease?",
+      "body_smart_rewrite": "What is the first-line treatment of choice for Cushing disease?",
+      "body_rerank_rewrite": "What is the treatment of choice for Cushing's Disease?"
+    },
+    {
+      "id": "69a7f66785870e396d00001e",
+      "type": "summary",
+      "body": "Why do men die earlier than women?",
+      "body_smart_rewrite": "Why do men die earlier than women?",
+      "body_rerank_rewrite": "Why do men die earlier than women?"
+    },
+    {
+      "id": "69ac80fc85870e396d000069",
+      "type": "factoid",
+      "body": "What is the difference between Cushing Syndrome and Cushing Disease?",
+      "body_smart_rewrite": "What is the clinical difference between Cushing syndrome and Cushing disease?",
+      "body_rerank_rewrite": "What is the difference between Cushing Syndrome and Cushing Disease?"
+    }
+  ]
+}
