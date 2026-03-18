@@ -7,9 +7,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: dicty (Python 3.14 venv)
 #     language: python
-#     name: python3
+#     name: dicty-py314
 # ---
 
 # %% [markdown]
@@ -779,3 +779,618 @@ if len(results_df) > 0:
 # **Key findings:**
 # - See the results table and figure for per-split comparison
 # - Sliding window considers more docs and may surface relevant docs from deeper ranks
+
+# %% [markdown]
+# ## 8) RRF sweep: snippet RRF + listwise runs (single/sliding)
+#
+# Standalone sweep block:
+# 1. `snippet_rrf` + `runs_single_window`
+# 2. `snippet_rrf` + `runs_sliding_window`
+#
+# For each pair, it sweeps weighted RRF and plots MAP@K curves per split.
+
+# %%
+import json
+from collections import defaultdict
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+
+def _resolve_repo_root() -> Path:
+    try:
+        return Path(__file__).resolve().parent.parent
+    except NameError:
+        return Path("..").resolve()
+
+
+REPO_ROOT_SWEEP = _resolve_repo_root()
+WORKFLOW_BASE_SWEEP = REPO_ROOT_SWEEP / "output" / "workflow_baseline_full_run_both_routes_gemma"
+
+SNIPPET_RRF_RUNS = WORKFLOW_BASE_SWEEP / "snippet_rrf" / "runs"
+
+
+def _first_existing_dir(*candidates: Path) -> Path:
+    for p in candidates:
+        if p.exists():
+            return p
+    return candidates[0]
+
+
+# Prefer user-provided "listwise_rerank", but fall back to existing legacy dir.
+LISTWISE_SINGLE_RUNS = _first_existing_dir(
+    WORKFLOW_BASE_SWEEP / "listwise_rerank" / "single_window/runs",
+    WORKFLOW_BASE_SWEEP / "listwise_rerank" / "runs_single_window",
+)
+LISTWISE_SLIDING_RUNS = _first_existing_dir(
+    WORKFLOW_BASE_SWEEP / "listwise_rerank" / "runs_sliding_window",
+    WORKFLOW_BASE_SWEEP / "listwise_rerank" / "runs_sliding_window",
+)
+SWEEP_OUT_DIR = _first_existing_dir(
+    WORKFLOW_BASE_SWEEP / "listwise_rerank" / "figures",
+    WORKFLOW_BASE_SWEEP / "listwise_rerank" / "figures",
+)
+SWEEP_OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+print("RRF sweep paths:")
+print(f"  WORKFLOW_BASE_SWEEP:    {WORKFLOW_BASE_SWEEP}")
+print(f"  SNIPPET_RRF_RUNS:       {SNIPPET_RRF_RUNS} (exists={SNIPPET_RRF_RUNS.exists()})")
+print(f"  LISTWISE_SINGLE_RUNS:   {LISTWISE_SINGLE_RUNS} (exists={LISTWISE_SINGLE_RUNS.exists()})")
+print(f"  LISTWISE_SLIDING_RUNS:  {LISTWISE_SLIDING_RUNS} (exists={LISTWISE_SLIDING_RUNS.exists()})")
+print(f"  SWEEP_OUT_DIR:          {SWEEP_OUT_DIR} (exists={SWEEP_OUT_DIR.exists()})")
+
+SPLITS_SWEEP = [
+    "training14b_10pct_sample",
+    "13B1_golden",
+    "13B2_golden",
+    "13B3_golden",
+    "13B4_golden",
+    "test_merged",
+]
+
+SPLIT_LABELS_SWEEP = {
+    "training14b_10pct_sample": "dev",
+    "13B1_golden": "13B1",
+    "13B2_golden": "13B2",
+    "13B3_golden": "13B3",
+    "13B4_golden": "13B4",
+    "test_merged": "test_merged",
+}
+
+TEST_SPLITS_SWEEP = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
+
+MAP_KS_SWEEP = [1, 3, 5, 10, 15]
+
+# Sweep weights: w(snippet_rrf) and w(listwise)
+#W_SNIPPET_GRID = [0.0, 0.1 ,0.2, 0.3, 0.4, 0.5, 0.6, 0.7,0.8,0.9,1]
+W_SNIPPET_GRID = [0.0,0.5 ,1]
+
+DEFAULT_WEIGHT_PAIRS = [(w_s, 1.0 - w_s) for w_s in W_SNIPPET_GRID]
+
+RRF_K_SWEEP = 20
+FUSION_POOL_TOP_SINGLE = 15
+FUSION_POOL_TOP_SLIDING = 60
+
+
+def _weight_label_long(w_s: float, w_l: float) -> str:
+    return f"w(snippet,listwise)=({w_s:g},{w_l:g})"
+
+
+def _weight_label_compact(w_s: float, w_l: float) -> str:
+    return f"({w_s:.3f},{w_l:.3f})"
+
+
+def _extract_pmid_sweep(doc_entry):
+    if isinstance(doc_entry, dict):
+        doc_entry = doc_entry.get("document", "")
+    if not isinstance(doc_entry, str):
+        return None
+    if "/" in doc_entry:
+        return doc_entry.rsplit("/", 1)[-1]
+    return doc_entry
+
+
+def _load_qrels_sweep(path: Path) -> dict[str, set[str]]:
+    with path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+    qrels: dict[str, set[str]] = {}
+    for q in data.get("questions", []):
+        qid = str(q.get("id"))
+        docs = q.get("documents", [])
+        pmids = {
+            _extract_pmid_sweep(d)
+            for d in docs
+            if _extract_pmid_sweep(d)
+        }
+        if qid and pmids:
+            qrels[qid] = pmids
+    return qrels
+
+
+def _load_run_sweep(path: Path) -> pd.DataFrame:
+    df = pd.read_csv(path, sep="\t")
+    cols = {c.lower(): c for c in df.columns}
+    qid_col = cols.get("qid")
+    doc_col = cols.get("docno") or cols.get("docid") or cols.get("doc")
+    rank_col = cols.get("rank")
+    if qid_col is None or doc_col is None:
+        raise ValueError(f"Missing qid/doc columns in {path}")
+    df[qid_col] = df[qid_col].astype(str)
+    df[doc_col] = df[doc_col].astype(str)
+    if rank_col:
+        df = df.sort_values([qid_col, rank_col])
+    return df[[qid_col, doc_col]]
+
+
+def _ap_at_k_sweep(docs: list[str], rels: set[str], k: int) -> float:
+    if not rels:
+        return 0.0
+    denom = min(len(rels), k)
+    if denom == 0:
+        return 0.0
+    hits = 0
+    score = 0.0
+    for i, doc in enumerate(docs[:k], start=1):
+        if doc in rels:
+            hits += 1
+            score += hits / i
+    return score / denom
+
+
+def _map_at_ks_for_run_sweep(run_df: pd.DataFrame, qrels: dict[str, set[str]], ks: list[int]) -> dict[int, float]:
+    qid_col, doc_col = run_df.columns.tolist()
+    per_q: dict[int, list[float]] = {k: [] for k in ks}
+    for qid, group in run_df.groupby(qid_col, sort=False):
+        rels = qrels.get(str(qid))
+        if not rels:
+            continue
+        docs = group[doc_col].tolist()
+        for k in ks:
+            per_q[k].append(_ap_at_k_sweep(docs, rels, k))
+    return {k: (float(np.mean(v)) if v else 0.0) for k, v in per_q.items()}
+
+
+def _find_snippet_rrf_run(split: str) -> Path | None:
+    # Support both current and legacy train naming conventions.
+    stems = [split]
+    if split == "training14b_10pct_sample":
+        stems = ["train_subset", split]
+    for stem in stems:
+        cands = sorted(SNIPPET_RRF_RUNS.glob(f"best_rrf_{stem}_top*.tsv"))
+        if cands:
+            return cands[0]
+    return None
+
+
+def _rrf_fuse_two_lists_sweep(
+    docs_a: list[str],
+    docs_b: list[str],
+    pool_a: int,
+    pool_b: int,
+    k_rrf: int,
+    w_a: float,
+    w_b: float,
+) -> list[str]:
+    a_top = docs_a[:pool_a]
+    b_top = docs_b[:pool_b]
+    rank_a = {d: i + 1 for i, d in enumerate(a_top)}
+    rank_b = {d: i + 1 for i, d in enumerate(b_top)}
+    union = list(dict.fromkeys(a_top + b_top))
+    scored: list[tuple[str, float]] = []
+    for d in union:
+        s = 0.0
+        ra = rank_a.get(d)
+        rb = rank_b.get(d)
+        if ra is not None:
+            s += w_a / (k_rrf + ra)
+        if rb is not None:
+            s += w_b / (k_rrf + rb)
+        scored.append((d, s))
+    scored.sort(key=lambda x: (-x[1], x[0]))
+    return [d for d, _ in scored]
+
+
+qrels_paths_sweep = {
+    "training14b_10pct_sample": REPO_ROOT_SWEEP / "example" / "training14b_10pct_sample.json",
+    "13B1_golden": REPO_ROOT_SWEEP / "bioasq_data" / "Task13BGoldenEnriched" / "13B1_golden.json",
+    "13B2_golden": REPO_ROOT_SWEEP / "bioasq_data" / "Task13BGoldenEnriched" / "13B2_golden.json",
+    "13B3_golden": REPO_ROOT_SWEEP / "bioasq_data" / "Task13BGoldenEnriched" / "13B3_golden.json",
+    "13B4_golden": REPO_ROOT_SWEEP / "bioasq_data" / "Task13BGoldenEnriched" / "13B4_golden.json",
+}
+qrels_by_split_sweep = {s: _load_qrels_sweep(p) for s, p in qrels_paths_sweep.items()}
+
+
+def run_rrf_weight_sweep(
+    route_name: str,
+    listwise_runs_dir: Path,
+    weight_pairs: list[tuple[float, float]] | None = None,
+    fusion_pool_top: int = 100,
+):
+    curves: dict[str, dict[str, dict[int, float]]] = defaultdict(dict)
+    sweep_rows = []
+    if weight_pairs is None:
+        weight_pairs = DEFAULT_WEIGHT_PAIRS
+
+    print(f"\n=== Route pair: snippet_rrf + {route_name} ===")
+    print(f"  fusion_pool_top={fusion_pool_top}")
+    if not listwise_runs_dir.exists():
+        print(f"  Listwise runs dir not found: {listwise_runs_dir}")
+        print("  Skipping this route (will still plot others if available).")
+        return curves, pd.DataFrame()
+
+    # Accumulate per-test-split data for test_merged
+    merged_qrels: dict[str, set[str]] = {}
+    merged_docs_snippet: dict[str, list[str]] = {}
+    merged_docs_listwise: dict[str, list[str]] = {}
+
+    for split in [s for s in SPLITS_SWEEP if s != "test_merged"]:
+        qrels_split = qrels_by_split_sweep.get(split, {})
+        if not qrels_split:
+            print(f"  {split}: missing qrels, skipped")
+            continue
+
+        snippet_path = _find_snippet_rrf_run(split)
+        # Prefer exact "<split>.tsv", but allow any "*<split>*.tsv" to be robust.
+        listwise_path = listwise_runs_dir / f"{split}.tsv"
+        if not listwise_path.exists():
+            candidates = sorted(listwise_runs_dir.glob(f"*{split}*.tsv"))
+            if candidates:
+                listwise_path = candidates[0]
+        if not snippet_path or not listwise_path.exists():
+            print(
+                f"  {split}: missing run(s) "
+                f"(snippet={snippet_path is not None}, listwise={listwise_path.exists()})"
+            )
+            continue
+
+        snippet_df = _load_run_sweep(snippet_path)
+        listwise_df = _load_run_sweep(listwise_path)
+        qid_col, doc_col = snippet_df.columns.tolist()
+
+        docs_snippet = {
+            q: g[doc_col].astype(str).tolist()
+            for q, g in snippet_df.groupby(qid_col, sort=False)
+        }
+        docs_listwise = {
+            q: g[doc_col].astype(str).tolist()
+            for q, g in listwise_df.groupby(qid_col, sort=False)
+        }
+
+        if split in TEST_SPLITS_SWEEP:
+            merged_qrels.update(qrels_split)
+            merged_docs_snippet.update({str(k): v for k, v in docs_snippet.items()})
+            merged_docs_listwise.update({str(k): v for k, v in docs_listwise.items()})
+
+        union_qids = sorted(set(docs_snippet.keys()) | set(docs_listwise.keys()), key=str)
+        eval_qids = [
+            qid for qid in union_qids
+            if qrels_split.get(str(qid))
+        ]
+        n_queries = len(eval_qids)
+        for w_s, w_l in weight_pairs:
+            rows = []
+            for qid in union_qids:
+                d_s = docs_snippet.get(qid, [])
+                d_l = docs_listwise.get(qid, [])
+                pool_s = min(fusion_pool_top, len(d_s)) if d_s else 0
+                pool_l = min(fusion_pool_top, len(d_l)) if d_l else 0
+                fused_docs = _rrf_fuse_two_lists_sweep(
+                    d_s,
+                    d_l,
+                    pool_a=pool_s,
+                    pool_b=pool_l,
+                    k_rrf=RRF_K_SWEEP,
+                    w_a=w_s,
+                    w_b=w_l,
+                )
+                for doc in fused_docs:
+                    rows.append((str(qid), doc))
+
+            if not rows:
+                continue
+            fused_df = pd.DataFrame(rows, columns=["qid", doc_col])
+            label = _weight_label_long(w_s, w_l)
+            split_curve = _map_at_ks_for_run_sweep(fused_df, qrels_split, MAP_KS_SWEEP)
+            curves[label][split] = split_curve
+            sweep_rows.append(
+                {
+                    "route": route_name,
+                    "split": split,
+                    "w_snippet": w_s,
+                    "w_listwise": w_l,
+                    "MAP@10": split_curve.get(10, 0.0),
+                    "MAP@100": split_curve.get(100, 0.0),
+                    "n_queries": n_queries,
+                }
+            )
+
+    # test_merged: merge all test batches into one evaluation pool
+    if merged_qrels and (merged_docs_snippet or merged_docs_listwise):
+        split = "test_merged"
+        union_qids = sorted(set(merged_docs_snippet.keys()) | set(merged_docs_listwise.keys()), key=str)
+        eval_qids = [qid for qid in union_qids if merged_qrels.get(str(qid))]
+        n_queries = len(eval_qids)
+        if n_queries == 0:
+            print("  test_merged: no evaluable qids (qrels missing), skipped")
+        else:
+            for w_s, w_l in weight_pairs:
+                rows = []
+                for qid in union_qids:
+                    d_s = merged_docs_snippet.get(qid, [])
+                    d_l = merged_docs_listwise.get(qid, [])
+                    pool_s = min(fusion_pool_top, len(d_s)) if d_s else 0
+                    pool_l = min(fusion_pool_top, len(d_l)) if d_l else 0
+                    fused_docs = _rrf_fuse_two_lists_sweep(
+                        d_s,
+                        d_l,
+                        pool_a=pool_s,
+                        pool_b=pool_l,
+                        k_rrf=RRF_K_SWEEP,
+                        w_a=w_s,
+                        w_b=w_l,
+                    )
+                    for doc in fused_docs:
+                        rows.append((str(qid), doc))
+                if not rows:
+                    continue
+                fused_df = pd.DataFrame(rows, columns=["qid", "docno"])
+                label = _weight_label_long(w_s, w_l)
+                split_curve = _map_at_ks_for_run_sweep(fused_df, merged_qrels, MAP_KS_SWEEP)
+                curves[label][split] = split_curve
+                sweep_rows.append(
+                    {
+                        "route": route_name,
+                        "split": split,
+                        "w_snippet": w_s,
+                        "w_listwise": w_l,
+                        "MAP@10": split_curve.get(10, 0.0),
+                        "MAP@100": split_curve.get(100, 0.0),
+                        "n_queries": n_queries,
+                    }
+                )
+
+    sweep_df = pd.DataFrame(sweep_rows)
+    if not sweep_df.empty:
+        out_csv = SWEEP_OUT_DIR / f"rrf_sweep_snippet_plus_{route_name.replace('-', '_')}.csv"
+        sweep_df.to_csv(out_csv, index=False)
+        print(f"Saved sweep table: {out_csv}")
+        print(sweep_df.sort_values(["split", "w_snippet"]).to_string(index=False))
+    else:
+        print("No sweep rows generated.")
+
+    return curves, sweep_df
+
+
+def plot_rrf_sweep_curves(
+    route_name: str,
+    curves: dict[str, dict[str, dict[int, float]]],
+    weight_pairs: list[tuple[float, float]] | None = None,
+):
+    if weight_pairs is None:
+        weight_pairs = DEFAULT_WEIGHT_PAIRS
+    fig, axes = plt.subplots(2, 3, figsize=(16, 8), sharex=True, sharey=True)
+    axes_flat = list(axes.flat)
+
+    series_order = [_weight_label_long(w_s, w_l) for (w_s, w_l) in weight_pairs]
+    cmap = plt.get_cmap("viridis")
+    colors = {name: cmap(i / max(1, len(series_order) - 1)) for i, name in enumerate(series_order)}
+
+    all_vals = []
+    for name in series_order:
+        for split_vals in curves.get(name, {}).values():
+            all_vals.extend(split_vals.values())
+    y_min = max(0.0, min(all_vals) - 0.02) if all_vals else 0.0
+    y_max = min(1.0, max(all_vals) + 0.02) if all_vals else 1.0
+
+    for idx, split in enumerate(SPLITS_SWEEP):
+        ax = axes_flat[idx]
+        for name in series_order:
+            split_map = curves.get(name, {}).get(split)
+            if not split_map:
+                continue
+            ys = [split_map.get(k, 0.0) for k in MAP_KS_SWEEP]
+            ax.plot(
+                MAP_KS_SWEEP,
+                ys,
+                marker="o",
+                linewidth=1.4,
+                color=colors[name],
+                label=name,
+            )
+        ax.set_xscale("log")
+        ax.set_title(SPLIT_LABELS_SWEEP.get(split, split), fontsize=12, fontweight="bold")
+        ax.set_ylim(y_min, y_max)
+        ax.grid(True, axis="y", alpha=0.3)
+        ax.grid(True, axis="x", alpha=0.3)
+        if idx % 3 == 0:
+            ax.set_ylabel("MAP@K")
+        if idx >= 3:
+            ax.set_xlabel("K")
+            ax.set_xticks(MAP_KS_SWEEP)
+            ax.set_xticklabels([str(k) for k in MAP_KS_SWEEP], rotation=90)
+
+    for j in range(len(SPLITS_SWEEP), len(axes_flat)):
+        axes_flat[j].set_visible(False)
+
+    handles = [plt.Line2D([0], [0], color=colors[name], marker="o", linestyle="-", label=name) for name in series_order]
+    fig.legend(
+        handles=handles,
+        labels=series_order,
+        loc="lower right",
+        bbox_to_anchor=(1.0, 0.05),
+        fontsize=10,
+    )
+    fig.suptitle(
+        f"RRF Weight Sweep: snippet_rrf + {route_name} (MAP@K, k_rrf={RRF_K_SWEEP})",
+        fontsize=14,
+        fontweight="bold",
+        y=1.02,
+    )
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    out_png = SWEEP_OUT_DIR / f"rrf_sweep_snippet_plus_{route_name.replace('-', '_')}_mapk.png"
+    plt.savefig(out_png, dpi=150, bbox_inches="tight")
+    print(f"Saved MAP@K figure: {out_png}")
+    plt.show()
+
+
+# %% [markdown]
+# ### 8.1 Run sweeps (both routes)
+
+# %%
+curves_single, sweep_single = run_rrf_weight_sweep(
+    "single-window",
+    LISTWISE_SINGLE_RUNS,
+    weight_pairs=DEFAULT_WEIGHT_PAIRS,
+    fusion_pool_top=FUSION_POOL_TOP_SINGLE,
+)
+curves_sliding, sweep_sliding = run_rrf_weight_sweep(
+    "sliding-window",
+    LISTWISE_SLIDING_RUNS,
+    weight_pairs=DEFAULT_WEIGHT_PAIRS,
+    fusion_pool_top=FUSION_POOL_TOP_SLIDING,
+)
+
+# %% [markdown]
+# ### 8.2 MAP@K curves (control weight config here)
+
+# %%
+WEIGHT_PAIRS_MAPK = DEFAULT_WEIGHT_PAIRS
+
+plot_rrf_sweep_curves("single-window", curves_single, weight_pairs=WEIGHT_PAIRS_MAPK)
+plot_rrf_sweep_curves("sliding-window", curves_sliding, weight_pairs=WEIGHT_PAIRS_MAPK)
+
+# %% [markdown]
+# ### 8.3 MAP@10 vs weight config (control weight config here)
+#
+# `WEIGHT_PAIRS_MAP10` selects which weight pairs appear on the x-axis.
+# Set to `None` to show **all** weight pairs from the sweep data.
+# To show a subset, e.g.: `WEIGHT_PAIRS_MAP10 = [(0.0, 1.0), (0.5, 0.5), (1.0, 0.0)]`
+# The sweep data is produced by cell 8.1 — re-run 8.1 if you change
+# W_SNIPPET_GRID in the config cell above.
+
+# %%
+WEIGHT_PAIRS_MAP10 = None  # None = use all weight pairs from sweep data
+
+
+def plot_map10_vs_weight_config(
+    sweep_single_df: pd.DataFrame,
+    sweep_sliding_df: pd.DataFrame,
+    weight_pairs: list[tuple[float, float]] | None = None,
+):
+    """Line plot: MAP@10 vs weight config, one panel per split, one line per route.
+
+    weight_pairs controls which weight points appear on the x-axis.
+    If the sweep data doesn't contain a requested pair it is silently skipped.
+    If weight_pairs is None, all weight pairs present in the sweep data are used.
+    """
+    single = sweep_single_df.copy()
+    sliding = sweep_sliding_df.copy()
+    if single.empty and sliding.empty:
+        print("No sweep results available for MAP@10-vs-weight plot.")
+        return
+
+    if not single.empty:
+        single["route"] = "single-window"
+    if not sliding.empty:
+        sliding["route"] = "sliding-window"
+    combined = pd.concat([single, sliding], ignore_index=True)
+    if combined.empty:
+        print("Combined sweep table is empty.")
+        return
+
+    combined["weight_label"] = combined.apply(
+        lambda r: _weight_label_compact(float(r["w_snippet"]), float(r["w_listwise"])),
+        axis=1,
+    )
+
+    # Determine available weight labels from the sweep data itself.
+    available = sorted(combined["weight_label"].unique())
+
+    if weight_pairs is not None:
+        requested = [_weight_label_compact(ws, wl) for ws, wl in weight_pairs]
+        weight_order = [lbl for lbl in requested if lbl in set(available)]
+    else:
+        weight_order = available
+
+    combined = combined[combined["weight_label"].isin(set(weight_order))]
+
+    n_available = len(weight_order)
+    print(f"MAP@10 plot: {n_available} weight pairs available in sweep data")
+    if weight_pairs is not None and n_available < len(weight_pairs):
+        print(
+            f"  NOTE: sweep data has {n_available} of {len(weight_pairs)} "
+            f"requested weights. Re-run cell 8.1 if you changed W_SNIPPET_GRID."
+        )
+
+    n_splits = len(SPLITS_SWEEP)
+    n_cols = 3
+    n_rows = (n_splits + n_cols - 1) // n_cols
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5.5 * n_cols, 4 * n_rows), sharey=False)
+    axes = np.array(axes).reshape(-1)
+
+    route_colors = {
+        "single-window": "#1f77b4",
+        "sliding-window": "#ff7f0e",
+    }
+
+    for ax, split in zip(axes, SPLITS_SWEEP):
+        grp = combined[combined["split"] == split]
+        if grp.empty:
+            ax.set_visible(False)
+            continue
+
+        for route in ["single-window", "sliding-window"]:
+            sub = grp[grp["route"] == route]
+            if sub.empty:
+                continue
+            ordered = sub.set_index("weight_label").reindex(weight_order)
+            valid = ordered["MAP@10"].dropna()
+            if valid.empty:
+                continue
+            x_pos = [weight_order.index(lbl) for lbl in valid.index]
+            ax.plot(
+                x_pos,
+                valid.values,
+                marker="o",
+                linestyle="-",
+                linewidth=1.8,
+                markersize=5,
+                color=route_colors[route],
+                label=route,
+            )
+
+        n_q = int(grp["n_queries"].max()) if "n_queries" in grp.columns and len(grp) else 0
+        ax.set_title(f"{SPLIT_LABELS_SWEEP.get(split, split)} (n={n_q})")
+        ax.set_xticks(range(len(weight_order)))
+        ax.set_xticklabels(weight_order, rotation=45, ha="right")
+        ax.set_xlabel("(w_snippet, w_listwise)")
+        ax.set_ylabel("MAP@10")
+        ax.grid(True, alpha=0.3)
+
+    for j in range(n_splits, len(axes)):
+        axes[j].set_visible(False)
+
+    legend_handles = [
+        plt.Line2D([0], [0], color=route_colors[r], marker="o", linestyle="-", label=r)
+        for r in ["single-window", "sliding-window"]
+    ]
+    fig.legend(
+        handles=legend_handles,
+        labels=[h.get_label() for h in legend_handles],
+        loc="lower right",
+        bbox_to_anchor=(1.0, 0.02),
+        fontsize=11,
+    )
+    plt.suptitle("MAP@10 vs RRF Weight Config: snippet_rrf + listwise routes", y=1.02, fontsize=14)
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+    out_png = SWEEP_OUT_DIR / "rrf_sweep_map10_vs_weight_single_vs_sliding.png"
+    plt.savefig(out_png, dpi=150, bbox_inches="tight")
+    print(f"Saved MAP@10-vs-weight figure: {out_png}")
+    plt.show()
+
+
+plot_map10_vs_weight_config(sweep_single, sweep_sliding, weight_pairs=WEIGHT_PAIRS_MAP10)
+
+# %%
