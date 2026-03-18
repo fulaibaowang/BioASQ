@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH -J pipeline_full_pubmed_sharded
-#SBATCH -p frida
-#SBATCH --time=48:00:00
+#SBATCH -p frida,dev
+#SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=16
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
-#SBATCH --mem=256G
-#SBATCH --gres=gpu:A100_80GB:3
+#SBATCH --mem=128G
+#SBATCH --gres=gpu:A100:1
 
 
 set -euo pipefail
