@@ -29,7 +29,7 @@ echo "Config: ${PIPELINE_CONFIG}"
 echo "Main container:     ${MAIN_CONTAINER}"
 echo "Listwise container: ${LISTWISE_CONTAINER}"
 
-NUM_GPUS="${SLURM_GPUS_PER_TASK:-${SLURM_GPUS_ON_NODE:-1}}"
+NUM_GPUS="${SLURM_GPUS_PER_TASK:-${SLURM_GPUS_ON_NODE:-0}}"
 export NUM_GPUS
 echo "Detected NUM_GPUS=${NUM_GPUS}"
 
