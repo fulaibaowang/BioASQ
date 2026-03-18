@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH -J pipeline_listwise
-#SBATCH -p amd
+#SBATCH -p dev,frida
 #SBATCH --time=12:00:00
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=2
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
-#SBATCH --mem=256G
-##SBATCH --gres=gpu:A100:1
+#SBATCH --mem=16G
+#SBATCH --gres=gpu:1
 
 set -euo pipefail
 
