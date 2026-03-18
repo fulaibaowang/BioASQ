@@ -27,7 +27,7 @@ WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
 
 # Pipeline config (must have RUN_SNIPPET_RRF=1 or use --run-both-routes)
-PIPELINE_CONFIG="scripts/private_scripts/hpc/full_test/config_full_pubmed_sharded_gpus.env"
+PIPELINE_CONFIG="scripts/private_scripts/hpc/full_test/config_full_pubmed_sharded.env"
 
 echo "Starting job ${SLURM_JOB_ID} on $(hostname) at $(date)"
 echo "Config: ${PIPELINE_CONFIG}"
