@@ -23,7 +23,7 @@ WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
 
 # Pipeline config
-PIPELINE_CONFIG="scripts/private_scripts/hpc/bioasq_runs/config.env"
+PIPELINE_CONFIG="scripts/private_scripts/hpc/bioasq_runs/config_gemma.env"
 
 echo "Starting job ${SLURM_JOB_ID} on $(hostname) at $(date)"
 echo "Running pipeline script with config: ${PIPELINE_CONFIG}"
