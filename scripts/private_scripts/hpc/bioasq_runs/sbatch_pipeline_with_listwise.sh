@@ -13,6 +13,11 @@ set -euo pipefail
 cd ~/BioASQ
 mkdir -p logs
 
+# Stage control: override via env to skip stages already completed.
+#   START_STAGE=3 END_STAGE=3  ->  run only generation
+START_STAGE="${START_STAGE:-3}"
+END_STAGE="${END_STAGE:-3}"
+
 # -----------------------------
 # Paths / inputs
 # -----------------------------
@@ -55,6 +60,7 @@ HF_CACHE_SETUP='
 # =====================================================================
 # Stage 1: Main pipeline (BM25 -> Dense -> Hybrid -> Rerank -> RRF -> Snippet)
 # =====================================================================
+if (( START_STAGE <= 1 && END_STAGE >= 1 )); then
 echo ""
 echo "========== Stage 1: Main Pipeline =========="
 srun \
@@ -77,10 +83,14 @@ srun \
     echo '[stage-1] Done'
   "
 echo "Stage 1 completed at $(date)"
+else
+  echo "Skipping Stage 1 (START_STAGE=${START_STAGE}, END_STAGE=${END_STAGE})"
+fi
 
 # =====================================================================
 # Stage 2: Listwise reranking (RankZephyr in vLLM container)
 # =====================================================================
+if (( START_STAGE <= 2 && END_STAGE >= 2 )); then
 echo ""
 echo "========== Stage 2: Listwise Reranking =========="
 srun \
@@ -99,10 +109,14 @@ srun \
     echo '[stage-2] Done'
   "
 echo "Stage 2 completed at $(date)"
+else
+  echo "Skipping Stage 2 (START_STAGE=${START_STAGE}, END_STAGE=${END_STAGE})"
+fi
 
 # =====================================================================
 # Stage 3: Evidence + Generation on listwise output (main container)
 # =====================================================================
+if (( START_STAGE <= 3 && END_STAGE >= 3 )); then
 echo ""
 echo "========== Stage 3: Listwise Evidence + Generation =========="
 srun \
@@ -118,6 +132,9 @@ srun \
     echo '[stage-3] Done'
   "
 echo "Stage 3 completed at $(date)"
+else
+  echo "Skipping Stage 3 (START_STAGE=${START_STAGE}, END_STAGE=${END_STAGE})"
+fi
 
 echo ""
 echo "Finished job ${SLURM_JOB_ID} at $(date)"
