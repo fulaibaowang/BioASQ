@@ -2,7 +2,7 @@
 #SBATCH -J pipeline_full_pubmed_sharded
 #SBATCH -p dev
 #SBATCH --time=12:00:00
-#SBATCH --gres=gpu:A100_80GB:1
+#SBATCH --gres=gpu:A100:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=256G
 #SBATCH -o logs/%x_%j.out
