@@ -1,0 +1,120 @@
+I am attaching a BioASQ-style JSON file containing questions.
+
+Task:
+Examine every question one by one and produce a screening table in CSV format for query rewriting, aimed specifically at improving BioASQ-style BM25 retrieval, dense retrieval, and reranking.
+
+Important goal:
+This is NOT a general paraphrasing task. The rewriting must be conservative and retrieval-oriented.
+
+Core rewrite principles:
+1. Preserve the original biomedical intent exactly.
+2. Do NOT make the question more generic.
+3. Prefer:
+   - acronym expansion
+   - alias expansion
+   - spelling correction
+   - biomedical term normalization
+   - symbol normalization
+   - minimal facet anchoring
+4. Avoid broad explanatory rewrites unless absolutely necessary.
+5. For reranking, be stricter than for retrieval:
+   - only allow rewrite for rerank when it is low-drift normalization
+   - do NOT use broad Wikipedia-style expansion for rerank
+
+Please classify each question using these 3 retrieval-rewrite categories:
+
+Category 1: short_question
+- Mark YES if the question is 6 words or fewer.
+
+Category 2: special_term_or_alias_hostile
+- Mark YES if the question contains retrieval-hostile biomedical wording, such as:
+  - rare disease names
+  - uncommon biomedical entities
+  - acronyms
+  - gene/protein symbols
+  - drug brand names
+  - unusual spelling variants
+  - typos that may hurt retrieval
+  - symbol forms like α / alpha
+  - wording that is very hard for lexical or dense retrieval
+
+Category 3: wikipedia_style
+- Mark YES if the question is broad, definition-like, list-like, or “overview style”, such as:
+  - “What is X?”
+  - “Please describe X”
+  - “What are the symptoms of X?”
+  - “Please list...”
+These are often difficult for retrieval because they are weakly anchored to a facet.
+
+Then create an overall retrieval rewrite decision:
+- use_rewrite_for_retrieval = YES if any of the 3 categories above is YES
+- otherwise NO
+
+Then create a separate rerank-specific decision:
+- use_rewrite_for_rerank = YES only if the rewrite can stay very conservative and low-drift, such as:
+  - acronym expansion
+  - alias insertion
+  - spelling correction
+  - symbol normalization
+  - brand/generic normalization
+- use_rewrite_for_rerank = NO when the rewrite would become broader, more explanatory, or more Wikipedia-style
+
+For every flagged question, propose:
+1. retrieval_rewrite
+2. rerank_rewrite
+
+Rules for retrieval_rewrite:
+- may include minimal facet anchoring
+- may include alias expansion
+- may lightly improve wording for retrieval
+- should still remain conservative and BioASQ-oriented
+
+Rules for rerank_rewrite:
+- must be stricter and shorter
+- should only normalize wording without broadening intent
+- for many wikipedia_style questions, this will often be blank or same as original
+
+Output requirements:
+1. Read the JSON and process ALL questions.
+2. Return a CSV file and also provide an XLSX file.
+3. Include one row per question.
+4. Also give me a short summary in chat:
+   - total number of questions
+   - how many flagged for retrieval rewrite
+   - how many flagged for rerank rewrite
+   - which question IDs are strongest candidates
+
+Please use these columns in the output table:
+
+question_id
+question
+word_count
+short_question
+special_term_or_alias_hostile
+wikipedia_style
+use_rewrite_for_retrieval
+retrieval_reason
+retrieval_rewrite
+use_rewrite_for_rerank
+rerank_reason
+rerank_rewrite
+priority_note
+
+Priority note guidance:
+- “high” for questions that are short + special-term heavy, or special-term heavy + wikipedia-style
+- “medium” for questions that are flagged but less risky
+- “low” for borderline cases
+
+Extra guidance:
+- For Wikipedia-style questions, prefer minimal facet anchoring for retrieval instead of broad paraphrasing.
+- Keep the original entity names visible in the rewrite.
+- When useful, include both alias and original form, e.g.:
+  - glioblastoma (GBM)
+  - Kymriah (tisagenlecleucel)
+  - PI4KIIalpha (PI4KIIα)
+- Do not silently change the biomedical target.
+- Be explicit and conservative.
+
+At the end, save the outputs as:
+- bioasq_rewrite_screening.csv
+- bioasq_rewrite_screening.xlsx

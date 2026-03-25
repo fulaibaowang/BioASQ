@@ -929,8 +929,8 @@ plt.show()
 medcpt_dir = base_dir / "output" / "workflow_baseline_full_run_both_routes_MedCPT"
 
 medcpt_run_dirs = {
-    "MedCPT rerank_hybrid_200": medcpt_dir / "rerank_hybrid_200" / "runs",
-    "MedCPT snippet_rerank": medcpt_dir / "snippet_rerank" / "runs",
+    "docs (full abstracts)": medcpt_dir / "rerank_hybrid_200" / "runs",
+    "snippets": medcpt_dir / "snippet_rerank" / "runs",
 }
 
 medcpt_map_ks = list(range(10, 101, 10))
@@ -969,8 +969,8 @@ else:
     y_min_m, y_max_m = 0.0, 1.0
 
 colors_medcpt = {
-    "MedCPT rerank_hybrid_200": "#1f77b4",
-    "MedCPT snippet_rerank": "#ff7f0e",
+    "docs (full abstracts)": "#1f77b4",
+    "snippets": "#ff7f0e",
 }
 
 for idx, split in enumerate(splits_rerank):
@@ -1011,14 +1011,14 @@ fig.legend(
     handles=legend_medcpt_handles,
     labels=list(colors_medcpt.keys()),
     loc="lower right",
-    bbox_to_anchor=(1.02, 0.05),
+    bbox_to_anchor=(0.9, 0.1),
     fontsize=16,
 )
 fig.suptitle(
-    "MedCPT – MAP@K Curves (rerank_hybrid_200 vs snippet_rerank)",
+    "docs vs Snippet-aware evidence reranking",
     fontsize=16,
     fontweight="bold",
-    y=1.02,
+    y=0.98,
 )
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 fig_path = output_dir / "08_medcpt_rerank_hybrid200_vs_snippet_mapk.png"
@@ -1226,7 +1226,7 @@ if not rrf_results.empty:
         if idx % n_cols == 0:
             ax.set_ylabel("MAP@10")
         if idx >= (n_rows - 1) * n_cols:
-            ax.set_xlabel("(w_hybrid, w_snippet)")
+            ax.set_xlabel("(w_doc, w_snippet)")
         ax.grid(True, axis="y")
     # Remove any unused axes (e.g. 6th panel in a 2x3 grid)
     for ax in axes_flat[n_splits:]:

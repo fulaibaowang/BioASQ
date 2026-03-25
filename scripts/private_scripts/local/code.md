@@ -148,3 +148,10 @@ python scripts/public/shared_scripts/generation/generate_answers.py \
   --max-chars-per-context 1200 \
   --sleep 0.5
 
+python scripts/public/shared_scripts/generation/generate_answers.py \
+  --input-path bioasq_data/14b/BioASQ-task14bPhaseB-testset1 \
+  --output-dir bioasq14_output/batch_1_B/14b1.json \
+  --evidence-source snippets \
+  --max-contexts 12 \
+  --max-chars-per-context 1200 \
+  --sleep 0.5
