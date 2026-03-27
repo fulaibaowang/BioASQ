@@ -15,7 +15,7 @@ mkdir -p logs
 
 # Stage control: override via env to skip stages already completed.
 #   START_STAGE=3 END_STAGE=3  ->  run only generation
-START_STAGE="${START_STAGE:-3}"
+START_STAGE="${START_STAGE:-1}"
 END_STAGE="${END_STAGE:-3}"
 
 # -----------------------------
