@@ -18,6 +18,7 @@ mkdir -p logs
 CONTAINER_IMG="/shared/home/yun.wang/biolab/yun/bioasq_20.02.26.sqfs"
 WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
+yun="/shared/workspace/biolab/yun"
 
 echo "Starting job ${SLURM_JOB_ID} on $(hostname) at $(date)"
 echo "index_path=/pubmed/pubmed_bm25_2026_index"
@@ -28,7 +29,7 @@ echo "index_path=/pubmed/pubmed_bm25_2026_index"
 srun \
   --container-image="${CONTAINER_IMG}" \
   --container-mount-home \
-  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed" \
+  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed,${yun}:/yun" \
   --container-workdir /work \
   bash -lc "
     set -euo pipefail

@@ -25,6 +25,7 @@ MAIN_CONTAINER="/shared/home/yun.wang/biolab/yun/bioasq_08.03.26.sqfs"
 LISTWISE_CONTAINER="/shared/home/yun.wang/biolab/yun/bioasqlistwisereranker_16.03.26v3.sqfs"
 WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
+yun="/shared/workspace/biolab/yun"
 
 # Pipeline config (must have RUN_SNIPPET_RRF=1 or use --run-both-routes)
 PIPELINE_CONFIG="scripts/private_scripts/hpc/bioasq_runs/config_gemma.env"
@@ -41,7 +42,7 @@ echo "Detected NUM_GPUS=${NUM_GPUS}"
 # Common srun flags
 SRUN_COMMON=(
   --container-mount-home
-  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed"
+  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed,${yun}:/yun"
   --container-workdir /work
 )
 

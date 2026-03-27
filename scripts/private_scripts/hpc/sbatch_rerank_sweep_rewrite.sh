@@ -1,7 +1,7 @@
 #!/bin/bash
 # Rerank sweep over query fields: body_rewrite_A, body_rewrite_B.
 # Uses hybrid runs from 10pct workflow and train/test from example/query_rewrite/*_rewrite.json.
-# One job per query field; outputs to output/rerank_sweep_query_rewrite/rerank_<query_field>/.
+# One job per query field; outputs to /yun/output/rerank_sweep_query_rewrite/rerank_<query_field>/.
 #SBATCH -J rerank_sweep_rewrite
 #SBATCH -p dev
 #SBATCH --time=12:00:00
@@ -18,6 +18,7 @@ cd ~/BioASQ
 CONTAINER_IMG="/shared/home/yun.wang/biolab/yun/bioasq_04.02.26.sqfs"
 WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
+yun="/shared/workspace/biolab/yun"
 
 CONFIG="scripts/private_scripts/hpc/config_10pct_rerank_sweep_rewrite.env"
 if [ ! -f "$CONFIG" ]; then
@@ -47,7 +48,7 @@ for RERANK_QUERY_FIELD in "${QUERY_FIELDS[@]}"; do
   srun \
     --container-image="${CONTAINER_IMG}" \
     --container-mount-home \
-    --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed" \
+    --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed,${yun}:/yun" \
     --container-workdir /work \
     bash -lc "
       set -euo pipefail

@@ -20,13 +20,14 @@ WORKDIR="${PWD}"
 
 # Host path that will be mounted as /pubmed inside container
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
+yun="/shared/workspace/biolab/yun"
 
 # Input: hybrid Stage 1 runs (top 2000 candidates)
-RUNS_DIR="output/eval_hybrid_production_test/runs"
+RUNS_DIR="/yun/output/eval_hybrid_production_test/runs"
 RUN_GLOB="best_rrf_*_top2000.tsv"
 
 # Input: PubMed subset texts
-DOCS_JSONL="output/subset_pubmed.jsonl"
+DOCS_JSONL="/yun/output/subset_pubmed.jsonl"
 
 # Gold: training subset + test batches
 TRAIN_SUBSET_JSON="example/training14b_10pct_sample.json"
@@ -38,7 +39,7 @@ TEST_BATCH_JSONS=(
 )
 
 # Output location (inside container)
-OUT_DIR="output/eval_stage2_rerank_miniLM"
+OUT_DIR="/yun/output/eval_stage2_rerank_miniLM"
 
 # Reranker parameters
 MODEL_NAME="cross-encoder/ms-marco-MiniLM-L-12-v2"
@@ -60,7 +61,7 @@ echo "Running: scripts/public/shared_scripts/rerank/rerank_stage2.py"
 srun \
   --container-image="${CONTAINER_IMG}" \
   --container-mount-home \
-  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed" \
+  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed,${yun}:/yun" \
   --container-workdir /work \
   bash -lc "
     set -euo pipefail

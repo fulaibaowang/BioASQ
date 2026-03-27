@@ -2,7 +2,7 @@ cd ~/BioASQ
 srun -p dev --time=12:00:00 -c 16 --mem=96G \
   --container-image=/shared/home/yun.wang/biolab/yun/bioasq_20.02.26.sqfs \
   --container-mount-home \
-  --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
+  --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed,/shared/workspace/biolab/yun:/yun" \
   --container-workdir /work \
   --pty bash
 
@@ -15,7 +15,7 @@ python scripts/public/shared_scripts/index/build_bm25_index_from_jsonl_shards.py
 srun -p dev --time=12:00:00 -c 4 --gres=gpu:A100_80GB:1 --mem=256G \
   --container-image=/shared/home/yun.wang/biolab/yun/bioasq_20.02.26.sqfs \
   --container-mount-home \
-  --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed" \
+  --container-mounts "${PWD}:/work,/shared/workspace/biolab/pubmed:/pubmed,/shared/workspace/biolab/yun:/yun" \
   --container-workdir /work \
   --pty bash
 

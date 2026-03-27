@@ -20,15 +20,16 @@ WORKDIR="${PWD}"
 
 # Host path that will be mounted as /pubmed inside container
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
+yun="/shared/workspace/biolab/yun"
 
 # Input: hybrid Stage 1 runs (top 2000 candidates)
-RUNS_DIR="output/eval_hybrid_production_test/runs"
+RUNS_DIR="/yun/output/eval_hybrid_production_test/runs"
 
 # Input: PubMed subset texts
-DOCS_JSONL="output/subset_pubmed.jsonl"
+DOCS_JSONL="/yun/output/subset_pubmed.jsonl"
 
 # Output location (inside container)
-OUT_DIR="output/eval_stage2_rerank_bge_reranker_v2_m3"
+OUT_DIR="/yun/output/eval_stage2_rerank_bge_reranker_v2_m3"
 
 # NOTE: Reranker parameters (MODEL_NAME, USE_MULTI_GPU, NUM_GPUS, BATCH_SIZE, SELECTED_RUNS)
 # are hardcoded in rerank_stage2_bge.py, not passed via CLI arguments.
@@ -47,7 +48,7 @@ echo "Running: rerank_stage2_bge.py with multi-GPU reranking"
 srun \
   --container-image="${CONTAINER_IMG}" \
   --container-mount-home \
-  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed" \
+  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed,${yun}:/yun" \
   --container-workdir /work \
   bash -lc "
     set -euo pipefail

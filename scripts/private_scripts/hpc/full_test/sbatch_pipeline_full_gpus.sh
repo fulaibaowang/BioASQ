@@ -22,6 +22,7 @@ WORKDIR="${PWD}"
 
 # Host path that will be mounted as /pubmed inside container
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
+yun="/shared/workspace/biolab/yun"
 
 # Pipeline config
 PIPELINE_CONFIG="scripts/private_scripts/hpc/full_test/config_full_pubmed_sharded_gpus.env"
@@ -47,7 +48,7 @@ fi
 srun \
   --container-image="${CONTAINER_IMG}" \
   --container-mount-home \
-  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed" \
+  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed,${yun}:/yun" \
   --container-workdir /work \
   bash -lc "
     set -euo pipefail

@@ -20,6 +20,7 @@ mkdir -p logs
 CONTAINER_IMG="/shared/home/yun.wang/biolab/yun/bioasq_08.03.26.sqfs"
 WORKDIR="${PWD}"
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
+yun="/shared/workspace/biolab/yun"
 
 JSONL_SRC="/pubmed/jsonl_2026/*.jsonl"
 SHARD_WORK_ROOT="/pubmed/shard_work"
@@ -61,7 +62,7 @@ fi
 srun \
   --container-image="${CONTAINER_IMG}" \
   --container-mount-home \
-  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed" \
+  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed,${yun}:/yun" \
   --container-workdir /work \
   bash -lc "
     set -euo pipefail

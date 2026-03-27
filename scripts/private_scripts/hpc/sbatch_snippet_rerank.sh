@@ -19,13 +19,14 @@ CONTAINER_IMG="/shared/home/yun.wang/biolab/yun/bioasq_20.02.26.sqfs"
 WORKDIR="${PWD}"
 
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
+yun="/shared/workspace/biolab/yun"
 
 # Input: hybrid rerank runs
-RUNS_DIR="output/workflow_local_10pct_hpc_bge/rerank_hybrid/runs"
+RUNS_DIR="/yun/output/workflow_local_10pct_hpc_bge/rerank_hybrid/runs"
 RUN_GLOB="best_rrf_*_top*.tsv"
 
 # Corpus
-DOCS_JSONL="output/subset_pubmed.jsonl"
+DOCS_JSONL="/yun/output/subset_pubmed.jsonl"
 
 # Gold: training + test batches
 TRAIN_JSON="example/training14b_10pct_sample.json"
@@ -37,7 +38,7 @@ TEST_BATCH_JSONS=(
 )
 
 # Output
-OUT_DIR="output/workflow_local_10pct_hpc_bge/snippet_rerank"
+OUT_DIR="/yun/output/workflow_local_10pct_hpc_bge/snippet_rerank"
 
 # Stage A (hybrid filter)
 DENSE_MODEL="abhinand/MedEmbed-small-v0.1"
@@ -60,7 +61,7 @@ echo "Running: scripts/private_scripts/hpc/snippet_rerank.py"
 srun \
   --container-image="${CONTAINER_IMG}" \
   --container-mount-home \
-  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed" \
+  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed,${yun}:/yun" \
   --container-workdir /work \
   bash -lc "
     set -euo pipefail

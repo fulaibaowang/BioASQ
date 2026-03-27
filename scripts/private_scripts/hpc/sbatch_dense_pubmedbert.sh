@@ -20,9 +20,10 @@ WORKDIR="${PWD}"
 
 # Host path that will be mounted as /pubmed inside container
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
+yun="/shared/workspace/biolab/yun"
 
 # Input JSONLs as seen inside container (/work is ${WORKDIR} on host)
-JSONL_GLOB="/work/output/subset_pubmed.jsonl"
+JSONL_GLOB="/yun/output/subset_pubmed.jsonl"
 
 # Final output location on shared storage (inside container under /pubmed)
 OUT_FINAL="/pubmed/pubmed_pubmedbert_2026_subset_index"
@@ -51,7 +52,7 @@ echo "HNSW: M=${M}  ef_construction=${EF_CONSTRUCTION}  ef_search=${EF_SEARCH}"
 srun \
   --container-image="${CONTAINER_IMG}" \
   --container-mount-home \
-  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed" \
+  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed,${yun}:/yun" \
   --container-workdir /work \
   bash -lc "
     set -euo pipefail

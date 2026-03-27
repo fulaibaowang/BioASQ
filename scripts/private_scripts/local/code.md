@@ -155,3 +155,6 @@ python scripts/public/shared_scripts/generation/generate_answers.py \
   --max-contexts 12 \
   --max-chars-per-context 1200 \
   --sleep 0.5
+
+python scripts/public/shared_scripts/analysis/low_recall_report.py --output-dir bioasq14_output/batch_1
+python scripts/public/shared_scripts/analysis/question_recall_report.py --output-dir bioasq14_output/batch_1

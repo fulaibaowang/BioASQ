@@ -21,9 +21,10 @@ WORKDIR="${PWD}"
 
 # Host path that will be mounted as /pubmed inside container
 PUBMED_HOST="/shared/workspace/biolab/pubmed"
+yun="/shared/workspace/biolab/yun"
 
 # Pipeline config
-PIPELINE_CONFIG="scripts/private_scripts/hpc/bioasq_runs/config.env"
+PIPELINE_CONFIG="scripts/private_scripts/hpc/bioasq_runs/config_MedCPT.env"
 
 echo "Starting job ${SLURM_JOB_ID} on $(hostname) at $(date)"
 echo "Running pipeline script with config: ${PIPELINE_CONFIG}"
@@ -46,7 +47,7 @@ fi
 srun \
   --container-image="${CONTAINER_IMG}" \
   --container-mount-home \
-  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed" \
+  --container-mounts "${WORKDIR}:/work,${PUBMED_HOST}:/pubmed,${yun}:/yun" \
   --container-workdir /work \
   bash -lc "
     set -euo pipefail
