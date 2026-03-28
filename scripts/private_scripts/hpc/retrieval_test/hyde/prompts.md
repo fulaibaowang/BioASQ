@@ -11,11 +11,11 @@ Question object:
 {question_json}
 
 # Generate
-Write one short hypothetical passage that could answer the question.
-Use document-like language.
-Be cautious and general.
-Do not add unsupported specific details.
-If it is a list question, mention a few plausible categories or examples without being exhaustive.
+Write one short biomedical abstract-style passage that could answer the question as a relevant paper might.
+Use natural scientific wording and likely terminology.
+If the question asks for a method, mention one or more plausible computational approaches or model types in general terms.
+If the question asks for a list, mention several plausible categories or examples without trying to be exhaustive. For cause / mechanism / biomarker / treatment questions: State the likely mechanism, factor, biomarker class, or treatment type in general terms.
+Keep it brief and avoid unsupported specific claims.
 
 Question:
 {question_body}
