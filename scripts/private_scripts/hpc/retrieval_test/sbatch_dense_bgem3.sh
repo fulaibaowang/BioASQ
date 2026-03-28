@@ -30,6 +30,9 @@ OUT_FINAL="/yun/indexes/pubmed_bgem3_2026_subset_index"
 
 MODEL_NAME="BAAI/bge-m3"
 
+# 1 = touch+cp smoke test only. Set to 0 (or DENSE_BGEM3_SMOKE_TEST=0) before full index runs.
+SMOKE_DEFAULT=1
+
 # -----------------------------
 # Params (safer defaults)
 # -----------------------------
@@ -39,7 +42,10 @@ M=32
 EF_CONSTRUCTION=200
 EF_SEARCH=100
 
+SMOKE_TEST="${DENSE_BGEM3_SMOKE_TEST:-${SMOKE_DEFAULT}}"
+
 echo "Starting job ${SLURM_JOB_ID} on $(hostname) at $(date)"
+echo "SMOKE_TEST=${SMOKE_TEST} (env DENSE_BGEM3_SMOKE_TEST or SMOKE_DEFAULT in script)"
 echo "JSONL_GLOB=${JSONL_GLOB}"
 echo "OUT_FINAL=${OUT_FINAL}"
 echo "MODEL_NAME=${MODEL_NAME}"
@@ -57,38 +63,48 @@ srun \
   bash -lc "
     set -euo pipefail
 
-    # --- Persistent HF cache on shared workspace (avoid /shared/home which is full) ---
-    export HF_HOME='/pubmed/_hf_cache'
-    export HF_HUB_CACHE=\"\$HF_HOME/hub\"
-    export TRANSFORMERS_CACHE=\"\$HF_HOME/transformers\"
-    export SENTENCE_TRANSFORMERS_HOME=\"\$HF_HOME/sentence_transformers\"
-    mkdir -p \"\$HF_HOME\" \"\$HF_HUB_CACHE\" \"\$TRANSFORMERS_CACHE\" \"\$SENTENCE_TRANSFORMERS_HOME\"
-    echo \"[cache] HF_HOME=\$HF_HOME\"
+    SMOKE_TEST='${SMOKE_TEST}'
 
-    # --- Build locally on node (/tmp) then copy to shared storage ---
+    # --- Persistent HF cache (only needed for full build) ---
+    # export HF_HOME='/pubmed/_hf_cache'
+    # export HF_HUB_CACHE=\"\$HF_HOME/hub\"
+    # export TRANSFORMERS_CACHE=\"\$HF_HOME/transformers\"
+    # export SENTENCE_TRANSFORMERS_HOME=\"\$HF_HOME/sentence_transformers\"
+    # mkdir -p \"\$HF_HOME\" \"\$HF_HUB_CACHE\" \"\$TRANSFORMERS_CACHE\" \"\$SENTENCE_TRANSFORMERS_HOME\"
+    # echo \"[cache] HF_HOME=\$HF_HOME\"
+
     OUT_LOCAL=\"\${TMPDIR:-/tmp}/pubmedbert_hnsw_\${SLURM_JOB_ID}\"
     mkdir -p \"\$OUT_LOCAL\"
     echo \"[paths] OUT_LOCAL=\$OUT_LOCAL\"
     echo \"[paths] OUT_FINAL=${OUT_FINAL}\"
 
-    # Unbuffered python for clean logs
-    python -u scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_shards.py \
-      --jsonl_glob '${JSONL_GLOB}' \
-      --model_name '${MODEL_NAME}' \
-      --out_dir \"\$OUT_LOCAL\" \
-      --device 'cuda' \
-      --batch_size ${BATCH_SIZE} \
-      --M ${M} \
-      --ef_construction ${EF_CONSTRUCTION} \
-      --ef_search ${EF_SEARCH} \
-      --max_elements ${MAX_ELEMENTS}
+    if [ \"\$SMOKE_TEST\" = \"1\" ]; then
+      echo \"[smoke] writing marker under OUT_LOCAL\"
+      date -u > \"\$OUT_LOCAL/copy_test.txt\"
+      echo \"job_id=\${SLURM_JOB_ID}\" >> \"\$OUT_LOCAL/copy_test.txt\"
+      touch \"\$OUT_LOCAL/touched_marker\"
+    else
+      # --- Full index build (unbuffered python) ---
+      python -u scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_shards.py \
+        --jsonl_glob '${JSONL_GLOB}' \
+        --model_name '${MODEL_NAME}' \
+        --out_dir \"\$OUT_LOCAL\" \
+        --device 'cuda' \
+        --batch_size ${BATCH_SIZE} \
+        --M ${M} \
+        --ef_construction ${EF_CONSTRUCTION} \
+        --ef_search ${EF_SEARCH} \
+        --max_elements ${MAX_ELEMENTS}
+    fi
 
-    # Copy results to shared storage
+    # Copy contents into OUT_FINAL (not OUT_FINAL/<jobdir>/)
     mkdir -p '${OUT_FINAL}'
-    cp -a \"\$OUT_LOCAL/\" '${OUT_FINAL}/'
+    cp -a \"\$OUT_LOCAL\"/. '${OUT_FINAL}/'
+    chmod -R a+rX '${OUT_FINAL}' || true
 
     echo \"[done] Copied outputs to ${OUT_FINAL}\"
-    ls -lh '${OUT_FINAL}' || true
+    du -sh '${OUT_FINAL}' || true
+    ls -lah '${OUT_FINAL}' || true
   "
 
 echo "Finished job ${SLURM_JOB_ID} at $(date)"
