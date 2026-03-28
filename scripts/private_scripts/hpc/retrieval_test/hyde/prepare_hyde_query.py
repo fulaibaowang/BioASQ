@@ -36,11 +36,12 @@ def prepare(questions: list[dict], field_name: str) -> tuple[int, int]:
 
 
 def default_output_path(input_path: Path) -> Path:
+    """Strip '.hyde_ready' from the filename so the stem matches the original
+    data file (important: BM25/Dense/Hybrid all key run files off the stem)."""
     name = input_path.name
     if ".hyde_ready." in name:
-        return input_path.with_name(name.replace(".hyde_ready.", ".hyde_query."))
-    stem = input_path.stem
-    return input_path.with_name(f"{stem}.hyde_query{input_path.suffix}")
+        return input_path.with_name(name.replace(".hyde_ready.", "."))
+    return input_path
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -53,7 +54,7 @@ def main(argv: list[str] | None = None) -> None:
         "--output",
         type=Path,
         default=None,
-        help="Output path (default: derive from input name, e.g. *.hyde_query.json)",
+        help="Output path (default: strip .hyde_ready from input name to preserve stem)",
     )
     ap.add_argument(
         "--field-name",
