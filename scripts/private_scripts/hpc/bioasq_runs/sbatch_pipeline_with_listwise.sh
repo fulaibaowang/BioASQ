@@ -6,7 +6,7 @@
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
 #SBATCH --mem=16G
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:A100_80GB:1
 
 set -euo pipefail
 
