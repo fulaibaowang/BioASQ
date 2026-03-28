@@ -2,10 +2,10 @@
 #SBATCH -J pipeline_listwise
 #SBATCH -p dev,frida
 #SBATCH --time=12:00:00
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=16
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
-#SBATCH --mem=16G
+#SBATCH --mem=256G
 #SBATCH --gres=gpu:A100_80GB:1
 
 set -euo pipefail
