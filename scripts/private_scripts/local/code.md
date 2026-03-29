@@ -158,3 +158,8 @@ python scripts/public/shared_scripts/generation/generate_answers.py \
 
 python scripts/public/shared_scripts/analysis/low_recall_report.py --output-dir bioasq14_output/batch_1
 python scripts/public/shared_scripts/analysis/question_recall_report.py --output-dir bioasq14_output/batch_1
+
+python scripts/public/shared_scripts/analysis/low_recall_report.py \
+  --output-dir output/retrieval_test/hyde \
+  --stage dense \
+  --ground-truth bioasq_data/14b/BioASQ-task14bPhaseB-testset1
