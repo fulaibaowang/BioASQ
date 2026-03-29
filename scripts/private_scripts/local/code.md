@@ -163,3 +163,10 @@ python scripts/public/shared_scripts/analysis/low_recall_report.py \
   --output-dir output/retrieval_test/hyde \
   --stage dense \
   --ground-truth bioasq_data/14b/BioASQ-task14bPhaseB-testset1
+
+python scripts/public/shared_scripts/analysis/low_recall_report.py \
+  --output-dir output/retrieval_test/bm25_new \
+  --stage dense 
+python scripts/public/shared_scripts/analysis/low_recall_report.py \
+  --output-dir output/retrieval_test/bgem3 \
+  --stage dense 
