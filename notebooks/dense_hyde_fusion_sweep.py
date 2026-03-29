@@ -13,9 +13,15 @@
 # ---
 
 # %% [markdown]
-# # Dense HyDE vs original-query RRF fusion sweep
+# # Dense RRF fusion sweeps (Recall@5000)
 #
-# Weighted RRF over paired dense runs (HyDE query vs original query), sweep weights, report **mean Recall@5000** (same definition as `retrieval_eval.common.recall_at_k`). One figure per dataset.
+# Two experiments, same mechanics: weighted RRF over two dense runs per query, then **mean Recall@5000** (`retrieval_eval.common.recall_at_k`).
+#
+# 1. **HyDE vs MedEmbed (orig query):** `bm25_new/dense` (query_hyde) + `bm25_new/dense_` — three splits (incl. Phase B).
+# 2. **BGE-M3 vs MedEmbed (orig query):** `bgem3/dense` + `bm25_new/dense_` — two splits (3pct + 13b golden; no Phase B run under bgem3).
+#
+# One figure per (experiment, split). Results include an `experiment` column.
+#
 
 # %%
 from __future__ import annotations
@@ -129,32 +135,32 @@ def _rrf_fuse_two_lists(
 
 def mean_recall_at_k_fused(
     gold: dict[str, set[str]],
-    run_hyde: dict[str, list[str]],
-    run_orig: dict[str, list[str]],
+    run_a: dict[str, list[str]],
+    run_b: dict[str, list[str]],
     *,
     k_rrf: int,
-    w_hyde: float,
-    w_orig: float,
+    w_a: float,
+    w_b: float,
     pool_top: int,
     k_eval: int,
 ) -> tuple[float, int]:
-    qids = [q for q in gold if q in run_hyde and q in run_orig and gold[q]]
+    qids = [q for q in gold if q in run_a and q in run_b and gold[q]]
     if not qids:
         return 0.0, 0
     recalls: list[float] = []
     for q in qids:
-        docs_h = run_hyde[q]
-        docs_o = run_orig[q]
-        pool_h = min(pool_top, len(docs_h)) if docs_h else 0
-        pool_o = min(pool_top, len(docs_o)) if docs_o else 0
+        docs_a = run_a[q]
+        docs_b = run_b[q]
+        pool_pa = min(pool_top, len(docs_a)) if docs_a else 0
+        pool_pb = min(pool_top, len(docs_b)) if docs_b else 0
         fused = _rrf_fuse_two_lists(
-            docs_h,
-            docs_o,
-            pool_h,
-            pool_o,
+            docs_a,
+            docs_b,
+            pool_pa,
+            pool_pb,
             k_rrf=k_rrf,
-            w_a=w_hyde,
-            w_b=w_orig,
+            w_a=w_a,
+            w_b=w_b,
         )
         fused = fused[:k_eval]
         recalls.append(recall_at_k(set(gold[q]), fused, k_eval))
@@ -185,129 +191,186 @@ split_labels = {
     "BioASQ-task14bPhaseB-testset1": "14b Phase B testset1",
 }
 
-DATASETS: list[dict] = [
+FUSION_SWEEPS: list[dict] = [
     {
-        "split": "training14b_3pct_sample",
-        "hyde_tsv": base_dir
-        / "output"
-        / "retrieval_test"
-        / "bm25_new"
-        / "dense"
-        / "runs"
-        / "dense_training14b_3pct_sample.tsv",
-        "orig_tsv": base_dir
-        / "output"
-        / "retrieval_test"
-        / "bm25_new"
-        / "dense_"
-        / "runs"
-        / "dense_training14b_3pct_sample.tsv",
-        "qrels_path": base_dir / "example" / "training14b_3pct_sample.json",
+        "experiment": "hyde_vs_medembed_orig",
+        "plot_title": "HyDE + MedEmbed orig",
+        "xlabel_weights": "(w_hyde, w_medembed_orig)",
+        "datasets": [
+            {
+                "split": "training14b_3pct_sample",
+                "tsv_a": base_dir
+                / "output"
+                / "retrieval_test"
+                / "bm25_new"
+                / "dense"
+                / "runs"
+                / "dense_training14b_3pct_sample.tsv",
+                "tsv_b": base_dir
+                / "output"
+                / "retrieval_test"
+                / "bm25_new"
+                / "dense_"
+                / "runs"
+                / "dense_training14b_3pct_sample.tsv",
+                "qrels_path": base_dir / "example" / "training14b_3pct_sample.json",
+            },
+            {
+                "split": "13b_golden_50q_sample",
+                "tsv_a": base_dir
+                / "output"
+                / "retrieval_test"
+                / "bm25_new"
+                / "dense"
+                / "runs"
+                / "dense_13b_golden_50q_sample.tsv",
+                "tsv_b": base_dir
+                / "output"
+                / "retrieval_test"
+                / "bm25_new"
+                / "dense_"
+                / "runs"
+                / "dense_13b_golden_50q_sample.tsv",
+                "qrels_path": base_dir / "example" / "13b_golden_50q_sample.json",
+            },
+            {
+                "split": "BioASQ-task14bPhaseB-testset1",
+                "tsv_a": base_dir
+                / "output"
+                / "retrieval_test"
+                / "hyde"
+                / "dense"
+                / "runs"
+                / "dense_BioASQ-task14bPhaseB-testset1.tsv",
+                "tsv_b": base_dir
+                / "bioasq14_output"
+                / "batch_1"
+                / "dense"
+                / "runs"
+                / "dense_BioASQ-task14bPhaseB-testset1.tsv",
+                "qrels_path": base_dir / "bioasq_data" / "14b" / "BioASQ-task14bPhaseB-testset1",
+            },
+        ],
     },
     {
-        "split": "13b_golden_50q_sample",
-        "hyde_tsv": base_dir
-        / "output"
-        / "retrieval_test"
-        / "bm25_new"
-        / "dense"
-        / "runs"
-        / "dense_13b_golden_50q_sample.tsv",
-        "orig_tsv": base_dir
-        / "output"
-        / "retrieval_test"
-        / "bm25_new"
-        / "dense_"
-        / "runs"
-        / "dense_13b_golden_50q_sample.tsv",
-        "qrels_path": base_dir / "example" / "13b_golden_50q_sample.json",
-    },
-    {
-        "split": "BioASQ-task14bPhaseB-testset1",
-        "hyde_tsv": base_dir
-        / "output"
-        / "retrieval_test"
-        / "hyde"
-        / "dense"
-        / "runs"
-        / "dense_BioASQ-task14bPhaseB-testset1.tsv",
-        "orig_tsv": base_dir
-        / "bioasq14_output"
-        / "batch_1"
-        / "dense"
-        / "runs"
-        / "dense_BioASQ-task14bPhaseB-testset1.tsv",
-        "qrels_path": base_dir / "bioasq_data" / "14b" / "BioASQ-task14bPhaseB-testset1",
+        "experiment": "bgem3_vs_medembed_orig",
+        "plot_title": "BGE-M3 + MedEmbed orig",
+        "xlabel_weights": "(w_bgem3, w_medembed_orig)",
+        "datasets": [
+            {
+                "split": "training14b_3pct_sample",
+                "tsv_a": base_dir
+                / "output"
+                / "retrieval_test"
+                / "bgem3"
+                / "dense"
+                / "runs"
+                / "dense_training14b_3pct_sample.tsv",
+                "tsv_b": base_dir
+                / "output"
+                / "retrieval_test"
+                / "bm25_new"
+                / "dense_"
+                / "runs"
+                / "dense_training14b_3pct_sample.tsv",
+                "qrels_path": base_dir / "example" / "training14b_3pct_sample.json",
+            },
+            {
+                "split": "13b_golden_50q_sample",
+                "tsv_a": base_dir
+                / "output"
+                / "retrieval_test"
+                / "bgem3"
+                / "dense"
+                / "runs"
+                / "dense_13b_golden_50q_sample.tsv",
+                "tsv_b": base_dir
+                / "output"
+                / "retrieval_test"
+                / "bm25_new"
+                / "dense_"
+                / "runs"
+                / "dense_13b_golden_50q_sample.tsv",
+                "qrels_path": base_dir / "example" / "13b_golden_50q_sample.json",
+            },
+        ],
     },
 ]
+
 
 # %%
 rrf_rows: list[dict] = []
 
-for spec in DATASETS:
-    split = spec["split"]
-    p_h = spec["hyde_tsv"]
-    p_o = spec["orig_tsv"]
-    p_q = spec["qrels_path"]
-    for path, label in [(p_h, "hyde"), (p_o, "orig")]:
-        if not path.exists():
-            raise FileNotFoundError(f"Missing {label} run: {path}")
-    if not p_q.exists():
-        raise FileNotFoundError(f"Missing qrels: {p_q}")
+for sweep in FUSION_SWEEPS:
+    exp = sweep["experiment"]
+    for spec in sweep["datasets"]:
+        split = spec["split"]
+        p_a = spec["tsv_a"]
+        p_b = spec["tsv_b"]
+        p_q = spec["qrels_path"]
+        for path, label in [(p_a, "A"), (p_b, "B")]:
+            if not path.exists():
+                raise FileNotFoundError(f"Missing run {label} ({exp}): {path}")
+        if not p_q.exists():
+            raise FileNotFoundError(f"Missing qrels ({exp}): {p_q}")
 
-    gold = _load_qrels(p_q)
-    df_h = _load_run(p_h)
-    df_o = _load_run(p_o)
-    run_hyde = _build_run_map(df_h)
-    run_orig = _build_run_map(df_o)
+        gold = _load_qrels(p_q)
+        run_a = _build_run_map(_load_run(p_a))
+        run_b = _build_run_map(_load_run(p_b))
 
-    for k_rrf in RRF_KS:
-        for w_hyde, w_orig in RRF_WEIGHTS:
-            mean_r, n_q = mean_recall_at_k_fused(
-                gold,
-                run_hyde,
-                run_orig,
-                k_rrf=k_rrf,
-                w_hyde=w_hyde,
-                w_orig=w_orig,
-                pool_top=RUN_POOL_TOP,
-                k_eval=K_EVAL,
-            )
-            rrf_rows.append(
-                {
-                    "split": split,
-                    "k_rrf": k_rrf,
-                    "w_hyde": w_hyde,
-                    "w_orig": w_orig,
-                    "MeanR@5000": mean_r,
-                    "n_queries": n_q,
-                }
-            )
+        for k_rrf in RRF_KS:
+            for w_a, w_b in RRF_WEIGHTS:
+                mean_r, n_q = mean_recall_at_k_fused(
+                    gold,
+                    run_a,
+                    run_b,
+                    k_rrf=k_rrf,
+                    w_a=w_a,
+                    w_b=w_b,
+                    pool_top=RUN_POOL_TOP,
+                    k_eval=K_EVAL,
+                )
+                rrf_rows.append(
+                    {
+                        "experiment": exp,
+                        "split": split,
+                        "k_rrf": k_rrf,
+                        "w_a": w_a,
+                        "w_b": w_b,
+                        "MeanR@5000": mean_r,
+                        "n_queries": n_q,
+                    }
+                )
 
 rrf_results = pd.DataFrame(rrf_rows)
 rrf_results["weight_label"] = rrf_results.apply(
-    lambda r: f"({r['w_hyde']:.1f},{r['w_orig']:.1f})",
+    lambda r: f"({r['w_a']:.1f},{r['w_b']:.1f})",
     axis=1,
 )
 weight_order = [f"({w[0]:.1f},{w[1]:.1f})" for w in RRF_WEIGHTS]
 
-csv_path = output_dir / "dense_hyde_rrf_sweep_meanr5000.csv"
+csv_path = output_dir / "dense_fusion_rrf_sweep_meanr5000.csv"
 rrf_results.to_csv(csv_path, index=False)
 print("Saved:", csv_path)
 rrf_results.head(12)
 
+
 # %%
+exp_meta = {s["experiment"]: s for s in FUSION_SWEEPS}
+
 best_rows = []
-for split, grp in rrf_results.groupby("split", sort=False):
+for (exp, split), grp in rrf_results.groupby(["experiment", "split"], sort=False):
     idx = grp["MeanR@5000"].idxmax()
     best_rows.append(rrf_results.loc[idx])
 best_df = pd.DataFrame(best_rows).reset_index(drop=True)
-print("Best weight per dataset (max MeanR@5000):")
+print("Best weight per (experiment, split) (max MeanR@5000):")
 print(best_df.to_string(index=False))
 
+
 # %%
-for split, grp in rrf_results.groupby("split", sort=False):
+for (exp, split), grp in rrf_results.groupby(["experiment", "split"], sort=False):
     fig, ax = plt.subplots(figsize=(6, 4))
+    meta = exp_meta[exp]
     for k_rrf in sorted(grp["k_rrf"].unique()):
         sub = grp[grp["k_rrf"] == k_rrf].set_index("weight_label").reindex(weight_order)
         vals = sub["MeanR@5000"].values
@@ -323,20 +386,530 @@ for split, grp in rrf_results.groupby("split", sort=False):
     n_q = int(grp["n_queries"].max())
     title = split_labels.get(split, split)
     ax.set_title(
-        f"Dense HyDE + original RRF — {title} (n={n_q})",
+        f"{meta['plot_title']} — {title} (n={n_q})",
         fontsize=12,
         fontweight="bold",
     )
     ax.set_ylabel("MeanR@5000")
-    ax.set_xlabel("(w_hyde, w_orig)")
+    ax.set_xlabel(meta["xlabel_weights"])
     ax.grid(True, axis="y")
     if len(RRF_KS) > 1:
         ax.legend()
     plt.tight_layout()
-    safe = split.replace(" ", "_").replace("/", "_")
-    fig_path = output_dir / f"dense_hyde_rrf_meanr5000_vs_weight_{safe}.png"
+    safe_split = split.replace(" ", "_").replace("/", "_")
+    fig_path = output_dir / f"dense_rrf_meanr5000__{exp}__{safe_split}.png"
     plt.savefig(fig_path, dpi=150, bbox_inches="tight")
     print("Saved:", fig_path)
     plt.show()
 
+
+# %% [markdown]
+# ## Three-way RRF (no plot)
+#
+# Fuse **BGE-M3**, **MedEmbed (orig, `dense_`)**, and **MedEmbed HyDE (`dense`)** with weights in `{1, 2}` each (8 tuples). Same `k_rrf=60` and R@5000 setup as above. Table sorted by **MeanR@5000** (all splits combined in one sort).
+
 # %%
+from itertools import product
+
+THREE_WAY_K_RRF = 60
+# (w_bgem3, w_medembed_orig, w_medembed_hyde) — each in {1, 2}
+THREE_WAY_WEIGHTS = list(product([1.0, 2.0], [1.0, 2.0], [1.0, 2.0]))
+
+
+def _rrf_fuse_three_lists(
+    docs_a: list[str],
+    docs_b: list[str],
+    docs_c: list[str],
+    pool_a: int,
+    pool_b: int,
+    pool_c: int,
+    k_rrf: int,
+    w_a: float,
+    w_b: float,
+    w_c: float,
+) -> list[str]:
+    a_top = docs_a[:pool_a]
+    b_top = docs_b[:pool_b]
+    c_top = docs_c[:pool_c]
+    rank_a = {d: i + 1 for i, d in enumerate(a_top)}
+    rank_b = {d: i + 1 for i, d in enumerate(b_top)}
+    rank_c = {d: i + 1 for i, d in enumerate(c_top)}
+    union = list(dict.fromkeys(a_top + b_top + c_top))
+    scored: list[tuple[str, float]] = []
+    for d in union:
+        s = 0.0
+        if (ra := rank_a.get(d)) is not None:
+            s += w_a / (k_rrf + ra)
+        if (rb := rank_b.get(d)) is not None:
+            s += w_b / (k_rrf + rb)
+        if (rc := rank_c.get(d)) is not None:
+            s += w_c / (k_rrf + rc)
+        scored.append((d, s))
+    scored.sort(key=lambda x: (-x[1], x[0]))
+    return [d for d, _ in scored]
+
+
+def mean_recall_three_way(
+    gold: dict[str, set[str]],
+    run_bgem3: dict[str, list[str]],
+    run_med: dict[str, list[str]],
+    run_hyde: dict[str, list[str]],
+    *,
+    k_rrf: int,
+    w_bgem3: float,
+    w_med: float,
+    w_hyde: float,
+    pool_top: int,
+    k_eval: int,
+) -> tuple[float, int]:
+    qids = [
+        q
+        for q in gold
+        if q in run_bgem3 and q in run_med and q in run_hyde and gold[q]
+    ]
+    if not qids:
+        return 0.0, 0
+    recalls: list[float] = []
+    for q in qids:
+        d_bg = run_bgem3[q]
+        d_me = run_med[q]
+        d_hy = run_hyde[q]
+        pa = min(pool_top, len(d_bg)) if d_bg else 0
+        pb = min(pool_top, len(d_me)) if d_me else 0
+        pc = min(pool_top, len(d_hy)) if d_hy else 0
+        fused = _rrf_fuse_three_lists(
+            d_bg,
+            d_me,
+            d_hy,
+            pa,
+            pb,
+            pc,
+            k_rrf,
+            w_bgem3,
+            w_med,
+            w_hyde,
+        )[:k_eval]
+        recalls.append(recall_at_k(set(gold[q]), fused, k_eval))
+    return float(np.mean(recalls)) if recalls else 0.0, len(qids)
+
+
+THREE_WAY_DATASETS = [
+    {
+        "split": "training14b_3pct_sample",
+        "p_bgem3": base_dir
+        / "output"
+        / "retrieval_test"
+        / "bgem3"
+        / "dense"
+        / "runs"
+        / "dense_training14b_3pct_sample.tsv",
+        "p_medembed": base_dir
+        / "output"
+        / "retrieval_test"
+        / "bm25_new"
+        / "dense_"
+        / "runs"
+        / "dense_training14b_3pct_sample.tsv",
+        "p_hyde": base_dir
+        / "output"
+        / "retrieval_test"
+        / "bm25_new"
+        / "dense"
+        / "runs"
+        / "dense_training14b_3pct_sample.tsv",
+        "qrels_path": base_dir / "example" / "training14b_3pct_sample.json",
+    },
+    {
+        "split": "13b_golden_50q_sample",
+        "p_bgem3": base_dir
+        / "output"
+        / "retrieval_test"
+        / "bgem3"
+        / "dense"
+        / "runs"
+        / "dense_13b_golden_50q_sample.tsv",
+        "p_medembed": base_dir
+        / "output"
+        / "retrieval_test"
+        / "bm25_new"
+        / "dense_"
+        / "runs"
+        / "dense_13b_golden_50q_sample.tsv",
+        "p_hyde": base_dir
+        / "output"
+        / "retrieval_test"
+        / "bm25_new"
+        / "dense"
+        / "runs"
+        / "dense_13b_golden_50q_sample.tsv",
+        "qrels_path": base_dir / "example" / "13b_golden_50q_sample.json",
+    },
+]
+
+rows_three: list[dict] = []
+for spec in THREE_WAY_DATASETS:
+    split = spec["split"]
+    paths = [
+        (spec["p_bgem3"], "bgem3"),
+        (spec["p_medembed"], "medembed_orig"),
+        (spec["p_hyde"], "medembed_hyde"),
+    ]
+    for path, label in paths:
+        if not path.exists():
+            raise FileNotFoundError(f"Missing {label} run: {path}")
+    if not spec["qrels_path"].exists():
+        raise FileNotFoundError(f"Missing qrels: {spec['qrels_path']}")
+
+    gold = _load_qrels(spec["qrels_path"])
+    run_bgem3 = _build_run_map(_load_run(spec["p_bgem3"]))
+    run_med = _build_run_map(_load_run(spec["p_medembed"]))
+    run_hyde = _build_run_map(_load_run(spec["p_hyde"]))
+
+    for w_bg, w_me, w_hy in THREE_WAY_WEIGHTS:
+        mean_r, n_q = mean_recall_three_way(
+            gold,
+            run_bgem3,
+            run_med,
+            run_hyde,
+            k_rrf=THREE_WAY_K_RRF,
+            w_bgem3=w_bg,
+            w_med=w_me,
+            w_hyde=w_hy,
+            pool_top=RUN_POOL_TOP,
+            k_eval=K_EVAL,
+        )
+        rows_three.append(
+            {
+                "split": split,
+                "w_bgem3": int(w_bg),
+                "w_medembed": int(w_me),
+                "w_medembed_hyde": int(w_hy),
+                "weight_tuple": f"({int(w_bg)},{int(w_me)},{int(w_hy)})",
+                "MeanR@5000": mean_r,
+                "n_queries": n_q,
+            }
+        )
+
+three_way_df = pd.DataFrame(rows_three).sort_values(
+    "MeanR@5000", ascending=False, ignore_index=True
+)
+three_way_df.to_csv(output_dir / "dense_three_way_rrf_meanr5000_weights123.csv", index=False)
+print("Saved:", output_dir / "dense_three_way_rrf_meanr5000_weights123.csv")
+three_way_df
+
+
+# %%
+
+# %% [markdown]
+# ## Fixed-weight hybrid fusion (BM25 + dense runs)
+#
+# Single **MeanR@5000** per row for three hand-picked RRF recipes (`k_rrf=60`), on the two 3pc splits (same corpus as `bm25_new` / `bgem3`).
+#
+# - **MedEmbed** = `bm25_new/dense_` (original query). **HyDE** = `bm25_new/dense`. **BGE-M3** = `bgem3/dense`. **BM25** = `bm25_new/bm25` (RM3).
+
+# %%
+FIXED_HYBRID_K_RRF = 60
+
+FIXED_HYBRID_CASES: list[dict] = [
+    {
+        "label": "BM25 + MedEmbed + HyDE",
+        "components": ("bm25", "medembed_orig", "hyde"),
+        "weights": (0.4, 0.2, 0.4),
+    },
+    {
+        "label": "BM25 + MedEmbed + BGE-M3",
+        "components": ("bm25", "medembed_orig", "bgem3"),
+        "weights": (0.4, 0.3, 0.3),
+    },
+    {
+        "label": "BM25 + MedEmbed + HyDE + BGE-M3",
+        "components": ("bm25", "medembed_orig", "hyde", "bgem3"),
+        "weights": (0.4, 0.1, 0.2, 0.3),
+    },
+]
+
+
+def _stem_and_bm25_name(split: str) -> tuple[str, str]:
+    if split == "training14b_3pct_sample":
+        return (
+            "dense_training14b_3pct_sample.tsv",
+            "BM25_RM3__training14b_3pct_sample__top5000.tsv",
+        )
+    if split == "13b_golden_50q_sample":
+        return (
+            "dense_13b_golden_50q_sample.tsv",
+            "BM25_RM3__13b_golden_50q_sample__top5000.tsv",
+        )
+    raise ValueError(f"Unsupported split for fixed hybrid: {split}")
+
+
+def _path_fixed_hybrid(split: str, component: str) -> Path:
+    rt = base_dir / "output" / "retrieval_test"
+    dense_stem, bm25_name = _stem_and_bm25_name(split)
+    if component == "bm25":
+        return rt / "bm25_new" / "bm25" / "runs" / bm25_name
+    if component == "medembed_orig":
+        return rt / "bm25_new" / "dense_" / "runs" / dense_stem
+    if component == "hyde":
+        return rt / "bm25_new" / "dense" / "runs" / dense_stem
+    if component == "bgem3":
+        return rt / "bgem3" / "dense" / "runs" / dense_stem
+    raise ValueError(component)
+
+
+def _rrf_fuse_many(
+    doc_lists: list[list[str]],
+    pools: list[int],
+    k_rrf: int,
+    weights: list[float],
+) -> list[str]:
+    if len(doc_lists) != len(pools) or len(weights) != len(doc_lists):
+        raise ValueError("doc_lists, pools, weights must match length")
+    truncated = [lst[:p] for lst, p in zip(doc_lists, pools)]
+    rank_maps = [{d: i + 1 for i, d in enumerate(lst)} for lst in truncated]
+    union: list[str] = []
+    seen: set[str] = set()
+    for lst in truncated:
+        for d in lst:
+            if d not in seen:
+                seen.add(d)
+                union.append(d)
+    scored: list[tuple[str, float]] = []
+    for d in union:
+        s = 0.0
+        for w, rmap in zip(weights, rank_maps):
+            rnk = rmap.get(d)
+            if rnk is not None:
+                s += w / (k_rrf + rnk)
+        scored.append((d, s))
+    scored.sort(key=lambda x: (-x[1], x[0]))
+    return [d for d, _ in scored]
+
+
+def mean_recall_many_fused(
+    gold: dict[str, set[str]],
+    run_maps: list[dict[str, list[str]]],
+    weights: tuple[float, ...],
+    *,
+    k_rrf: int,
+    pool_top: int,
+    k_eval: int,
+) -> tuple[float, int]:
+    if len(run_maps) != len(weights):
+        raise ValueError("run_maps and weights length mismatch")
+    qids = [
+        q
+        for q in gold
+        if all(q in rm for rm in run_maps) and gold[q]
+    ]
+    if not qids:
+        return 0.0, 0
+    recalls: list[float] = []
+    w_list = list(weights)
+    for q in qids:
+        doc_lists = [rm[q] for rm in run_maps]
+        pools = [min(pool_top, len(d)) if d else 0 for d in doc_lists]
+        fused = _rrf_fuse_many(doc_lists, pools, k_rrf, w_list)[:k_eval]
+        recalls.append(recall_at_k(set(gold[q]), fused, k_eval))
+    return float(np.mean(recalls)) if recalls else 0.0, len(qids)
+
+
+FIXED_HYBRID_SPLITS = [
+    {
+        "split": "training14b_3pct_sample",
+        "qrels_path": base_dir / "example" / "training14b_3pct_sample.json",
+    },
+    {
+        "split": "13b_golden_50q_sample",
+        "qrels_path": base_dir / "example" / "13b_golden_50q_sample.json",
+    },
+]
+
+rows_fixed: list[dict] = []
+for split_spec in FIXED_HYBRID_SPLITS:
+    split = split_spec["split"]
+    p_q = split_spec["qrels_path"]
+    if not p_q.exists():
+        raise FileNotFoundError(f"Missing qrels: {p_q}")
+    gold = _load_qrels(p_q)
+
+    for case in FIXED_HYBRID_CASES:
+        comps = case["components"]
+        wts = case["weights"]
+        paths = [_path_fixed_hybrid(split, c) for c in comps]
+        for path, c in zip(paths, comps):
+            if not path.exists():
+                raise FileNotFoundError(f"Missing {c} run: {path}")
+        run_maps = [_build_run_map(_load_run(path)) for path in paths]
+        mean_r, n_q = mean_recall_many_fused(
+            gold,
+            run_maps,
+            wts,
+            k_rrf=FIXED_HYBRID_K_RRF,
+            pool_top=RUN_POOL_TOP,
+            k_eval=K_EVAL,
+        )
+        rows_fixed.append(
+            {
+                "split": split,
+                "recipe": case["label"],
+                "weights": str(tuple(wts)),
+                "components": ",".join(comps),
+                "MeanR@5000": mean_r,
+                "n_queries": n_q,
+            }
+        )
+
+fixed_hybrid_df = pd.DataFrame(rows_fixed).sort_values(
+    ["split", "MeanR@5000"], ascending=[True, False], ignore_index=True
+)
+out_csv = output_dir / "dense_fixed_hybrid_rrf_meanr5000.csv"
+fixed_hybrid_df.to_csv(out_csv, index=False)
+print("Saved:", out_csv)
+fixed_hybrid_df
+
+
+# %% [markdown]
+# ## Final summary: MeanR@5000 per recipe (two tables)
+#
+# Single systems, two two-way RRF mixes `(0.5, 0.5)`, and the three fixed multi-way recipes. One **CSV per split** under `output_dir`.
+
+# %%
+SUMMARY_K_RRF = 60
+
+SUMMARY_CONFIGS: list[dict] = [
+    {"recipe": "BM25", "kind": "single", "components": ("bm25",), "weights": None},
+    {"recipe": "MedEmbed", "kind": "single", "components": ("medembed_orig",), "weights": None},
+    {"recipe": "HyDE", "kind": "single", "components": ("hyde",), "weights": None},
+    {"recipe": "BGE-M3", "kind": "single", "components": ("bgem3",), "weights": None},
+    {
+        "recipe": "BM25 + MedEmbed",
+        "kind": "pair",
+        "components": ("bm25", "medembed_orig"),
+        "weights": (0.5, 0.5),
+    },
+    {
+        "recipe": "BM25 + BGE-M3",
+        "kind": "pair",
+        "components": ("bm25", "bgem3"),
+        "weights": (0.5, 0.5),
+    },
+    {
+        "recipe": "BM25 + MedEmbed + HyDE",
+        "kind": "many",
+        "components": ("bm25", "medembed_orig", "hyde"),
+        "weights": (0.4, 0.2, 0.4),
+    },
+    {
+        "recipe": "BM25 + MedEmbed + BGE-M3",
+        "kind": "many",
+        "components": ("bm25", "medembed_orig", "bgem3"),
+        "weights": (0.4, 0.3, 0.3),
+    },
+    {
+        "recipe": "BM25 + MedEmbed + HyDE + BGE-M3",
+        "kind": "many",
+        "components": ("bm25", "medembed_orig", "hyde", "bgem3"),
+        "weights": (0.4, 0.1, 0.2, 0.3),
+    },
+]
+
+
+def mean_recall_single_run(
+    gold: dict[str, set[str]],
+    run_map: dict[str, list[str]],
+    *,
+    pool_top: int,
+    k_eval: int,
+) -> tuple[float, int]:
+    qids = [q for q in gold if q in run_map and gold[q]]
+    if not qids:
+        return 0.0, 0
+    recalls: list[float] = []
+    for q in qids:
+        docs = run_map[q]
+        take = min(pool_top, len(docs)) if docs else 0
+        ranked = docs[:take][:k_eval]
+        recalls.append(recall_at_k(set(gold[q]), ranked, k_eval))
+    return float(np.mean(recalls)) if recalls else 0.0, len(qids)
+
+
+def _eval_summary_config(
+    gold: dict[str, set[str]],
+    split: str,
+    cfg: dict,
+) -> tuple[float, int]:
+    kind = cfg["kind"]
+    comps = cfg["components"]
+    paths = [_path_fixed_hybrid(split, c) for c in comps]
+    for path, c in zip(paths, comps):
+        if not path.exists():
+            raise FileNotFoundError(f"Missing {c} run: {path}")
+
+    if kind == "single":
+        rm = _build_run_map(_load_run(paths[0]))
+        return mean_recall_single_run(
+            gold, rm, pool_top=RUN_POOL_TOP, k_eval=K_EVAL
+        )
+
+    run_maps = [_build_run_map(_load_run(p)) for p in paths]
+
+    if kind == "pair":
+        w0, w1 = cfg["weights"]
+        return mean_recall_at_k_fused(
+            gold,
+            run_maps[0],
+            run_maps[1],
+            k_rrf=SUMMARY_K_RRF,
+            w_a=w0,
+            w_b=w1,
+            pool_top=RUN_POOL_TOP,
+            k_eval=K_EVAL,
+        )
+
+    if kind == "many":
+        return mean_recall_many_fused(
+            gold,
+            run_maps,
+            cfg["weights"],
+            k_rrf=SUMMARY_K_RRF,
+            pool_top=RUN_POOL_TOP,
+            k_eval=K_EVAL,
+        )
+
+    raise ValueError(kind)
+
+
+summary_tables: dict[str, pd.DataFrame] = {}
+for split_spec in FIXED_HYBRID_SPLITS:
+    split = split_spec["split"]
+    p_q = split_spec["qrels_path"]
+    if not p_q.exists():
+        raise FileNotFoundError(f"Missing qrels: {p_q}")
+    gold = _load_qrels(p_q)
+    rows_s: list[dict] = []
+    for cfg in SUMMARY_CONFIGS:
+        mean_r, n_q = _eval_summary_config(gold, split, cfg)
+        w = cfg["weights"]
+        rows_s.append(
+            {
+                "recipe": cfg["recipe"],
+                "kind": cfg["kind"],
+                "weights": None if w is None else str(tuple(w)),
+                "MeanR@5000": mean_r,
+                "n_queries": n_q,
+            }
+        )
+    summary_tables[split] = pd.DataFrame(rows_s)
+
+for split, df_s in summary_tables.items():
+    safe = split.replace("/", "_")
+    out_p = output_dir / f"dense_summary_meanr5000__{safe}.csv"
+    df_s.to_csv(out_p, index=False)
+    print("Saved:", out_p)
+
+summary_tables["training14b_3pct_sample"]
+
+
+# %%
+summary_tables["13b_golden_50q_sample"]
