@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH -J pipeline_full_pubmed_sharded
-#SBATCH -p frida
+#SBATCH -p dev,frida
 #SBATCH --time=12:00:00
 #SBATCH --mem=256G
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
 #SBATCH --cpus-per-task=4
-#SBATCH --gres=gpu:A100:1
+#SBATCH --gres=gpu:1
 
 set -euo pipefail
 
@@ -16,7 +16,7 @@ mkdir -p logs
 # -----------------------------
 # Paths / inputs
 # -----------------------------
-CONTAINER_IMG="/shared/home/yun.wang/biolab/yun/bioasq_08.03.26.sqfs"
+CONTAINER_IMG="/shared/home/yun.wang/biolab/yun/bioasq_08.03.26b200.sqfs"
 WORKDIR="${PWD}"
 
 # Host path that will be mounted as /pubmed inside container
