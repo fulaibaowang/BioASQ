@@ -6,10 +6,13 @@ field (default ``body_hyde``) to every question:
 
 * If ``hyde.enabled`` is true and ``hyde.hyde_text`` is non-empty, the value
   comes from ``hyde.hyde_text``.
-* Otherwise the value falls back to the original ``body``.
+* Otherwise the value falls back to the original ``body`` (default) or is set
+  to ``null`` when ``--no-fallback`` is used.
 
-The output JSON can then be used with ``--query-field body_hyde`` (or
-``DENSE_QUERY_FIELD=body_hyde``) so no other pipeline code needs to change.
+With ``--no-fallback``, queries where HyDE did not produce a different text
+get ``null``.  Combined with ``DENSE_QUERY_FIELD=body,body_hyde`` and
+``--skip-empty-query-field`` in the pipeline, this avoids re-running
+identical queries through retrieval/reranking.
 """
 
 from __future__ import annotations
@@ -20,8 +23,16 @@ import sys
 from pathlib import Path
 
 
-def prepare(questions: list[dict], field_name: str) -> tuple[int, int]:
-    """Add *field_name* to each question in-place. Returns (n_hyde, n_fallback)."""
+def prepare(
+    questions: list[dict],
+    field_name: str,
+    no_fallback: bool = False,
+) -> tuple[int, int]:
+    """Add *field_name* to each question in-place. Returns (n_hyde, n_fallback).
+
+    When *no_fallback* is True, questions without a distinct HyDE text get the
+    field set to ``None`` instead of falling back to ``body``.
+    """
     n_hyde = 0
     n_fallback = 0
     for q in questions:
@@ -30,7 +41,7 @@ def prepare(questions: list[dict], field_name: str) -> tuple[int, int]:
             q[field_name] = hyde["hyde_text"]
             n_hyde += 1
         else:
-            q[field_name] = q["body"]
+            q[field_name] = None if no_fallback else q["body"]
             n_fallback += 1
     return n_hyde, n_fallback
 
@@ -61,6 +72,12 @@ def main(argv: list[str] | None = None) -> None:
         default="body_hyde",
         help="Name of the new top-level field (default: body_hyde)",
     )
+    ap.add_argument(
+        "--no-fallback",
+        action="store_true",
+        help="Set field to null (instead of body) when HyDE text is absent. "
+        "Use with DENSE_QUERY_FIELD=body,body_hyde to skip duplicate queries.",
+    )
     args = ap.parse_args(argv)
 
     input_path: Path = args.input
@@ -74,7 +91,7 @@ def main(argv: list[str] | None = None) -> None:
     if questions is None:
         ap.error("input JSON has no top-level 'questions' key")
 
-    n_hyde, n_fallback = prepare(questions, args.field_name)
+    n_hyde, n_fallback = prepare(questions, args.field_name, no_fallback=args.no_fallback)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
@@ -83,9 +100,10 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     total = n_hyde + n_fallback
+    fallback_label = "null (no-fallback)" if args.no_fallback else "fallback to body"
     print(
         f"Wrote {output_path}  "
-        f"({total} questions: {n_hyde} HyDE, {n_fallback} fallback to body)"
+        f"({total} questions: {n_hyde} HyDE, {n_fallback} {fallback_label})"
     )
 
 
