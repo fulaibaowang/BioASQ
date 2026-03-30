@@ -1,16 +1,20 @@
-You are preparing a structured query bundle for a retrieval and reranking pipeline.
-For each question body, 
-return JSON block to the that question only, using exactly this schema:
+You are preparing a structured query bundle for a retrieval and reranking pipeline. Return valid JSON only.
+Preserve the original fields of each question and only add one nested object called "query_parse".
+
+Use this structure for each question:
 
 {
-  "hyde_enabled": true,
-  "hyde_reason": "short reason",
-  "hyde_style": "general" or "neutral",
-  "hyde_text": "one short biomedical abstract-style passage, or empty string",
-  "use_facets": false,
-  "facet_reason": "short reason",
-  "facets": [],
-  "listwise_bullets": []
+  "body": "...",
+   ...,
+  "query_parse": {
+    "hyde_enabled": true,
+    "hyde_reason": "short reason",
+    "hyde_text": "one short biomedical abstract-style passage, or empty string",
+    "use_facets": false,
+    "facet_reason": "short reason",
+    "facets": [],
+    "listwise_bullets": [],
+  }
 }
 
 Task:
@@ -20,18 +24,16 @@ Given the question, decide:
 3. generate the corresponding text fields
 
 Rules for HyDE:
-- Usually enable HyDE.
+- Usually enable HyDE when a short abstract-style passage is likely to improve dense retrieval without blurring the target.
 - Disable mainly for:
   - numeric, date, dosage, or measurement-sensitive questions
   - exact identifier, exact lookup, or direct name-matching questions
   - questions where rewriting is likely to blur a very specific target
-- hyde_style = "neutral" mainly for yes/no, contrastive, or potentially one-sided questions
-- hyde_style = "general" otherwise
 
 Rules for hyde_text:
 - Write one short biomedical abstract-style passage that could help retrieve relevant papers.
 - Use natural scientific wording and likely terminology.
-- Keep it brief, faithful, and general.
+- You may use reputable online information if available, but keep the passage general, concise, and faithful to the question.
 - Do not invent unsupported specific facts, values, entities, or taxonomies.
 - If the question asks for a method, mention one or more plausible method classes in general terms.
 - If the question asks for a list, mention several plausible categories or examples without trying to be exhaustive.
@@ -52,13 +54,14 @@ Rules for facets:
 - Keep the main entities from the original question explicit in every facet.
 - Do not introduce unsupported new entities, categories, or answer guesses.
 - If facets are not useful, set use_facets to false and return empty arrays.
+- Do not rely on external information unless it is strongly implied and necessary to make a facet self-contained.
 
 Rules for listwise_bullets:
 - listwise_bullets must be short aspect labels derived from the facets.
 - They are not full questions.
 - If use_facets is false, return an empty array.
 
-Update question-by-question and use trustful online source.
+Update question-by-question. 
 
 Question object:
 {question_json}
