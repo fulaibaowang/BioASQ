@@ -24,7 +24,7 @@ PUBMED_HOST="/shared/workspace/biolab/pubmed"
 yun="/shared/workspace/biolab/yun"
 
 # Pipeline config
-PIPELINE_CONFIG="scripts/private_scripts/hpc/retrieval_test/config_3pc_new.env"
+PIPELINE_CONFIG="scripts/private_scripts/hpc/retrieval_test/config_3pc.env"
 
 echo "Starting job ${SLURM_JOB_ID} on $(hostname) at $(date)"
 echo "Running pipeline script with config: ${PIPELINE_CONFIG}"
