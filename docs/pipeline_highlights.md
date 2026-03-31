@@ -30,7 +30,11 @@
 
 # Lessons learned
 
-- Query rewriting (e.g. A. typo correction, or, B. question paraphrasing and generalization) did not improve reranking performance in the current setup, suggesting that the reranker is already robust to modest query variation.
+- **HyDE (Hypothetical Document Embeddings) improved dense retrieval.** Generating an LLM-written abstract-like passage per question and fusing the original `body` with the `body_hyde` variant via multi-query RRF produced meaningful gains in dense recall. Details and configuration: [MULTI_QUERY_HYDE.md](../scripts/public/query_parsing/MULTI_QUERY_HYDE.md).
+
+- **Facet-based query rewriting showed limited improvement for reranking.** Splitting questions into sub-facets and fusing per-facet reranking results did not substantially improve MAP@10, suggesting that the cross-encoder reranker already captures the relevant aspects of multi-facet questions.
+
+- Lightweight query rewriting (e.g. typo correction, question paraphrasing) did not improve reranking performance in the current setup, suggesting that the reranker is already robust to modest query variation.
 
 - First-stage retrieval misses relatively few gold documents overall, although broader “Wikipedia-style” questions remain difficult (TODO).
 
