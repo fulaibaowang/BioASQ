@@ -1,21 +1,28 @@
 #!/usr/bin/env python3
-"""Flatten HyDE text into a top-level query field for retrieval.
+"""Prepare retrieval query fields from `query_parse`.
 
-Reads a *.hyde_ready.json file ({"questions": [...]}) and adds a new top-level
-field (default ``body_hyde``) to every question.
+Reads a *.hyde_ready.json file ({"questions": [...]}) and adds top-level fields
+used by retrieval/reranking.
 
-This repo used to store HyDE metadata under ``hyde``. Newer datasets store it
-under ``query_parse`` with keys like ``hyde_enabled`` and ``hyde_text``.
-This script supports both shapes, preferring ``query_parse`` when present.
+This repo used to store HyDE metadata under `hyde`. Newer datasets store it
+under `query_parse` with keys like:
+- `parsed_query`
+- `hyde_enabled`
+- `hyde_text`
+
+This script supports both shapes for HyDE. For `parsed_query`, it expects the
+new `query_parse.parsed_query` field to be present and non-empty for *all*
+questions (fails fast otherwise).
 
 By default it writes:
-- ``body_hyde``: HyDE text when enabled and non-empty; else fallback to ``body``
-  (or ``null`` with ``--no-fallback``).
+- `body_normalized`: `query_parse.parsed_query`
+- `body_hyde`: HyDE text when enabled and non-empty; else fallback to
+  `body_normalized` (or `null` with `--no-fallback`).
 
-With ``--no-fallback``, queries where HyDE did not produce a different text
-get ``null``.  Combined with ``DENSE_QUERY_FIELD=body,body_hyde`` and
-``--skip-empty-query-field`` in the pipeline, this avoids re-running
-identical queries through retrieval/reranking.
+With `--no-fallback`, questions where HyDE did not produce a different text get
+`null`. Combined with `DENSE_QUERY_FIELD=body_normalized,body_hyde` and
+`--skip-empty-query-field` in the pipeline, this avoids re-running identical
+queries through retrieval/reranking.
 """
 
 from __future__ import annotations
@@ -39,27 +46,49 @@ def _get_query_parse(q: dict) -> dict:
     return {"hyde_enabled": False, "hyde_text": ""}
 
 
+def _require_parsed_query(q: dict, *, idx: int) -> str:
+    qp = q.get("query_parse")
+    if not isinstance(qp, dict):
+        body_preview = q.get("body")
+        raise ValueError(
+            f"question[{idx}] missing dict field 'query_parse' "
+            f"(body={body_preview!r})"
+        )
+    parsed_query = qp.get("parsed_query")
+    if not isinstance(parsed_query, str) or not parsed_query.strip():
+        body_preview = q.get("body")
+        raise ValueError(
+            f"question[{idx}] missing non-empty 'query_parse.parsed_query' "
+            f"(body={body_preview!r})"
+        )
+    return parsed_query.strip()
+
+
 def prepare(
     questions: list[dict],
-    field_name: str,
+    hyde_field_name: str,
+    normalized_field_name: str,
     no_fallback: bool = False,
 ) -> tuple[int, int]:
-    """Add top-level HyDE query field in-place. Returns (n_hyde, n_fallback)."""
+    """Add top-level query fields in-place. Returns (n_hyde, n_fallback)."""
     n_hyde = 0
     n_fallback = 0
-    for q in questions:
+    for i, q in enumerate(questions):
         body = q.get("body")
         if not isinstance(body, str):
             raise ValueError("each question must have string field 'body'")
+
+        parsed_query = _require_parsed_query(q, idx=i)
+        q[normalized_field_name] = parsed_query
 
         qp = _get_query_parse(q)
         hyde_enabled = bool(qp.get("hyde_enabled"))
         hyde_text = qp.get("hyde_text")
         if isinstance(hyde_text, str) and hyde_text.strip() and hyde_enabled:
-            q[field_name] = hyde_text
+            q[hyde_field_name] = hyde_text
             n_hyde += 1
         else:
-            q[field_name] = None if no_fallback else body
+            q[hyde_field_name] = None if no_fallback else parsed_query
             n_fallback += 1
     return n_hyde, n_fallback
 
@@ -75,7 +104,7 @@ def default_output_path(input_path: Path) -> Path:
 
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(
-        description="Flatten hyde.hyde_text into a top-level query field.",
+        description="Prepare retrieval query fields from query_parse.",
     )
     ap.add_argument("input", type=Path, help="Path to *.hyde_ready.json")
     ap.add_argument(
@@ -88,13 +117,18 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument(
         "--field-name",
         default="body_hyde",
-        help="Name of the new top-level field (default: body_hyde)",
+        help="Name of the new top-level HyDE field (default: body_hyde)",
+    )
+    ap.add_argument(
+        "--normalized-field-name",
+        default="body_normalized",
+        help="Name of the new top-level normalized query field (default: body_normalized)",
     )
     ap.add_argument(
         "--no-fallback",
         action="store_true",
         help="Set field to null (instead of body) when HyDE text is absent. "
-        "Use with DENSE_QUERY_FIELD=body,body_hyde to skip duplicate queries.",
+        "Use with DENSE_QUERY_FIELD=body_normalized,body_hyde to skip duplicate queries.",
     )
     args = ap.parse_args(argv)
 
@@ -112,6 +146,7 @@ def main(argv: list[str] | None = None) -> None:
     n_hyde, n_fallback = prepare(
         questions,
         args.field_name,
+        args.normalized_field_name,
         no_fallback=args.no_fallback,
     )
 
@@ -122,7 +157,9 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     total = n_hyde + n_fallback
-    fallback_label = "null (no-fallback)" if args.no_fallback else "fallback to body"
+    fallback_label = (
+        "null (no-fallback)" if args.no_fallback else f"fallback to {args.normalized_field_name}"
+    )
     print(
         f"Wrote {output_path}  "
         f"({total} questions: {n_hyde} HyDE, {n_fallback} {fallback_label})"
