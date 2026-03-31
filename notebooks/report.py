@@ -182,6 +182,44 @@ plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
 
+# %%
+fig, axes = plt.subplots(1, 2, figsize=(10, 4.5), sharex=True, sharey=True)
+
+for idx, (panel_label, panel_splits) in enumerate([
+    ("dev", ["training14b_10pct_sample"]),
+    ("13B1–4 (merged)", ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]),
+]):
+    ax = axes[idx]
+    for method_name, cfg in methods_cfg.items():
+        all_vals = []
+        for s in panel_splits:
+            row = cfg["df"][cfg["df"]["split"] == s]
+            if not row.empty:
+                all_vals.append([row.iloc[0][c] for c in recall_cols])
+        if not all_vals:
+            continue
+        vals = np.mean(all_vals, axis=0)
+        ax.plot(k_values, vals, marker=cfg["marker"], color=cfg["color"],
+                label=method_name, markersize=6, linewidth=1.8)
+    ax.set_title(panel_label, fontsize=15, fontweight="bold")
+    ax.set_ylim(global_ymin, global_ymax)
+    if idx == 0:
+        ax.set_ylabel("Mean Recall")
+    ax.set_xlabel("K")
+    ax.set_xticks(tick_values)
+    ax.set_xticklabels([str(k) for k in tick_values], rotation=90)
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.95, 0.18), fontsize=14)
+fig.suptitle("Retrieval Mean_Recall@K Curves", fontsize=16, fontweight="bold", y=0.98)
+plt.tight_layout(rect=[0, 0, 1, 0.96])
+fig_path = output_dir / "01b_stage1_recall_dev_vs_test_merged.png"
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
+
 # %% [markdown]
 # ## 4. Hybrid vs Rerank vs Post-rerank Fusion – Recall Curves (K ≤ 300)
 
@@ -290,6 +328,44 @@ plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
 
+# %%
+fig, axes = plt.subplots(1, 2, figsize=(10, 4.5), sharex=True, sharey=True)
+
+for idx, (panel_label, panel_splits) in enumerate([
+    ("dev", ["training14b_10pct_sample"]),
+    ("13B1–4 (merged)", ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]),
+]):
+    ax = axes[idx]
+    for method_name, cfg in methods_stage2.items():
+        all_vals = []
+        for s in panel_splits:
+            row = cfg["df"][cfg["df"]["split"] == s]
+            if not row.empty:
+                all_vals.append([row.iloc[0][c] for c in recall_cols_common])
+        if not all_vals:
+            continue
+        vals = np.mean(all_vals, axis=0)
+        ax.plot(k_vals_recall, vals, marker=cfg["marker"], color=cfg["color"],
+                label=method_name, markersize=6, linewidth=1.8)
+    ax.set_title(panel_label, fontsize=15, fontweight="bold")
+    ax.set_ylim(global_ymin, global_ymax)
+    if idx == 0:
+        ax.set_ylabel("Mean Recall")
+    ax.set_xlabel("K")
+    ax.set_xticks(tick_values_recall)
+    ax.set_xticklabels([str(k) for k in tick_values_recall], rotation=90)
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.92, 0.18), fontsize=14)
+fig.suptitle("Retrieval vs Rerank Mean_Recall@K (K ≤ 300)", fontsize=16, fontweight="bold", y=0.98)
+plt.tight_layout(rect=[0, 0, 1, 0.96])
+fig_path = output_dir / "02b_hybrid_rerank_fusion_recall_dev_vs_test_merged.png"
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
+
 # %% [markdown]
 # ## 5. Hybrid vs Rerank vs Post-rerank Fusion – MAP@10 (Bar Plots)
 
@@ -342,6 +418,61 @@ fig.legend(handles=handles, loc="upper center", ncol=3, bbox_to_anchor=(0.5, 1.0
 
 plt.tight_layout(rect=[0, 0, 1, 0.9])
 fig_path = output_dir / "03_hybrid_rerank_fusion_map10_bars_per_split.png"
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
+
+# %%
+_method_colors_bar = {
+    "Retrieval": "#2ca02c",
+    "Rerank": "#1f77b4",
+    "Post-rerank fusion": "#ff7f0e",
+}
+
+fig, ax = plt.subplots(1, 2, figsize=(6, 4), sharey=True)
+
+for idx, (panel_label, panel_splits) in enumerate([
+    ("dev", ["training14b_10pct_sample"]),
+    ("13B1–4 (merged)", ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]),
+]):
+    cur_ax = ax[idx]
+    vals = []
+    labels_m = []
+
+    map10_h = [float(hybrid_stage1[hybrid_stage1["split"] == s].iloc[0]["MAP@10"])
+               for s in panel_splits if not hybrid_stage1[hybrid_stage1["split"] == s].empty]
+    if map10_h:
+        vals.append(np.mean(map10_h))
+        labels_m.append("Retrieval")
+
+    map10_r = [float(rerank_metrics[rerank_metrics["split"] == s].iloc[0]["MAP@10"])
+               for s in panel_splits if not rerank_metrics[rerank_metrics["split"] == s].empty]
+    if map10_r:
+        vals.append(np.mean(map10_r))
+        labels_m.append("Rerank")
+
+    map10_f = [float(rerank_fusion_metrics[rerank_fusion_metrics["split"] == s].iloc[0]["MAP@10"])
+               for s in panel_splits if not rerank_fusion_metrics[rerank_fusion_metrics["split"] == s].empty]
+    if map10_f:
+        vals.append(np.mean(map10_f))
+        labels_m.append("Post-rerank fusion")
+
+    x = np.arange(len(labels_m))
+    colors = [_method_colors_bar[label] for label in labels_m]
+    cur_ax.bar(x, vals, color=colors)
+    cur_ax.set_xticks(x)
+    cur_ax.set_xticklabels("", rotation=30, ha="right")
+    cur_ax.set_title(panel_label, fontsize=13, fontweight="bold")
+
+handles = [
+    plt.matplotlib.patches.Patch(color=_method_colors_bar["Retrieval"], label="Retrieval"),
+    plt.matplotlib.patches.Patch(color=_method_colors_bar["Rerank"], label="Rerank"),
+    plt.matplotlib.patches.Patch(color=_method_colors_bar["Post-rerank fusion"], label="Post-rerank fusion"),
+]
+fig.legend(handles=handles, loc="upper center", ncol=3, bbox_to_anchor=(0.5, 1.05), fontsize=12)
+
+plt.tight_layout(rect=[0, 0, 1, 0.9])
+fig_path = output_dir / "03b_hybrid_rerank_fusion_map10_bars_dev_vs_test_merged.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
@@ -520,6 +651,44 @@ fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.88, 0.12), font
 fig.suptitle("Retrieval vs Rerank vs Post Rerank Fusion – MAP@K)", fontsize=18, fontweight="bold", y=0.98)
 plt.tight_layout(rect=[0, 0, 1, 0.96])
 fig_path = output_dir / "04_hybrid_rerank_fusion_mapk_per_split.png"
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
+
+# %%
+fig, axes = plt.subplots(1, 2, figsize=(10, 4.5), sharex=True, sharey=True)
+
+for idx, (panel_label, panel_splits) in enumerate([
+    ("dev", ["training14b_10pct_sample"]),
+    ("13B1–4 (merged)", ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]),
+]):
+    ax = axes[idx]
+    for method_name, method_dict in map_curves.items():
+        all_vals = []
+        for s in panel_splits:
+            if s in method_dict:
+                all_vals.append([method_dict[s].get(k, 0.0) for k in map_ks])
+        if not all_vals:
+            continue
+        vals = np.mean(all_vals, axis=0)
+        ax.plot(map_ks, vals, marker="o", color=colors_map.get(method_name),
+                label=method_name, linewidth=1.8)
+    ax.set_title(panel_label, fontsize=15, fontweight="bold")
+    ax.set_ylim(y_min, y_max)
+    if idx == 0:
+        ax.set_ylabel("MAP@K")
+    ax.set_xlabel("K")
+    ax.set_xticks(map_ks)
+    ax.set_xticklabels([str(k) for k in map_ks], rotation=90)
+    ax.set_xlim(0, 100)
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(handles, labels, loc="upper right", bbox_to_anchor=(0.92, 0.8), fontsize=13)
+fig.suptitle("Retrieval vs Rerank vs Post Rerank Fusion – MAP@K)", fontsize=18, fontweight="bold", y=0.98)
+plt.tight_layout(rect=[0, 0, 1, 0.96])
+fig_path = output_dir / "04b_hybrid_rerank_fusion_mapk_dev_vs_test_merged.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
@@ -922,6 +1091,52 @@ plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
 
+# %%
+fig, axes = plt.subplots(1, 2, figsize=(10, 4.5), sharex=True, sharey=True)
+
+for idx, (panel_label, panel_splits) in enumerate([
+    ("dev", ["training14b_10pct_sample"]),
+    ("13B1–4 (merged)", ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]),
+]):
+    ax = axes[idx]
+    for method_name, method_dict in rerank_map_curves.items():
+        all_vals = []
+        for s in panel_splits:
+            if s in method_dict:
+                all_vals.append([method_dict[s].get(k, 0.0) for k in map_ks])
+        if not all_vals:
+            continue
+        vals = np.mean(all_vals, axis=0)
+        ax.plot(map_ks, vals, marker="o", linewidth=1.8,
+                color=colors_rerank[method_name], label=method_name)
+    ax.set_title(panel_label, fontsize=14, fontweight="bold")
+    ax.set_ylim(y_min, y_max)
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+    if idx == 0:
+        ax.set_ylabel("MAP@K")
+    ax.set_xlabel("K")
+    ax.set_xticks(map_ks)
+    ax.set_xticklabels([str(k) for k in map_ks], rotation=90)
+
+legend_handles_c = [
+    Line2D([0], [0], color=colors_rerank[name], marker="o", linestyle="-", label=name)
+    for name in colors_rerank.keys()
+]
+fig.legend(
+    handles=legend_handles_c,
+    labels=list(colors_rerank.keys()),
+    loc="upper right",
+    bbox_to_anchor=(1.02, 0.8),
+    fontsize=12,
+)
+fig.suptitle("MAP@K Curves – Rerankers", fontsize=16, fontweight="bold", y=1.02)
+plt.tight_layout(rect=[0, 0, 1, 0.95])
+fig_path = output_dir / "07b_rerankers_mapk_dev_vs_test_merged.png"
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
+
 # %% [markdown]
 # ## 10. MedCPT – MAP@K Curves: `rerank_hybrid_200` vs `snippet_rerank`
 
@@ -1022,6 +1237,57 @@ fig.suptitle(
 )
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 fig_path = output_dir / "08_medcpt_rerank_hybrid200_vs_snippet_mapk.png"
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
+
+# %%
+fig, axes = plt.subplots(1, 2, figsize=(10, 4.5), sharex=True, sharey=True)
+
+for idx, (panel_label, panel_splits) in enumerate([
+    ("dev", ["training14b_10pct_sample"]),
+    ("13B1–4 (merged)", ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]),
+]):
+    ax = axes[idx]
+    for method_name, method_dict in medcpt_map_curves.items():
+        all_vals = []
+        for s in panel_splits:
+            if s in method_dict:
+                all_vals.append([method_dict[s].get(k, 0.0) for k in medcpt_map_ks])
+        if not all_vals:
+            continue
+        vals = np.mean(all_vals, axis=0)
+        ax.plot(medcpt_map_ks, vals, marker="o", linewidth=1.8,
+                color=colors_medcpt[method_name], label=method_name)
+    ax.set_title(panel_label, fontsize=14, fontweight="bold")
+    ax.set_ylim(y_min_m, y_max_m)
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+    if idx == 0:
+        ax.set_ylabel("MAP@K")
+    ax.set_xlabel("K")
+    ax.set_xticks(medcpt_map_ks)
+    ax.set_xticklabels([str(k) for k in medcpt_map_ks], rotation=90)
+
+legend_medcpt_handles_c = [
+    _Line2D_medcpt([0], [0], color=colors_medcpt[name], marker="o", linestyle="-", label=name)
+    for name in colors_medcpt.keys()
+]
+fig.legend(
+    handles=legend_medcpt_handles_c,
+    labels=list(colors_medcpt.keys()),
+    loc="lower right",
+    bbox_to_anchor=(0.92, 0.16),
+    fontsize=14,
+)
+fig.suptitle(
+    "docs vs Snippet-aware evidence reranking",
+    fontsize=16,
+    fontweight="bold",
+    y=0.98,
+)
+plt.tight_layout(rect=[0, 0, 1, 0.95])
+fig_path = output_dir / "08b_medcpt_rerank_hybrid200_vs_snippet_mapk_dev_vs_test_merged.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
@@ -1239,6 +1505,46 @@ if not rrf_results.empty:
     print("Saved:", fig_path)
     plt.show()
 
+# %%
+if not rrf_results.empty:
+    _test_split_ids_rrf = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
+    dev_rrf = rrf_results[rrf_results["split"] == "training14b_10pct_sample"].copy()
+    test_rrf = rrf_results[rrf_results["split"].isin(_test_split_ids_rrf)].copy()
+    test_rrf_merged = (
+        test_rrf.groupby(["k_rrf", "weight_label"], as_index=False)["MAP@10"]
+        .mean()
+    )
+    test_rrf_merged["split"] = "test_merged"
+    test_n = test_rrf.groupby(["k_rrf", "weight_label"], as_index=False)["n_queries"].sum()
+    test_rrf_merged["n_queries"] = test_n["n_queries"]
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.5), sharey=True)
+
+    for idx, (panel_label, grp) in enumerate([
+        ("dev", dev_rrf),
+        ("13B1–4 (merged)", test_rrf_merged),
+    ]):
+        ax = axes[idx]
+        for k_rrf in sorted(grp["k_rrf"].unique()):
+            sub = grp[grp["k_rrf"] == k_rrf].set_index("weight_label").reindex(weight_order)
+            vals = sub["MAP@10"].values
+            ax.plot(range(len(weight_order)), vals, marker="o", linewidth=1.6)
+        ax.set_xticks(range(len(weight_order)))
+        ax.set_xticklabels(weight_order, rotation=45, ha="right")
+        n_q = int(grp["n_queries"].max())
+        ax.set_title(f"{panel_label} (n={n_q})", fontsize=12, fontweight="bold")
+        if idx == 0:
+            ax.set_ylabel("MAP@10")
+        ax.set_xlabel("(w_doc, w_snippet)")
+        ax.grid(True, axis="y")
+
+    fig.suptitle("docs and snippet fusion", fontsize=16, fontweight="bold", y=0.95)
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    fig_path = output_dir / "09b_medcpt_rrf_fusion_map10_vs_weight_dev_vs_test_merged.png"
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    print("Saved:", fig_path)
+    plt.show()
+
 # %% [markdown]
 # ## 12. MAP@K Curves – workflow_local_10pct_hpc_bge (rerank, rerank_body_rewrite_A, rerank_body_rewrite_B)
 
@@ -1336,6 +1642,57 @@ fig.suptitle(
 )
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 fig_path = output_dir / "10_bge_local_rerank_mapk.png"
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
+plt.show()
+
+# %%
+fig, axes = plt.subplots(1, 2, figsize=(10, 4.5), sharex=True, sharey=True)
+
+for idx, (panel_label, panel_splits) in enumerate([
+    ("dev", ["training14b_10pct_sample"]),
+    ("13B1–4 (merged)", ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]),
+]):
+    ax = axes[idx]
+    for method_name, method_dict in bge_local_map_curves.items():
+        all_vals = []
+        for s in panel_splits:
+            if s in method_dict:
+                all_vals.append([method_dict[s].get(k, 0.0) for k in map_ks])
+        if not all_vals:
+            continue
+        vals = np.mean(all_vals, axis=0)
+        ax.plot(map_ks, vals, marker="o", linewidth=1.8,
+                color=colors_bge_local[method_name], label=method_name)
+    ax.set_title(panel_label, fontsize=14, fontweight="bold")
+    ax.set_ylim(y_min_bge, y_max_bge)
+    ax.grid(True, axis="y")
+    ax.grid(True, axis="x")
+    if idx == 0:
+        ax.set_ylabel("MAP@K")
+    ax.set_xlabel("K")
+    ax.set_xticks(map_ks)
+    ax.set_xticklabels([str(k) for k in map_ks], rotation=90)
+
+legend_bge_handles_c = [
+    _Line2D_bge([0], [0], color=colors_bge_local[name], marker="o", linestyle="-", label=name)
+    for name in colors_bge_local
+]
+fig.legend(
+    handles=legend_bge_handles_c,
+    labels=list(colors_bge_local),
+    loc="upper center",
+    bbox_to_anchor=(0.5, 1.05),
+    fontsize=12,
+)
+fig.suptitle(
+    "MAP@K Curves, Query rewriting comparison",
+    fontsize=16,
+    fontweight="bold",
+    y=1.08,
+)
+plt.tight_layout(rect=[0, 0, 1, 0.95])
+fig_path = output_dir / "10b_bge_local_rerank_mapk_dev_vs_test_merged.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()

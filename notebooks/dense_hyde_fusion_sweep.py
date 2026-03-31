@@ -913,3 +913,115 @@ summary_tables["training14b_3pct_sample"]
 
 # %%
 summary_tables["13b_golden_50q_sample"]
+
+# %%
+
+# %% [markdown]
+# ## Recall curves: HyDE vs original (one figure, 3 panels)
+#
+# Plots **mean Recall@K** for HyDE vs original query dense runs across K in `[50..5000]`, one panel per dataset.
+
+# %%
+RECALL_CURVE_KS = [50, 100, 200, 300, 400, 500, 1000, 2000, 5000]
+
+
+def mean_recall_curve(
+    gold: dict[str, set[str]],
+    run_map: dict[str, list[str]],
+    ks: list[int],
+) -> dict[int, float]:
+    qids = [q for q in gold if q in run_map and gold[q]]
+    out: dict[int, float] = {k: 0.0 for k in ks}
+    if not qids:
+        return out
+    per_k = {k: [] for k in ks}
+    for q in qids:
+        rels = set(gold[q])
+        ranked = run_map[q]
+        for k in ks:
+            per_k[k].append(recall_at_k(rels, ranked, k))
+    for k in ks:
+        out[k] = float(np.mean(per_k[k])) if per_k[k] else 0.0
+    return out
+
+
+HYDE_ORIG_RECALL_SPECS = [
+    {
+        "split": "dev small",
+        "hyde_tsv": base_dir / "output" / "retrieval_test" / "bm25_new" / "dense" / "runs" / "dense_training14b_3pct_sample.tsv",
+        "orig_tsv": base_dir / "output" / "retrieval_test" / "bm25_new" / "dense_" / "runs" / "dense_training14b_3pct_sample.tsv",
+        "qrels_path": base_dir / "example" / "training14b_3pct_sample.json",
+    },
+    {
+        "split": "13b subset",
+        "hyde_tsv": base_dir / "output" / "retrieval_test" / "bm25_new" / "dense" / "runs" / "dense_13b_golden_50q_sample.tsv",
+        "orig_tsv": base_dir / "output" / "retrieval_test" / "bm25_new" / "dense_" / "runs" / "dense_13b_golden_50q_sample.tsv",
+        "qrels_path": base_dir / "example" / "13b_golden_50q_sample.json",
+    },
+    # {
+    #     "split": "BioASQ-task14bPhaseB-testset1",
+    #     "hyde_tsv": base_dir / "output" / "retrieval_test" / "hyde" / "dense" / "runs" / "dense_BioASQ-task14bPhaseB-testset1.tsv",
+    #     "orig_tsv": base_dir / "bioasq14_output" / "batch_1" / "dense" / "runs" / "dense_BioASQ-task14bPhaseB-testset1.tsv",
+    #     "qrels_path": base_dir / "bioasq_data" / "14b" / "BioASQ-task14bPhaseB-testset1",
+    # },
+]
+
+n = len(HYDE_ORIG_RECALL_SPECS)
+fig, axes = plt.subplots(1, n, figsize=(5 * n, 4), sharey=True)
+if n == 1:
+    axes = [axes]
+
+for ax, spec in zip(axes, HYDE_ORIG_RECALL_SPECS):
+    split = spec["split"]
+    for path, label in [(spec["hyde_tsv"], "hyde"), (spec["orig_tsv"], "orig")]:
+        if not path.exists():
+            raise FileNotFoundError(f"Missing {label} run: {path}")
+    if not spec["qrels_path"].exists():
+        raise FileNotFoundError(f"Missing qrels: {spec['qrels_path']}")
+
+    gold = _load_qrels(spec["qrels_path"])
+    run_h = _build_run_map(_load_run(spec["hyde_tsv"]))
+    run_o = _build_run_map(_load_run(spec["orig_tsv"]))
+
+    # RRF fusion line (w_hyde=0.6, w_orig=0.4)
+    fused_map: dict[str, list[str]] = {}
+    qids = sorted(set(run_h.keys()) | set(run_o.keys()), key=str)
+    for qid in qids:
+        docs_h = run_h.get(qid, [])
+        docs_o = run_o.get(qid, [])
+        pool_h = min(RUN_POOL_TOP, len(docs_h)) if docs_h else 0
+        pool_o = min(RUN_POOL_TOP, len(docs_o)) if docs_o else 0
+        fused_map[qid] = _rrf_fuse_two_lists(
+            docs_h,
+            docs_o,
+            pool_h,
+            pool_o,
+            k_rrf=60,
+            w_a=0.6,
+            w_b=0.4,
+        )[:RUN_POOL_TOP]
+
+    c_h = mean_recall_curve(gold, run_h, RECALL_CURVE_KS)
+    c_o = mean_recall_curve(gold, run_o, RECALL_CURVE_KS)
+    c_f = mean_recall_curve(gold, fused_map, RECALL_CURVE_KS)
+
+    xs = RECALL_CURVE_KS
+    ax.plot(xs, [c_h[k] for k in xs], marker='o', linewidth=1.6, label='HyDE')
+    ax.plot(xs, [c_o[k] for k in xs], marker='o', linewidth=1.6, label='Original')
+    # ax.plot(xs, [c_f[k] for k in xs], marker='o', linewidth=1.6, label='RRF w=(0.6,0.4)')
+
+    title = split_labels.get(split, split)
+    ax.set_title(title, fontsize=12, fontweight='bold')
+    ax.set_xlabel('K')
+    ax.grid(True, axis='y')
+
+axes[0].set_ylabel('Mean Recall@K')
+axes[-1].legend(loc='lower right', fontsize=14)
+plt.tight_layout()
+fig_path = output_dir / 'dense_hyde_vs_orig_recall_curves.png'
+plt.savefig(fig_path, dpi=150, bbox_inches='tight')
+print('Saved:', fig_path)
+plt.show()
+
+
+# %%
