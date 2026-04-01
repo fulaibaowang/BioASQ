@@ -55,7 +55,7 @@ mkdir -p "${APPTAINER_CACHEDIR}"
 # -----------------------------
 # Run inside container
 # -----------------------------
-srun apptainer exec \
+srun singularity exec \
   --cleanenv \
   "${APPTAINER_GPU_ARGS[@]}" \
   -B "${WORKDIR}:/work" \
