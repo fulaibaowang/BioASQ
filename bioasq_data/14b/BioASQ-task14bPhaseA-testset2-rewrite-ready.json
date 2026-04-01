@@ -1,0 +1,1124 @@
+{
+  "questions": [
+    {
+      "id": "69befbf985870e396d0000c1",
+      "type": "summary",
+      "body": "What are the genetics behind calico or tortoise male cats?",
+      "query_parse": {
+        "parsed_query": "What are the genetics behind calico or tortoiseshell male cats?",
+        "parsed_query_reason": "Normalized 'tortoise' to 'tortoiseshell' for accuracy.",
+        "hyde_enabled": true,
+        "hyde_reason": "A passage explaining the underlying chromosomal abnormalities will help retrieve relevant genetic studies.",
+        "hyde_text": "Calico and tortoiseshell coat colors in cats are typically sex-linked, requiring two X chromosomes to display the mosaic expression of orange and non-orange alleles. Male calico or tortoiseshell cats are rare and usually possess a chromosomal abnormality, most commonly Klinefelter syndrome (XXY karyotype). In some cases, male calico cats may result from chimerism or somatic mutations."
+      },
+      "body_normalized": "What are the genetics behind calico or tortoiseshell male cats?",
+      "body_hyde": "Calico and tortoiseshell coat colors in cats are typically sex-linked, requiring two X chromosomes to display the mosaic expression of orange and non-orange alleles. Male calico or tortoiseshell cats are rare and usually possess a chromosomal abnormality, most commonly Klinefelter syndrome (XXY karyotype). In some cases, male calico cats may result from chimerism or somatic mutations."
+    },
+    {
+      "id": "69b82e2c85870e396d000089",
+      "type": "factoid",
+      "body": "What is CPAP, in the context of sleep apnea?",
+      "query_parse": {
+        "parsed_query": "What is Continuous Positive Airway Pressure (CPAP), in the context of sleep apnea?",
+        "parsed_query_reason": "Expanded the acronym CPAP.",
+        "hyde_enabled": true,
+        "hyde_reason": "A brief description of the therapy and its mechanism improves semantic matching.",
+        "hyde_text": "Continuous Positive Airway Pressure (CPAP) is the gold standard treatment for obstructive sleep apnea (OSA). It works by delivering a steady stream of pressurized air through a mask, which acts as a pneumatic splint to keep the upper airway open during sleep. This prevents airway collapse, reducing apneic and hypopneic events, improving oxygen saturation, and alleviating daytime sleepiness."
+      },
+      "body_normalized": "What is Continuous Positive Airway Pressure (CPAP), in the context of sleep apnea?",
+      "body_hyde": "Continuous Positive Airway Pressure (CPAP) is the gold standard treatment for obstructive sleep apnea (OSA). It works by delivering a steady stream of pressurized air through a mask, which acts as a pneumatic splint to keep the upper airway open during sleep. This prevents airway collapse, reducing apneic and hypopneic events, improving oxygen saturation, and alleviating daytime sleepiness."
+    },
+    {
+      "id": "69b5234485870e396d00007b",
+      "type": "yesno",
+      "body": "Do anti-prion agents exist?",
+      "query_parse": {
+        "parsed_query": "Do anti-prion agents exist for the treatment of prion diseases?",
+        "parsed_query_reason": "Added context ('prion diseases') to clarify the target.",
+        "hyde_enabled": true,
+        "hyde_reason": "Discussing potential and experimental anti-prion compounds helps retrieve relevant pharmacological literature.",
+        "hyde_text": "Research into anti-prion agents has identified several compounds capable of reducing the accumulation of misfolded prion protein (PrPSc) in vitro and in animal models. Various therapeutic strategies, including small molecules (e.g., quinacrine, pentosan polysulfate), antibodies targeting PrPC, and RNA interference, have been investigated. Although promising preclinical results have been reported, clinical trials have yet to establish a highly effective and curative anti-prion drug for human transmissible spongiform encephalopathies."
+      },
+      "body_normalized": "Do anti-prion agents exist for the treatment of prion diseases?",
+      "body_hyde": "Research into anti-prion agents has identified several compounds capable of reducing the accumulation of misfolded prion protein (PrPSc) in vitro and in animal models. Various therapeutic strategies, including small molecules (e.g., quinacrine, pentosan polysulfate), antibodies targeting PrPC, and RNA interference, have been investigated. Although promising preclinical results have been reported, clinical trials have yet to establish a highly effective and curative anti-prion drug for human transmissible spongiform encephalopathies."
+    },
+    {
+      "id": "69bfd90985870e396d0000ca",
+      "type": "list",
+      "body": "What are the recently identified expression programs of myeloid cells in gliomas?",
+      "query_parse": {
+        "parsed_query": "What are the recently identified expression programs of myeloid cells in gliomas?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Generating a text with typical single-cell RNA-seq terms for glioma myeloid populations aids retrieval.",
+        "hyde_text": "Recent single-cell RNA sequencing (scRNA-seq) studies have revealed distinct transcriptional expression programs of glioma-associated macrophages and microglia (GAMMs). These myeloid cells in the glioblastoma microenvironment exhibit diverse states, including pro-inflammatory, immunosuppressive, and hypoxic signatures. Newly identified programs often highlight lipid metabolism, phagocytosis, and specific immune checkpoints that contribute to tumor progression and immune evasion."
+      },
+      "body_normalized": "What are the recently identified expression programs of myeloid cells in gliomas?",
+      "body_hyde": "Recent single-cell RNA sequencing (scRNA-seq) studies have revealed distinct transcriptional expression programs of glioma-associated macrophages and microglia (GAMMs). These myeloid cells in the glioblastoma microenvironment exhibit diverse states, including pro-inflammatory, immunosuppressive, and hypoxic signatures. Newly identified programs often highlight lipid metabolism, phagocytosis, and specific immune checkpoints that contribute to tumor progression and immune evasion."
+    },
+    {
+      "id": "69bee4ba85870e396d0000b6",
+      "type": "list",
+      "body": "Which drugs are used for medical treatment of Cushing's Syndrome?",
+      "query_parse": {
+        "parsed_query": "Which drugs are used for the medical treatment of Cushing's Syndrome?",
+        "parsed_query_reason": "Minor grammar adjustment.",
+        "hyde_enabled": true,
+        "hyde_reason": "Listing major drug classes and examples helps retrieve comprehensive clinical treatment guidelines.",
+        "hyde_text": "The medical treatment of Cushing's syndrome involves several classes of drugs aimed at reducing cortisol levels. These include steroidogenesis inhibitors such as ketoconazole, metyrapone, osilodrostat, and mitotane. Additionally, centrally acting agents like the somatostatin analog pasireotide and the dopamine agonist cabergoline target the pituitary tumor in Cushing's disease. Glucocorticoid receptor antagonists, such as mifepristone, are also used to block the peripheral effects of excess cortisol."
+      },
+      "body_normalized": "Which drugs are used for the medical treatment of Cushing's Syndrome?",
+      "body_hyde": "The medical treatment of Cushing's syndrome involves several classes of drugs aimed at reducing cortisol levels. These include steroidogenesis inhibitors such as ketoconazole, metyrapone, osilodrostat, and mitotane. Additionally, centrally acting agents like the somatostatin analog pasireotide and the dopamine agonist cabergoline target the pituitary tumor in Cushing's disease. Glucocorticoid receptor antagonists, such as mifepristone, are also used to block the peripheral effects of excess cortisol."
+    },
+    {
+      "id": "69be9cd885870e396d00009d",
+      "type": "summary",
+      "body": "What is Aceruloplasminemia?",
+      "query_parse": {
+        "parsed_query": "What is Aceruloplasminemia?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Providing a definition of the disease and its genetic basis will retrieve relevant clinical descriptions.",
+        "hyde_text": "Aceruloplasminemia is a rare autosomal recessive neurodegenerative disorder characterized by the absence of the copper-binding protein ceruloplasmin. Mutations in the CP gene lead to impaired iron export from cells, resulting in massive iron accumulation in the brain, liver, and pancreas. Clinical manifestations include progressive neurodegeneration (ataxia, cognitive decline), diabetes mellitus, and retinal degeneration, typically presenting in adulthood."
+      },
+      "body_normalized": "What is Aceruloplasminemia?",
+      "body_hyde": "Aceruloplasminemia is a rare autosomal recessive neurodegenerative disorder characterized by the absence of the copper-binding protein ceruloplasmin. Mutations in the CP gene lead to impaired iron export from cells, resulting in massive iron accumulation in the brain, liver, and pancreas. Clinical manifestations include progressive neurodegeneration (ataxia, cognitive decline), diabetes mellitus, and retinal degeneration, typically presenting in adulthood."
+    },
+    {
+      "id": "69b52a7785870e396d00007e",
+      "type": "yesno",
+      "body": "Can the lipid environment of the tumor microenvironment be used as a therapeutic target?",
+      "query_parse": {
+        "parsed_query": "Can the lipid environment of the tumor microenvironment be used as a therapeutic target?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Describing the rationale for targeting lipid metabolism in the TME improves retrieval of current oncology research.",
+        "hyde_text": "The lipid environment within the tumor microenvironment (TME) plays a critical role in modulating immune cell function and promoting tumor progression. Abnormal lipid accumulation and altered lipid metabolism can induce immunosuppressive phenotypes in macrophages and T cells. Consequently, targeting lipid metabolism—such as inhibiting lipid synthesis, modifying lipid transport, or blocking specific lipid signaling pathways—is emerging as a promising therapeutic strategy to reprogram the TME and enhance anti-tumor immunity."
+      },
+      "body_normalized": "Can the lipid environment of the tumor microenvironment be used as a therapeutic target?",
+      "body_hyde": "The lipid environment within the tumor microenvironment (TME) plays a critical role in modulating immune cell function and promoting tumor progression. Abnormal lipid accumulation and altered lipid metabolism can induce immunosuppressive phenotypes in macrophages and T cells. Consequently, targeting lipid metabolism—such as inhibiting lipid synthesis, modifying lipid transport, or blocking specific lipid signaling pathways—is emerging as a promising therapeutic strategy to reprogram the TME and enhance anti-tumor immunity."
+    },
+    {
+      "id": "69bfd6cf85870e396d0000c9",
+      "type": "factoid",
+      "body": "Which chemokine receptor is commonly implicated in recruitment of circulating monocytes into GBM tumors?",
+      "query_parse": {
+        "parsed_query": "Which chemokine receptor is commonly implicated in the recruitment of circulating monocytes into glioblastoma (GBM) tumors?",
+        "parsed_query_reason": "Expanded GBM to glioblastoma.",
+        "hyde_enabled": true,
+        "hyde_reason": "Describing the monocyte recruitment axis in GBM will retrieve relevant immunology and oncology papers.",
+        "hyde_text": "The recruitment of circulating monocytes into the glioblastoma (GBM) microenvironment is heavily dependent on specific chemokine signaling pathways. The CCL2-CCR2 axis is predominantly implicated in this process. Tumor-derived CCL2 strongly attracts CCR2-expressing monocytes, which subsequently differentiate into immunosuppressive tumor-associated macrophages (TAMs). Targeting the CCR2 receptor has been investigated as a strategy to reduce TAM infiltration and inhibit GBM progression."
+      },
+      "body_normalized": "Which chemokine receptor is commonly implicated in the recruitment of circulating monocytes into glioblastoma (GBM) tumors?",
+      "body_hyde": "The recruitment of circulating monocytes into the glioblastoma (GBM) microenvironment is heavily dependent on specific chemokine signaling pathways. The CCL2-CCR2 axis is predominantly implicated in this process. Tumor-derived CCL2 strongly attracts CCR2-expressing monocytes, which subsequently differentiate into immunosuppressive tumor-associated macrophages (TAMs). Targeting the CCR2 receptor has been investigated as a strategy to reduce TAM infiltration and inhibit GBM progression."
+    },
+    {
+      "id": "69bef8de85870e396d0000bf",
+      "type": "factoid",
+      "body": "What is the ocurance rate of Raynaud's phenomenon?",
+      "query_parse": {
+        "parsed_query": "What is the prevalence or occurrence rate of Raynaud's phenomenon?",
+        "parsed_query_reason": "Corrected spelling of 'occurance' and added 'prevalence' as a standard epidemiological synonym.",
+        "hyde_enabled": false,
+        "hyde_reason": "HyDE is disabled for specific epidemiological prevalence/rate queries to prevent hallucination of exact numbers.",
+        "hyde_text": ""
+      },
+      "body_normalized": "What is the prevalence or occurrence rate of Raynaud's phenomenon?",
+      "body_hyde": null
+    },
+    {
+      "id": "69c049c385870e396d0000cd",
+      "type": "factoid",
+      "body": "Marshall syndrome is associated with a mutaion in what gene?",
+      "query_parse": {
+        "parsed_query": "Marshall syndrome is associated with a mutation in what gene?",
+        "parsed_query_reason": "Corrected spelling of 'mutation'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Providing disease context and the likely gene family aids in retrieving precise genetic diagnostic literature.",
+        "hyde_text": "Marshall syndrome is a genetic disorder characterized by distinctive facial features, hearing loss, and eye abnormalities such as myopia and cataracts. It is primarily caused by mutations in the COL11A1 gene, which encodes the alpha 1 chain of type XI collagen. This places Marshall syndrome in the spectrum of type XI collagenopathies, closely related to Stickler syndrome."
+      },
+      "body_normalized": "Marshall syndrome is associated with a mutation in what gene?",
+      "body_hyde": "Marshall syndrome is a genetic disorder characterized by distinctive facial features, hearing loss, and eye abnormalities such as myopia and cataracts. It is primarily caused by mutations in the COL11A1 gene, which encodes the alpha 1 chain of type XI collagen. This places Marshall syndrome in the spectrum of type XI collagenopathies, closely related to Stickler syndrome."
+    },
+    {
+      "id": "69b3382885870e396d000075",
+      "type": "yesno",
+      "body": "Are cancer cells capable of inducing the transformation of normal cells into cancerous cells?",
+      "query_parse": {
+        "parsed_query": "Are cancer cells capable of inducing the transformation of normal cells into cancerous cells?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Describing mechanisms of paracrine signaling and exosome transfer helps retrieve papers on tumor microenvironment and bystander effects.",
+        "hyde_text": "Cancer cells can influence their surrounding microenvironment, potentially promoting the transformation of adjacent normal cells. This oncogenic signaling can occur through the transfer of extracellular vesicles (EVs) or exosomes containing mutant DNA, oncogenic microRNAs, and proteins. Additionally, tumor cells secrete cytokines and growth factors that induce genomic instability and metabolic reprogramming in neighboring stromal or epithelial cells, contributing to a pro-tumorigenic niche and potentially facilitating malignant transformation."
+      },
+      "body_normalized": "Are cancer cells capable of inducing the transformation of normal cells into cancerous cells?",
+      "body_hyde": "Cancer cells can influence their surrounding microenvironment, potentially promoting the transformation of adjacent normal cells. This oncogenic signaling can occur through the transfer of extracellular vesicles (EVs) or exosomes containing mutant DNA, oncogenic microRNAs, and proteins. Additionally, tumor cells secrete cytokines and growth factors that induce genomic instability and metabolic reprogramming in neighboring stromal or epithelial cells, contributing to a pro-tumorigenic niche and potentially facilitating malignant transformation."
+    },
+    {
+      "id": "69bf231285870e396d0000c2",
+      "type": "summary",
+      "body": "What are disease-associated microglia (DAM)?",
+      "query_parse": {
+        "parsed_query": "What are disease-associated microglia (DAM)?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Describing the DAM phenotype and standard markers improves retrieval of neuroimmunology literature.",
+        "hyde_text": "Disease-associated microglia (DAM) are a specialized state of microglial cells identified primarily in neurodegenerative conditions such as Alzheimer's disease (AD). Characterized by the downregulation of homeostatic markers (e.g., P2ry12, Cx3cr1) and the upregulation of phagocytic and lipid metabolism genes (e.g., Trem2, Apoe, Clec7a), DAM are thought to be a protective response aimed at clearing amyloid-beta plaques and apoptotic cells. The transition to the DAM phenotype is highly dependent on the TREM2 signaling pathway."
+      },
+      "body_normalized": "What are disease-associated microglia (DAM)?",
+      "body_hyde": "Disease-associated microglia (DAM) are a specialized state of microglial cells identified primarily in neurodegenerative conditions such as Alzheimer's disease (AD). Characterized by the downregulation of homeostatic markers (e.g., P2ry12, Cx3cr1) and the upregulation of phagocytic and lipid metabolism genes (e.g., Trem2, Apoe, Clec7a), DAM are thought to be a protective response aimed at clearing amyloid-beta plaques and apoptotic cells. The transition to the DAM phenotype is highly dependent on the TREM2 signaling pathway."
+    },
+    {
+      "id": "69becf4085870e396d0000a6",
+      "type": "summary",
+      "body": "What is the circadian rhythm?",
+      "query_parse": {
+        "parsed_query": "What is the circadian rhythm?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "A general biological definition helps capture high-quality overview papers.",
+        "hyde_text": "The circadian rhythm is an endogenous biological process that follows a roughly 24-hour cycle, regulating various physiological and behavioral functions. In mammals, the central pacemaker is located in the suprachiasmatic nucleus (SCN) of the hypothalamus, which synchronizes peripheral clocks throughout the body in response to environmental cues like light. At the molecular level, circadian rhythms are driven by autoregulatory transcription-translation feedback loops involving core clock genes such as CLOCK, BMAL1, PER, and CRY."
+      },
+      "body_normalized": "What is the circadian rhythm?",
+      "body_hyde": "The circadian rhythm is an endogenous biological process that follows a roughly 24-hour cycle, regulating various physiological and behavioral functions. In mammals, the central pacemaker is located in the suprachiasmatic nucleus (SCN) of the hypothalamus, which synchronizes peripheral clocks throughout the body in response to environmental cues like light. At the molecular level, circadian rhythms are driven by autoregulatory transcription-translation feedback loops involving core clock genes such as CLOCK, BMAL1, PER, and CRY."
+    },
+    {
+      "id": "69c1b9dc85870e396d0000cf",
+      "type": "list",
+      "body": "What disease/condition does  tenotomy treat?",
+      "query_parse": {
+        "parsed_query": "What disease or condition does a tenotomy treat?",
+        "parsed_query_reason": "Cleaned up formatting and spacing.",
+        "hyde_enabled": true,
+        "hyde_reason": "Listing common indications for the procedure aids in retrieving orthopedic and pediatric surgical literature.",
+        "hyde_text": "Tenotomy is a surgical procedure involving the division or cutting of a tendon to lengthen it or relieve tension. It is commonly used to treat orthopedic and musculoskeletal conditions characterized by severe muscle contractures or spasticity, such as cerebral palsy, clubfoot (talipes equinovarus), and severe tendinopathy. The Achilles tenotomy, for example, is a standard component of the Ponseti method for correcting clubfoot."
+      },
+      "body_normalized": "What disease or condition does a tenotomy treat?",
+      "body_hyde": "Tenotomy is a surgical procedure involving the division or cutting of a tendon to lengthen it or relieve tension. It is commonly used to treat orthopedic and musculoskeletal conditions characterized by severe muscle contractures or spasticity, such as cerebral palsy, clubfoot (talipes equinovarus), and severe tendinopathy. The Achilles tenotomy, for example, is a standard component of the Ponseti method for correcting clubfoot."
+    },
+    {
+      "id": "69b5231585870e396d00007a",
+      "type": "list",
+      "body": "Which antibiotics show the highest levels of resistance among pathogenic bacteria?",
+      "query_parse": {
+        "parsed_query": "Which antibiotics show the highest levels of resistance among pathogenic bacteria?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Providing examples of commonly resisted antibiotic classes and pathogens aligns with infectious disease literature.",
+        "hyde_text": "Antimicrobial resistance is a critical global health threat, with certain classes of antibiotics exhibiting particularly high resistance rates among pathogenic bacteria. Beta-lactam antibiotics, including penicillins, cephalosporins, and carbapenems, frequently encounter resistance via beta-lactamase production in Enterobacteriaceae. Additionally, high levels of resistance to fluoroquinolones, macrolides, and aminoglycosides are commonly observed in multidrug-resistant ESKAPE pathogens."
+      },
+      "body_normalized": "Which antibiotics show the highest levels of resistance among pathogenic bacteria?",
+      "body_hyde": "Antimicrobial resistance is a critical global health threat, with certain classes of antibiotics exhibiting particularly high resistance rates among pathogenic bacteria. Beta-lactam antibiotics, including penicillins, cephalosporins, and carbapenems, frequently encounter resistance via beta-lactamase production in Enterobacteriaceae. Additionally, high levels of resistance to fluoroquinolones, macrolides, and aminoglycosides are commonly observed in multidrug-resistant ESKAPE pathogens."
+    },
+    {
+      "id": "69bee0a985870e396d0000b4",
+      "type": "yesno",
+      "body": "Are leptin levels increased in patients with Cushing's Syndrome?",
+      "query_parse": {
+        "parsed_query": "Are leptin levels increased in patients with Cushing's Syndrome?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Discussing the physiological relationship between hypercortisolism, adiposity, and leptin helps target endocrine studies.",
+        "hyde_text": "Patients with Cushing's syndrome exhibit chronic hypercortisolism, which is often associated with central obesity, insulin resistance, and metabolic alterations. Studies have investigated circulating leptin levels in these patients, evaluating whether the increased adipose tissue mass and direct glucocorticoid effects lead to hyperleptinemia. Research generally demonstrates that serum leptin concentrations are elevated in Cushing's syndrome compared to healthy controls, correlating with body mass index (BMI) and fat mass."
+      },
+      "body_normalized": "Are leptin levels increased in patients with Cushing's Syndrome?",
+      "body_hyde": "Patients with Cushing's syndrome exhibit chronic hypercortisolism, which is often associated with central obesity, insulin resistance, and metabolic alterations. Studies have investigated circulating leptin levels in these patients, evaluating whether the increased adipose tissue mass and direct glucocorticoid effects lead to hyperleptinemia. Research generally demonstrates that serum leptin concentrations are elevated in Cushing's syndrome compared to healthy controls, correlating with body mass index (BMI) and fat mass."
+    },
+    {
+      "id": "69bb3a0785870e396d000091",
+      "type": "factoid",
+      "body": "What is condyloma acuminatum?",
+      "query_parse": {
+        "parsed_query": "What is condyloma acuminatum?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Providing the common name (genital warts) and viral etiology (HPV) helps retrieve clinical and dermatological texts.",
+        "hyde_text": "Condyloma acuminatum, commonly known as genital warts, is a highly contagious sexually transmitted infection caused by the human papillomavirus (HPV), primarily low-risk types 6 and 11. It presents as benign, flesh-colored, exophytic, and often cauliflower-like lesions on the anogenital mucosa or skin. While generally non-malignant, condyloma acuminatum can cause significant physical discomfort, and treatment involves topical immunomodulators or ablative therapies."
+      },
+      "body_normalized": "What is condyloma acuminatum?",
+      "body_hyde": "Condyloma acuminatum, commonly known as genital warts, is a highly contagious sexually transmitted infection caused by the human papillomavirus (HPV), primarily low-risk types 6 and 11. It presents as benign, flesh-colored, exophytic, and often cauliflower-like lesions on the anogenital mucosa or skin. While generally non-malignant, condyloma acuminatum can cause significant physical discomfort, and treatment involves topical immunomodulators or ablative therapies."
+    },
+    {
+      "id": "69b521eb85870e396d000077",
+      "type": "summary",
+      "body": "How can Fluorescence-Activated Cell Sorting (FACS) be used to analyze or separate heterogeneous populations of cancer cells within a tumor?",
+      "query_parse": {
+        "parsed_query": "How can Fluorescence-Activated Cell Sorting (FACS) be used to analyze or separate heterogeneous populations of cancer cells within a tumor?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Describing the methodological application of FACS in oncology research improves relevance scoring.",
+        "hyde_text": "Fluorescence-Activated Cell Sorting (FACS) is a powerful flow cytometry technique used to dissect intratumoral heterogeneity. By labeling single-cell suspensions derived from tumor tissue with fluorescently conjugated antibodies against specific surface or intracellular markers, FACS enables the precise identification, quantification, and isolation of distinct cancer cell subpopulations. This allows researchers to separate rare cell types, such as cancer stem cells, immune infiltrates, and drug-resistant clones, facilitating downstream genomic or functional assays."
+      },
+      "body_normalized": "How can Fluorescence-Activated Cell Sorting (FACS) be used to analyze or separate heterogeneous populations of cancer cells within a tumor?",
+      "body_hyde": "Fluorescence-Activated Cell Sorting (FACS) is a powerful flow cytometry technique used to dissect intratumoral heterogeneity. By labeling single-cell suspensions derived from tumor tissue with fluorescently conjugated antibodies against specific surface or intracellular markers, FACS enables the precise identification, quantification, and isolation of distinct cancer cell subpopulations. This allows researchers to separate rare cell types, such as cancer stem cells, immune infiltrates, and drug-resistant clones, facilitating downstream genomic or functional assays."
+    },
+    {
+      "id": "69bee93c85870e396d0000b8",
+      "type": "summary",
+      "body": "What is the standard mortality ratio (SMR) for patients with Cushing's Disease?",
+      "query_parse": {
+        "parsed_query": "What is the standard mortality ratio (SMR) for patients with Cushing's Disease?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": false,
+        "hyde_reason": "HyDE is disabled for specific numeric statistics (SMR) to avoid hallucinating values.",
+        "hyde_text": ""
+      },
+      "body_normalized": "What is the standard mortality ratio (SMR) for patients with Cushing's Disease?",
+      "body_hyde": null
+    },
+    {
+      "id": "69a4d0b885870e396d00000a",
+      "type": "summary",
+      "body": "What is acromegaly?",
+      "query_parse": {
+        "parsed_query": "What is acromegaly?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Providing a clear endocrinological definition retrieves standard diagnostic literature.",
+        "hyde_text": "Acromegaly is a rare, chronic endocrine disorder characterized by the excessive secretion of growth hormone (GH), most commonly due to a benign pituitary adenoma. In adults, the elevated GH and subsequent overproduction of insulin-like growth factor 1 (IGF-1) lead to somatic overgrowth, particularly of the hands, feet, and facial bones. Clinical manifestations also include soft tissue swelling, joint pain, cardiovascular disease, and metabolic abnormalities such as glucose intolerance."
+      },
+      "body_normalized": "What is acromegaly?",
+      "body_hyde": "Acromegaly is a rare, chronic endocrine disorder characterized by the excessive secretion of growth hormone (GH), most commonly due to a benign pituitary adenoma. In adults, the elevated GH and subsequent overproduction of insulin-like growth factor 1 (IGF-1) lead to somatic overgrowth, particularly of the hands, feet, and facial bones. Clinical manifestations also include soft tissue swelling, joint pain, cardiovascular disease, and metabolic abnormalities such as glucose intolerance."
+    },
+    {
+      "id": "69b5281785870e396d00007d",
+      "type": "summary",
+      "body": "How could a missing SRP affect the cell and its neighboring cells?",
+      "query_parse": {
+        "parsed_query": "How could a missing signal recognition particle (SRP) affect the cell and its neighboring cells?",
+        "parsed_query_reason": "Expanded SRP to signal recognition particle for clarity.",
+        "hyde_enabled": true,
+        "hyde_reason": "Explaining the cellular consequences of ER targeting failure provides a strong conceptual bridge.",
+        "hyde_text": "The signal recognition particle (SRP) is essential for targeting secretory and membrane proteins to the endoplasmic reticulum (ER). A missing or defective SRP would cause a failure in the co-translational translocation of these proteins, leading to their misfolding and accumulation in the cytosol. This triggers severe proteotoxic stress, ER stress, and the unfolded protein response (UPR). For neighboring cells, the lack of secreted proteins (such as cytokines or extracellular matrix components) from the affected cell would disrupt intercellular communication and local tissue homeostasis."
+      },
+      "body_normalized": "How could a missing signal recognition particle (SRP) affect the cell and its neighboring cells?",
+      "body_hyde": "The signal recognition particle (SRP) is essential for targeting secretory and membrane proteins to the endoplasmic reticulum (ER). A missing or defective SRP would cause a failure in the co-translational translocation of these proteins, leading to their misfolding and accumulation in the cytosol. This triggers severe proteotoxic stress, ER stress, and the unfolded protein response (UPR). For neighboring cells, the lack of secreted proteins (such as cytokines or extracellular matrix components) from the affected cell would disrupt intercellular communication and local tissue homeostasis."
+    },
+    {
+      "id": "69bed34d85870e396d0000a7",
+      "type": "list",
+      "body": "What are the key psychophysiological characteristics of the burnout syndrome?",
+      "query_parse": {
+        "parsed_query": "What are the key psychophysiological characteristics of burnout syndrome?",
+        "parsed_query_reason": "Removed 'the' before burnout syndrome for natural phrasing.",
+        "hyde_enabled": true,
+        "hyde_reason": "Listing standard physiological correlates of burnout targets occupational health literature.",
+        "hyde_text": "Burnout syndrome is a state of chronic occupational stress characterized by emotional exhaustion, depersonalization, and reduced personal accomplishment. Psychophysiologically, burnout is associated with dysregulation of the hypothalamic-pituitary-adrenal (HPA) axis, often manifesting as altered cortisol awakening responses and blunted diurnal cortisol rhythms. Additionally, patients frequently exhibit autonomic nervous system dysfunction, systemic low-grade inflammation, impaired sleep architecture, cardiovascular alterations, and cognitive deficits."
+      },
+      "body_normalized": "What are the key psychophysiological characteristics of burnout syndrome?",
+      "body_hyde": "Burnout syndrome is a state of chronic occupational stress characterized by emotional exhaustion, depersonalization, and reduced personal accomplishment. Psychophysiologically, burnout is associated with dysregulation of the hypothalamic-pituitary-adrenal (HPA) axis, often manifesting as altered cortisol awakening responses and blunted diurnal cortisol rhythms. Additionally, patients frequently exhibit autonomic nervous system dysfunction, systemic low-grade inflammation, impaired sleep architecture, cardiovascular alterations, and cognitive deficits."
+    },
+    {
+      "id": "69be997585870e396d00009b",
+      "type": "yesno",
+      "body": "Is Telangiectasia-ectodermal dysplasia-brachydactyly-cardiac anomaly (TEBC) syndrome, a rare autosomal recessive condition, recently linked to the protein kinase D1 (PRKD1) gene?",
+      "query_parse": {
+        "parsed_query": "Is Telangiectasia-ectodermal dysplasia-brachydactyly-cardiac anomaly (TEBC) syndrome linked to the protein kinase D1 (PRKD1) gene?",
+        "parsed_query_reason": "Removed conversational/descriptive filler to focus on the core gene-disease relation.",
+        "hyde_enabled": true,
+        "hyde_reason": "Providing a passage affirming the genetic linkage assists in retrieving the exact target papers.",
+        "hyde_text": "Telangiectasia-ectodermal dysplasia-brachydactyly-cardiac anomaly (TEBC) syndrome is a rare autosomal recessive disorder. Recent genetic studies and whole-exome sequencing have investigated the molecular etiology of TEBC syndrome. Research has identified biallelic loss-of-function mutations in the protein kinase D1 (PRKD1) gene as the causative genetic defect, linking PRKD1 dysfunction to the pleiotropic developmental abnormalities observed in affected patients."
+      },
+      "body_normalized": "Is Telangiectasia-ectodermal dysplasia-brachydactyly-cardiac anomaly (TEBC) syndrome linked to the protein kinase D1 (PRKD1) gene?",
+      "body_hyde": "Telangiectasia-ectodermal dysplasia-brachydactyly-cardiac anomaly (TEBC) syndrome is a rare autosomal recessive disorder. Recent genetic studies and whole-exome sequencing have investigated the molecular etiology of TEBC syndrome. Research has identified biallelic loss-of-function mutations in the protein kinase D1 (PRKD1) gene as the causative genetic defect, linking PRKD1 dysfunction to the pleiotropic developmental abnormalities observed in affected patients."
+    },
+    {
+      "id": "69b52c7585870e396d000080",
+      "type": "factoid",
+      "body": "Which chromosome is most frequently lost in cells?",
+      "query_parse": {
+        "parsed_query": "Which chromosome is most frequently lost in human cells?",
+        "parsed_query_reason": "Added 'human' to specify the biological context.",
+        "hyde_enabled": true,
+        "hyde_reason": "Discussing Loss of Y (LOY) as a common somatic event provides strong keywords.",
+        "hyde_text": "Loss of chromosome Y (LOY) in peripheral blood leukocytes is the most common acquired somatic mutation in aging men. This age-related mosaicism is frequently observed in hematopoietic cells and has been associated with an increased risk of various age-related diseases, including cancer, cardiovascular disease, and Alzheimer's disease. While certain autosomes may undergo loss of heterozygosity in tumors, mosaic loss of the Y chromosome remains the most prevalent whole-chromosome loss at the population level."
+      },
+      "body_normalized": "Which chromosome is most frequently lost in human cells?",
+      "body_hyde": "Loss of chromosome Y (LOY) in peripheral blood leukocytes is the most common acquired somatic mutation in aging men. This age-related mosaicism is frequently observed in hematopoietic cells and has been associated with an increased risk of various age-related diseases, including cancer, cardiovascular disease, and Alzheimer's disease. While certain autosomes may undergo loss of heterozygosity in tumors, mosaic loss of the Y chromosome remains the most prevalent whole-chromosome loss at the population level."
+    },
+    {
+      "id": "69bec97185870e396d0000a4",
+      "type": "yesno",
+      "body": "Do cortisol levels drop at the onset of sleep?",
+      "query_parse": {
+        "parsed_query": "Do cortisol levels drop at the onset of sleep?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Describing the diurnal rhythm of cortisol aids in retrieving endocrinology and sleep medicine literature.",
+        "hyde_text": "Cortisol, the primary glucocorticoid regulated by the hypothalamic-pituitary-adrenal (HPA) axis, follows a distinct circadian rhythm. In healthy individuals, cortisol levels peak in the early morning (the cortisol awakening response) and gradually decline throughout the day. At the onset of sleep, particularly during the early nocturnal hours, cortisol levels reach their nadir. This suppression of cortisol is essential for the consolidation of slow-wave sleep, and disruptions in this decline are often linked to insomnia and stress."
+      },
+      "body_normalized": "Do cortisol levels drop at the onset of sleep?",
+      "body_hyde": "Cortisol, the primary glucocorticoid regulated by the hypothalamic-pituitary-adrenal (HPA) axis, follows a distinct circadian rhythm. In healthy individuals, cortisol levels peak in the early morning (the cortisol awakening response) and gradually decline throughout the day. At the onset of sleep, particularly during the early nocturnal hours, cortisol levels reach their nadir. This suppression of cortisol is essential for the consolidation of slow-wave sleep, and disruptions in this decline are often linked to insomnia and stress."
+    },
+    {
+      "id": "69a5776585870e396d00000b",
+      "type": "factoid",
+      "body": "What is D3-creatine (D3-Cr) dilution used for?",
+      "query_parse": {
+        "parsed_query": "What is D3-creatine (D3-Cr) dilution used for?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Explaining its use in measuring muscle mass helps retrieve relevant physiological studies.",
+        "hyde_text": "The D3-creatine (D3-Cr) dilution method is an innovative, non-invasive technique used to accurately measure total body skeletal muscle mass. By administering a known dose of deuterium-labeled creatine (D3-creatine), which is taken up almost exclusively by skeletal muscle, and subsequently measuring the enrichment of D3-creatinine in the urine, researchers can calculate the total creatine pool size. This provides a direct and highly precise assessment of functional muscle mass, which is particularly valuable in diagnosing sarcopenia."
+      },
+      "body_normalized": "What is D3-creatine (D3-Cr) dilution used for?",
+      "body_hyde": "The D3-creatine (D3-Cr) dilution method is an innovative, non-invasive technique used to accurately measure total body skeletal muscle mass. By administering a known dose of deuterium-labeled creatine (D3-creatine), which is taken up almost exclusively by skeletal muscle, and subsequently measuring the enrichment of D3-creatinine in the urine, researchers can calculate the total creatine pool size. This provides a direct and highly precise assessment of functional muscle mass, which is particularly valuable in diagnosing sarcopenia."
+    },
+    {
+      "id": "69b532c685870e396d000087",
+      "type": "yesno",
+      "body": "Is it possible for two blood type O parents to have a child with blood type A or B?",
+      "query_parse": {
+        "parsed_query": "Is it possible for two blood type O parents to have a child with blood type A or B?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Mentioning the Bombay phenotype as the genetic exception provides the exact concept needed for retrieval.",
+        "hyde_text": "According to standard Mendelian genetics of the ABO blood group system, two parents with blood type O (genotype ii) can only pass on the 'i' allele, resulting in offspring who are also blood type O. However, extremely rare exceptions exist, such as the Bombay phenotype. If one parent has the Bombay phenotype (genetically carrying A or B alleles but lacking the H antigen required to express them, thus testing as type O), they can pass the A or B allele to their child, potentially resulting in a child with blood type A or B."
+      },
+      "body_normalized": "Is it possible for two blood type O parents to have a child with blood type A or B?",
+      "body_hyde": "According to standard Mendelian genetics of the ABO blood group system, two parents with blood type O (genotype ii) can only pass on the 'i' allele, resulting in offspring who are also blood type O. However, extremely rare exceptions exist, such as the Bombay phenotype. If one parent has the Bombay phenotype (genetically carrying A or B alleles but lacking the H antigen required to express them, thus testing as type O), they can pass the A or B allele to their child, potentially resulting in a child with blood type A or B."
+    },
+    {
+      "id": "69beda9585870e396d0000a9",
+      "type": "yesno",
+      "body": "Does stress impact eating behaviors?",
+      "query_parse": {
+        "parsed_query": "Does stress impact eating behaviors?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Providing a summary of the neuroendocrine links between stress and hyperphagia/hypophagia retrieves behavioral nutrition literature.",
+        "hyde_text": "Psychological and physiological stress significantly impacts eating behaviors through complex neuroendocrine pathways. Acute stress often suppresses appetite via the release of corticotropin-releasing hormone (CRH) and sympathetic nervous system activation. In contrast, chronic stress frequently leads to hyperphagia and a preference for highly palatable, calorie-dense 'comfort foods.' This stress-induced eating is largely mediated by prolonged elevation of glucocorticoids (cortisol), which interact with reward pathways and metabolic hormones."
+      },
+      "body_normalized": "Does stress impact eating behaviors?",
+      "body_hyde": "Psychological and physiological stress significantly impacts eating behaviors through complex neuroendocrine pathways. Acute stress often suppresses appetite via the release of corticotropin-releasing hormone (CRH) and sympathetic nervous system activation. In contrast, chronic stress frequently leads to hyperphagia and a preference for highly palatable, calorie-dense 'comfort foods.' This stress-induced eating is largely mediated by prolonged elevation of glucocorticoids (cortisol), which interact with reward pathways and metabolic hormones."
+    },
+    {
+      "id": "69bf332185870e396d0000c8",
+      "type": "summary",
+      "body": "What is Hesperetin?",
+      "query_parse": {
+        "parsed_query": "What is Hesperetin?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Defining the compound and its general pharmacological properties helps retrieve biochemistry papers.",
+        "hyde_text": "Hesperetin is a natural flavanone, a type of dietary flavonoid predominantly found in citrus fruits such as oranges and grapefruits. It is the aglycone form of hesperidin. Hesperetin has been widely studied for its diverse biological and pharmacological properties, including potent antioxidant, anti-inflammatory, neuroprotective, and cardioprotective effects. It exerts these benefits by modulating various intracellular signaling pathways and scavenging reactive oxygen species."
+      },
+      "body_normalized": "What is Hesperetin?",
+      "body_hyde": "Hesperetin is a natural flavanone, a type of dietary flavonoid predominantly found in citrus fruits such as oranges and grapefruits. It is the aglycone form of hesperidin. Hesperetin has been widely studied for its diverse biological and pharmacological properties, including potent antioxidant, anti-inflammatory, neuroprotective, and cardioprotective effects. It exerts these benefits by modulating various intracellular signaling pathways and scavenging reactive oxygen species."
+    },
+    {
+      "id": "69b52cf585870e396d000083",
+      "type": "summary",
+      "body": "How does carbon monoxide (CO) poisoning occur?",
+      "query_parse": {
+        "parsed_query": "How does carbon monoxide (CO) poisoning occur?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Explaining the mechanism of carboxyhemoglobin formation provides strong pathophysiological keywords.",
+        "hyde_text": "Carbon monoxide (CO) poisoning occurs when carbon monoxide gas, produced by the incomplete combustion of carbon-containing fuels, is inhaled and enters the bloodstream. CO has an affinity for hemoglobin that is approximately 200 to 250 times greater than that of oxygen, leading to the formation of carboxyhemoglobin (COHb). This not only limits the oxygen-carrying capacity of the blood but also shifts the oxygen dissociation curve to the left, preventing oxygen release to tissues, thereby causing severe tissue hypoxia."
+      },
+      "body_normalized": "How does carbon monoxide (CO) poisoning occur?",
+      "body_hyde": "Carbon monoxide (CO) poisoning occurs when carbon monoxide gas, produced by the incomplete combustion of carbon-containing fuels, is inhaled and enters the bloodstream. CO has an affinity for hemoglobin that is approximately 200 to 250 times greater than that of oxygen, leading to the formation of carboxyhemoglobin (COHb). This not only limits the oxygen-carrying capacity of the blood but also shifts the oxygen dissociation curve to the left, preventing oxygen release to tissues, thereby causing severe tissue hypoxia."
+    },
+    {
+      "id": "69bef97785870e396d0000c0",
+      "type": "summary",
+      "body": "What are the symptoms of Raynaud's phenomenon?",
+      "query_parse": {
+        "parsed_query": "What are the symptoms of Raynaud's phenomenon?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Describing the classic triphasic color change and sensory symptoms targets clinical descriptions.",
+        "hyde_text": "Raynaud's phenomenon is a vascular disorder characterized by episodic vasospasms of the peripheral arterioles, typically in the fingers and toes, in response to cold temperatures or emotional stress. The classic presentation involves a triphasic color change in the affected digits: initial pallor (white) due to ischemia, followed by cyanosis (blue) due to deoxygenation, and finally erythema (red) upon reperfusion (reactive hyperemia). Patients often experience accompanying symptoms such as numbness, tingling, and pain."
+      },
+      "body_normalized": "What are the symptoms of Raynaud's phenomenon?",
+      "body_hyde": "Raynaud's phenomenon is a vascular disorder characterized by episodic vasospasms of the peripheral arterioles, typically in the fingers and toes, in response to cold temperatures or emotional stress. The classic presentation involves a triphasic color change in the affected digits: initial pallor (white) due to ischemia, followed by cyanosis (blue) due to deoxygenation, and finally erythema (red) upon reperfusion (reactive hyperemia). Patients often experience accompanying symptoms such as numbness, tingling, and pain."
+    },
+    {
+      "id": "69bb384685870e396d00008f",
+      "type": "factoid",
+      "body": "Is Wilson's disease (WD) an autosomal recessive or an autosomal dominant disorder characterized by abnormal copper metabolism?",
+      "query_parse": {
+        "parsed_query": "Is Wilson's disease (WD) an autosomal recessive or an autosomal dominant disorder?",
+        "parsed_query_reason": "Shortened the query by removing the descriptive clause 'characterized by abnormal copper metabolism'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Stating the exact inheritance pattern and gene aids in retrieving genetic diagnostics.",
+        "hyde_text": "Wilson's disease (WD) is a rare genetic disorder characterized by impaired copper metabolism, leading to toxic accumulation of copper primarily in the liver and brain. It is inherited in an autosomal recessive manner. The disease is caused by biallelic mutations in the ATP7B gene, which encodes a copper-transporting P-type ATPase essential for the excretion of excess copper into bile. Because it is autosomal recessive, individuals must inherit two defective copies of the gene."
+      },
+      "body_normalized": "Is Wilson's disease (WD) an autosomal recessive or an autosomal dominant disorder?",
+      "body_hyde": "Wilson's disease (WD) is a rare genetic disorder characterized by impaired copper metabolism, leading to toxic accumulation of copper primarily in the liver and brain. It is inherited in an autosomal recessive manner. The disease is caused by biallelic mutations in the ATP7B gene, which encodes a copper-transporting P-type ATPase essential for the excretion of excess copper into bile. Because it is autosomal recessive, individuals must inherit two defective copies of the gene."
+    },
+    {
+      "id": "69b5228285870e396d000078",
+      "type": "summary",
+      "body": "How does the GAL4/UAS system combined with RNAi enable targeted gene silencing?",
+      "query_parse": {
+        "parsed_query": "How does the GAL4/UAS system combined with RNA interference (RNAi) enable targeted gene silencing?",
+        "parsed_query_reason": "Expanded RNAi to RNA interference.",
+        "hyde_enabled": true,
+        "hyde_reason": "Explaining the mechanics of this genetic tool in Drosophila provides excellent context for molecular biology retrieval.",
+        "hyde_text": "The GAL4/UAS system combined with RNA interference (RNAi) is a powerful genetic tool used primarily in Drosophila to achieve spatial and temporal control of gene silencing. The system utilizes the yeast transcription factor GAL4, expressed under a tissue-specific promoter, to bind to the Upstream Activating Sequence (UAS). When crossed with transgenic flies carrying a UAS-driven short hairpin RNA (shRNA), GAL4 drives the transcription of the RNAi construct only in specific tissues, triggering endogenous Dicer/RISC pathways to degrade the target mRNA."
+      },
+      "body_normalized": "How does the GAL4/UAS system combined with RNA interference (RNAi) enable targeted gene silencing?",
+      "body_hyde": "The GAL4/UAS system combined with RNA interference (RNAi) is a powerful genetic tool used primarily in Drosophila to achieve spatial and temporal control of gene silencing. The system utilizes the yeast transcription factor GAL4, expressed under a tissue-specific promoter, to bind to the Upstream Activating Sequence (UAS). When crossed with transgenic flies carrying a UAS-driven short hairpin RNA (shRNA), GAL4 drives the transcription of the RNAi construct only in specific tissues, triggering endogenous Dicer/RISC pathways to degrade the target mRNA."
+    },
+    {
+      "id": "69bef13285870e396d0000bc",
+      "type": "factoid",
+      "body": "What is the recommended daily glucocorticoid replacement dose (DGRD) for patients with adrenal insufficiency?",
+      "query_parse": {
+        "parsed_query": "What is the recommended daily glucocorticoid replacement dose (DGRD) for patients with adrenal insufficiency?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": false,
+        "hyde_reason": "HyDE is disabled for specific dosage questions to prevent hallucinating exact numerical regimens.",
+        "hyde_text": ""
+      },
+      "body_normalized": "What is the recommended daily glucocorticoid replacement dose (DGRD) for patients with adrenal insufficiency?",
+      "body_hyde": null
+    },
+    {
+      "id": "69bdd44585870e396d000099",
+      "type": "factoid",
+      "body": "What does the M in AIM(AKA  CD5L), a protein associated with apoptosis, stand for?",
+      "query_parse": {
+        "parsed_query": "What does the M in AIM (CD5L), a protein associated with apoptosis, stand for?",
+        "parsed_query_reason": "Cleaned up punctuation and spacing.",
+        "hyde_enabled": true,
+        "hyde_reason": "Providing the full name of the protein clarifies the acronym for retrieval.",
+        "hyde_text": "AIM, also known as CD5L (CD5 molecule-like) or Spalpha, is a soluble scavenger receptor cysteine-rich (SRCR) protein predominantly secreted by tissue macrophages. In the context of the acronym AIM, it stands for Apoptosis Inhibitor of Macrophages. AIM plays a crucial role in regulating innate immunity, lipid metabolism, and cell survival, notably by protecting macrophages from apoptosis induced by various stimuli."
+      },
+      "body_normalized": "What does the M in AIM (CD5L), a protein associated with apoptosis, stand for?",
+      "body_hyde": "AIM, also known as CD5L (CD5 molecule-like) or Spalpha, is a soluble scavenger receptor cysteine-rich (SRCR) protein predominantly secreted by tissue macrophages. In the context of the acronym AIM, it stands for Apoptosis Inhibitor of Macrophages. AIM plays a crucial role in regulating innate immunity, lipid metabolism, and cell survival, notably by protecting macrophages from apoptosis induced by various stimuli."
+    },
+    {
+      "id": "69b52cb485870e396d000081",
+      "type": "factoid",
+      "body": "How many polypeptides are encoded by mitochondrial DNA?",
+      "query_parse": {
+        "parsed_query": "How many polypeptides are encoded by human mitochondrial DNA?",
+        "parsed_query_reason": "Added 'human' to specify the organism, as this is standard in clinical/biomedical contexts.",
+        "hyde_enabled": false,
+        "hyde_reason": "HyDE is disabled for exact numeric counts.",
+        "hyde_text": ""
+      },
+      "body_normalized": "How many polypeptides are encoded by human mitochondrial DNA?",
+      "body_hyde": null
+    },
+    {
+      "id": "69becd7a85870e396d0000a5",
+      "type": "summary",
+      "body": "How does stress impact the immune system?",
+      "query_parse": {
+        "parsed_query": "How does stress impact the immune system?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summarizing the immunosuppressive effects of chronic stress via the HPA axis provides strong retrieval targets.",
+        "hyde_text": "Stress significantly impacts the immune system through the activation of the hypothalamic-pituitary-adrenal (HPA) axis and the sympathetic nervous system (SNS). Acute stress can temporarily enhance certain immune responses, promoting the mobilization of innate immune cells. However, chronic psychological or physical stress leads to prolonged elevation of glucocorticoids (e.g., cortisol) and catecholamines, which exert profound immunosuppressive and anti-inflammatory effects, suppressing T-cell functioning and altering cytokine profiles."
+      },
+      "body_normalized": "How does stress impact the immune system?",
+      "body_hyde": "Stress significantly impacts the immune system through the activation of the hypothalamic-pituitary-adrenal (HPA) axis and the sympathetic nervous system (SNS). Acute stress can temporarily enhance certain immune responses, promoting the mobilization of innate immune cells. However, chronic psychological or physical stress leads to prolonged elevation of glucocorticoids (e.g., cortisol) and catecholamines, which exert profound immunosuppressive and anti-inflammatory effects, suppressing T-cell functioning and altering cytokine profiles."
+    },
+    {
+      "id": "69a5783385870e396d00000c",
+      "type": "yesno",
+      "body": "Is chlormethiazole a neuroprotectant?",
+      "query_parse": {
+        "parsed_query": "Is chlormethiazole a neuroprotectant?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Describing the preclinical evidence for its neuroprotective effects aids in finding relevant pharmacological studies.",
+        "hyde_text": "Chlormethiazole (clomethiazole) is a sedative-hypnotic and anticonvulsant drug historically used for treating alcohol withdrawal and insomnia. Beyond its GABAergic effects, chlormethiazole has been extensively investigated for its potential neuroprotective properties. Preclinical studies in animal models of cerebral ischemia and traumatic brain injury have demonstrated that chlormethiazole can reduce infarct volume, attenuate excitotoxicity, and decrease neuronal apoptosis, although clinical trials in human stroke have been mixed."
+      },
+      "body_normalized": "Is chlormethiazole a neuroprotectant?",
+      "body_hyde": "Chlormethiazole (clomethiazole) is a sedative-hypnotic and anticonvulsant drug historically used for treating alcohol withdrawal and insomnia. Beyond its GABAergic effects, chlormethiazole has been extensively investigated for its potential neuroprotective properties. Preclinical studies in animal models of cerebral ischemia and traumatic brain injury have demonstrated that chlormethiazole can reduce infarct volume, attenuate excitotoxicity, and decrease neuronal apoptosis, although clinical trials in human stroke have been mixed."
+    },
+    {
+      "id": "69bedb4785870e396d0000aa",
+      "type": "summary",
+      "body": "How does RNA interference (RNAi) achieve gene silencing?",
+      "query_parse": {
+        "parsed_query": "How does RNA interference (RNAi) achieve gene silencing?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Detailing the Dicer/RISC pathway provides essential molecular biology vocabulary.",
+        "hyde_text": "RNA interference (RNAi) is an evolutionarily conserved biological mechanism that achieves post-transcriptional gene silencing. It is triggered by the presence of double-stranded RNA (dsRNA), which is cleaved by the endoribonuclease Dicer into short interfering RNAs (siRNAs) or microRNAs (miRNAs). These small RNA duplexes are then loaded into the RNA-induced silencing complex (RISC), where the guide strand directs the RISC to the complementary target messenger RNA (mRNA). Argonaute then cleaves the target mRNA, preventing protein synthesis."
+      },
+      "body_normalized": "How does RNA interference (RNAi) achieve gene silencing?",
+      "body_hyde": "RNA interference (RNAi) is an evolutionarily conserved biological mechanism that achieves post-transcriptional gene silencing. It is triggered by the presence of double-stranded RNA (dsRNA), which is cleaved by the endoribonuclease Dicer into short interfering RNAs (siRNAs) or microRNAs (miRNAs). These small RNA duplexes are then loaded into the RNA-induced silencing complex (RISC), where the guide strand directs the RISC to the complementary target messenger RNA (mRNA). Argonaute then cleaves the target mRNA, preventing protein synthesis."
+    },
+    {
+      "id": "69bedde085870e396d0000b2",
+      "type": "yesno",
+      "body": "Does stress only lead to overeating?",
+      "query_parse": {
+        "parsed_query": "Does stress only lead to overeating, or can it cause other changes in eating behavior?",
+        "parsed_query_reason": "Clarified the contrastive intent of the question.",
+        "hyde_enabled": true,
+        "hyde_reason": "Explaining the dual nature of stress-induced eating (hyperphagia vs. hypophagia) captures the full clinical picture.",
+        "hyde_text": "While chronic stress is frequently associated with hyperphagia and a preference for highly palatable, calorie-dense foods (comfort eating), stress does not solely lead to overeating. The impact of stress on eating behavior is highly individual and context-dependent. Acute or severe stress often induces hypophagia (undereating or loss of appetite) due to the release of corticotropin-releasing hormone (CRH) and sympathetic nervous system activation, which suppress gastrointestinal function."
+      },
+      "body_normalized": "Does stress only lead to overeating, or can it cause other changes in eating behavior?",
+      "body_hyde": "While chronic stress is frequently associated with hyperphagia and a preference for highly palatable, calorie-dense foods (comfort eating), stress does not solely lead to overeating. The impact of stress on eating behavior is highly individual and context-dependent. Acute or severe stress often induces hypophagia (undereating or loss of appetite) due to the release of corticotropin-releasing hormone (CRH) and sympathetic nervous system activation, which suppress gastrointestinal function."
+    },
+    {
+      "id": "69bdd8a785870e396d00009a",
+      "type": "summary",
+      "body": "What is the function of the Quaking protein?",
+      "query_parse": {
+        "parsed_query": "What is the function of the Quaking (QKI) protein?",
+        "parsed_query_reason": "Added the standard gene symbol (QKI) for better retrieval.",
+        "hyde_enabled": true,
+        "hyde_reason": "Describing its role as an RNA-binding protein in myelination and splicing provides excellent context.",
+        "hyde_text": "The Quaking (QKI) protein is a crucial RNA-binding protein belonging to the STAR (signal transduction and activation of RNA) family. It plays a multifaceted role in post-transcriptional gene regulation, including pre-mRNA splicing, mRNA transport, stabilization, and translation. QKI is predominantly expressed in the central and peripheral nervous systems, where it is essential for myelination and oligodendrocyte differentiation by regulating the RNA metabolism of myelin-associated genes."
+      },
+      "body_normalized": "What is the function of the Quaking (QKI) protein?",
+      "body_hyde": "The Quaking (QKI) protein is a crucial RNA-binding protein belonging to the STAR (signal transduction and activation of RNA) family. It plays a multifaceted role in post-transcriptional gene regulation, including pre-mRNA splicing, mRNA transport, stabilization, and translation. QKI is predominantly expressed in the central and peripheral nervous systems, where it is essential for myelination and oligodendrocyte differentiation by regulating the RNA metabolism of myelin-associated genes."
+    },
+    {
+      "id": "69bedd0485870e396d0000b0",
+      "type": "summary",
+      "body": "How does palm oil consumption affect human health?",
+      "query_parse": {
+        "parsed_query": "How does palm oil consumption affect human health?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summarizing the nutritional debate regarding saturated fats and phytonutrients aids in retrieving balanced dietary literature.",
+        "hyde_text": "The impact of palm oil consumption on human health is a subject of ongoing nutritional debate, primarily due to its high saturated fat content, specifically palmitic acid. High intake of saturated fats is traditionally associated with an increase in LDL cholesterol and a higher risk of cardiovascular disease (CVD). However, palm oil also contains beneficial phytonutrients, such as tocotrienols (vitamin E) and carotenoids, which possess antioxidant properties. The overall health effects depend on the dietary context and processing methods."
+      },
+      "body_normalized": "How does palm oil consumption affect human health?",
+      "body_hyde": "The impact of palm oil consumption on human health is a subject of ongoing nutritional debate, primarily due to its high saturated fat content, specifically palmitic acid. High intake of saturated fats is traditionally associated with an increase in LDL cholesterol and a higher risk of cardiovascular disease (CVD). However, palm oil also contains beneficial phytonutrients, such as tocotrienols (vitamin E) and carotenoids, which possess antioxidant properties. The overall health effects depend on the dietary context and processing methods."
+    },
+    {
+      "id": "69bebea685870e396d0000a1",
+      "type": "factoid",
+      "body": "What is the reoccurrence rate of Cushing's Disease?",
+      "query_parse": {
+        "parsed_query": "What is the recurrence rate of Cushing's Disease?",
+        "parsed_query_reason": "Corrected 'reoccurrence' to 'recurrence'.",
+        "hyde_enabled": false,
+        "hyde_reason": "HyDE is disabled for specific rate/percentage questions to prevent hallucinating exact numbers.",
+        "hyde_text": ""
+      },
+      "body_normalized": "What is the recurrence rate of Cushing's Disease?",
+      "body_hyde": null
+    },
+    {
+      "id": "69bb372685870e396d00008d",
+      "type": "summary",
+      "body": "What is Still's disease?",
+      "query_parse": {
+        "parsed_query": "What is Still's disease?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Providing the classic triad of symptoms and autoinflammatory nature retrieves specific rheumatology papers.",
+        "hyde_text": "Still's disease, encompassing both Systemic Juvenile Idiopathic Arthritis (sJIA) and Adult-Onset Still's Disease (AOSD), is a rare systemic autoinflammatory disorder of unknown etiology. It is characterized by a classic triad of high spiking daily fevers, an evanescent salmon-colored maculopapular rash, and arthritis or arthralgia. Other common clinical features include sore throat, lymphadenopathy, and striking leukocytosis with elevated inflammatory markers such as ferritin."
+      },
+      "body_normalized": "What is Still's disease?",
+      "body_hyde": "Still's disease, encompassing both Systemic Juvenile Idiopathic Arthritis (sJIA) and Adult-Onset Still's Disease (AOSD), is a rare systemic autoinflammatory disorder of unknown etiology. It is characterized by a classic triad of high spiking daily fevers, an evanescent salmon-colored maculopapular rash, and arthritis or arthralgia. Other common clinical features include sore throat, lymphadenopathy, and striking leukocytosis with elevated inflammatory markers such as ferritin."
+    },
+    {
+      "id": "69b52dba85870e396d000084",
+      "type": "yesno",
+      "body": "Can vimentin be used as a therapeutic target in cancer?",
+      "query_parse": {
+        "parsed_query": "Can vimentin be used as a therapeutic target in cancer?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Explaining vimentin's role in EMT and metastasis provides the rationale for targeting it.",
+        "hyde_text": "Vimentin, a type III intermediate filament protein, is canonically recognized as a marker of the epithelial-mesenchymal transition (EMT) and is frequently overexpressed in various solid tumors. Its overexpression is associated with increased tumor cell motility, invasion, metastasis, and poor clinical prognosis. Consequently, vimentin has emerged as a promising therapeutic target in oncology. Preclinical studies are exploring strategies to inhibit vimentin function, including small molecule inhibitors, monoclonal antibodies, and RNA interference."
+      },
+      "body_normalized": "Can vimentin be used as a therapeutic target in cancer?",
+      "body_hyde": "Vimentin, a type III intermediate filament protein, is canonically recognized as a marker of the epithelial-mesenchymal transition (EMT) and is frequently overexpressed in various solid tumors. Its overexpression is associated with increased tumor cell motility, invasion, metastasis, and poor clinical prognosis. Consequently, vimentin has emerged as a promising therapeutic target in oncology. Preclinical studies are exploring strategies to inhibit vimentin function, including small molecule inhibitors, monoclonal antibodies, and RNA interference."
+    },
+    {
+      "id": "69a66ed385870e396d000017",
+      "type": "summary",
+      "body": "What are the clinical tests to guide the differential diagnosis of hypercortisolism in humans?",
+      "query_parse": {
+        "parsed_query": "What are the clinical tests to guide the differential diagnosis of hypercortisolism in humans?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Listing standard endocrinology diagnostic tests bridges the query to clinical guidelines.",
+        "hyde_text": "The differential diagnosis of hypercortisolism (Cushing's syndrome) involves a stepwise biochemical approach. Initial screening tests include late-night salivary cortisol, 24-hour urinary free cortisol (UFC), and the 1-mg overnight dexamethasone suppression test (DST). Once hypercortisolism is confirmed, plasma ACTH levels are measured to distinguish between ACTH-dependent and ACTH-independent causes. Further differentiation utilizes the high-dose dexamethasone suppression test, CRH stimulation test, and inferior petrosal sinus sampling (IPSS)."
+      },
+      "body_normalized": "What are the clinical tests to guide the differential diagnosis of hypercortisolism in humans?",
+      "body_hyde": "The differential diagnosis of hypercortisolism (Cushing's syndrome) involves a stepwise biochemical approach. Initial screening tests include late-night salivary cortisol, 24-hour urinary free cortisol (UFC), and the 1-mg overnight dexamethasone suppression test (DST). Once hypercortisolism is confirmed, plasma ACTH levels are measured to distinguish between ACTH-dependent and ACTH-independent causes. Further differentiation utilizes the high-dose dexamethasone suppression test, CRH stimulation test, and inferior petrosal sinus sampling (IPSS)."
+    },
+    {
+      "id": "69bb37c185870e396d00008e",
+      "type": "yesno",
+      "body": "Is Dragged-fovea diplopia syndrome (DFDS) a type of double vision?",
+      "query_parse": {
+        "parsed_query": "Is Dragged-fovea diplopia syndrome (DFDS) a type of double vision?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Defining DFDS and its mechanism of causing diplopia aids in retrieving ophthalmology literature.",
+        "hyde_text": "Dragged-fovea diplopia syndrome (DFDS) is indeed a specific form of double vision (diplopia). It occurs when macular disease, such as an epiretinal membrane, macular pucker, or retinal detachment repair, mechanically displaces or 'drags' the fovea. This anatomical shift causes a misalignment of the visual axes between the two eyes, resulting in central binocular diplopia despite the peripheral visual fields remaining relatively aligned."
+      },
+      "body_normalized": "Is Dragged-fovea diplopia syndrome (DFDS) a type of double vision?",
+      "body_hyde": "Dragged-fovea diplopia syndrome (DFDS) is indeed a specific form of double vision (diplopia). It occurs when macular disease, such as an epiretinal membrane, macular pucker, or retinal detachment repair, mechanically displaces or 'drags' the fovea. This anatomical shift causes a misalignment of the visual axes between the two eyes, resulting in central binocular diplopia despite the peripheral visual fields remaining relatively aligned."
+    },
+    {
+      "id": "69bedc0985870e396d0000ad",
+      "type": "summary",
+      "body": "What are the differences between PI4KIIα and PI4KIIβ?",
+      "query_parse": {
+        "parsed_query": "What are the differences between PI4KIIα and PI4KIIβ?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Contrasting the localization and function of these two lipid kinase isoforms provides strong biochemical context.",
+        "hyde_text": "Phosphatidylinositol 4-kinase type II alpha (PI4KIIα) and beta (PI4KIIβ) are two distinct isoenzymes responsible for synthesizing phosphatidylinositol 4-phosphate (PI4P). While they share a highly conserved catalytic kinase domain, they differ significantly in their subcellular localization and physiological functions. PI4KIIα is heavily palmitoylated, firmly tethering it to the trans-Golgi network (TGN) and endosomes, where it regulates vesicular trafficking. In contrast, PI4KIIβ is primarily cytosolic but recruited to the Golgi and plasma membrane, participating in distinct pathways such as T-cell activation."
+      },
+      "body_normalized": "What are the differences between PI4KIIα and PI4KIIβ?",
+      "body_hyde": "Phosphatidylinositol 4-kinase type II alpha (PI4KIIα) and beta (PI4KIIβ) are two distinct isoenzymes responsible for synthesizing phosphatidylinositol 4-phosphate (PI4P). While they share a highly conserved catalytic kinase domain, they differ significantly in their subcellular localization and physiological functions. PI4KIIα is heavily palmitoylated, firmly tethering it to the trans-Golgi network (TGN) and endosomes, where it regulates vesicular trafficking. In contrast, PI4KIIβ is primarily cytosolic but recruited to the Golgi and plasma membrane, participating in distinct pathways such as T-cell activation."
+    },
+    {
+      "id": "69beb8eb85870e396d0000a0",
+      "type": "factoid",
+      "body": "How often is remission observed after surgery in patient's with Cushing's Disease?",
+      "query_parse": {
+        "parsed_query": "How often is remission observed after surgery in patients with Cushing's Disease?",
+        "parsed_query_reason": "Corrected grammar ('patient's' to 'patients').",
+        "hyde_enabled": false,
+        "hyde_reason": "HyDE is disabled for specific rate/frequency questions to avoid hallucinating exact percentages.",
+        "hyde_text": ""
+      },
+      "body_normalized": "How often is remission observed after surgery in patients with Cushing's Disease?",
+      "body_hyde": null
+    },
+    {
+      "id": "69bf2fab85870e396d0000c3",
+      "type": "list",
+      "body": "What are the 3 syptoms of  Austrian syndrome caused by Streptococcus pneumoniae.",
+      "query_parse": {
+        "parsed_query": "What are the three symptoms of Austrian syndrome caused by Streptococcus pneumoniae?",
+        "parsed_query_reason": "Corrected spelling of 'symptoms' and normalized spacing.",
+        "hyde_enabled": true,
+        "hyde_reason": "Providing the classic clinical triad ensures the correct diagnostic entity is targeted.",
+        "hyde_text": "Austrian syndrome is a rare and highly lethal clinical triad caused by invasive infection with Streptococcus pneumoniae (pneumococcus). The syndrome is classically characterized by the simultaneous presentation of three severe conditions: pneumonia, meningitis, and endocarditis. It typically affects individuals with underlying risk factors, most notably chronic alcohol abuse or functional asplenia."
+      },
+      "body_normalized": "What are the three symptoms of Austrian syndrome caused by Streptococcus pneumoniae?",
+      "body_hyde": "Austrian syndrome is a rare and highly lethal clinical triad caused by invasive infection with Streptococcus pneumoniae (pneumococcus). The syndrome is classically characterized by the simultaneous presentation of three severe conditions: pneumonia, meningitis, and endocarditis. It typically affects individuals with underlying risk factors, most notably chronic alcohol abuse or functional asplenia."
+    },
+    {
+      "id": "69bedbb585870e396d0000ac",
+      "type": "factoid",
+      "body": "What is the total number of lipid kinases in the human kinome?",
+      "query_parse": {
+        "parsed_query": "What is the total number of lipid kinases in the human kinome?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": false,
+        "hyde_reason": "HyDE is disabled for exact numeric counts.",
+        "hyde_text": ""
+      },
+      "body_normalized": "What is the total number of lipid kinases in the human kinome?",
+      "body_hyde": null
+    },
+    {
+      "id": "69ac812c85870e396d00006a",
+      "type": "summary",
+      "body": "What is the treatment of choice for adrenal Cushing's Syndrome?",
+      "query_parse": {
+        "parsed_query": "What is the treatment of choice for adrenal Cushing's Syndrome?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Stating the standard surgical intervention (adrenalectomy) targets clinical management guidelines.",
+        "hyde_text": "The treatment of choice for adrenal Cushing's syndrome, which is typically caused by a unilateral benign cortisol-producing adrenal adenoma, is surgical resection of the affected adrenal gland (unilateral adrenalectomy). Laparoscopic adrenalectomy is the preferred surgical approach due to its lower morbidity and faster recovery times. Following surgery, patients require temporary glucocorticoid replacement therapy until the suppressed contralateral adrenal gland recovers its normal function."
+      },
+      "body_normalized": "What is the treatment of choice for adrenal Cushing's Syndrome?",
+      "body_hyde": "The treatment of choice for adrenal Cushing's syndrome, which is typically caused by a unilateral benign cortisol-producing adrenal adenoma, is surgical resection of the affected adrenal gland (unilateral adrenalectomy). Laparoscopic adrenalectomy is the preferred surgical approach due to its lower morbidity and faster recovery times. Following surgery, patients require temporary glucocorticoid replacement therapy until the suppressed contralateral adrenal gland recovers its normal function."
+    },
+    {
+      "id": "69bb365285870e396d00008c",
+      "type": "yesno",
+      "body": "ia ABO incompatibility was considered an absolute contraindication to heart transplantation (HT) in adults.?",
+      "query_parse": {
+        "parsed_query": "Is ABO incompatibility considered an absolute contraindication to heart transplantation in adults?",
+        "parsed_query_reason": "Fixed the garbled prefix 'ia', rephrased as a standard question, and expanded HT.",
+        "hyde_enabled": true,
+        "hyde_reason": "Discussing the historical standard and current exceptions provides strong context for transplant immunology literature.",
+        "hyde_text": "Historically, ABO incompatibility has been considered an absolute contraindication to orthotopic heart transplantation (OHT) in adults due to the high risk of hyperacute rejection mediated by preformed isohemagglutinins. While ABO-incompatible heart transplantation has been successfully performed in infants, adult protocols strictly adhere to ABO-compatible matching. However, recent advances in desensitization strategies are prompting investigations into intentionally crossing the ABO barrier in highly selected adult patients."
+      },
+      "body_normalized": "Is ABO incompatibility considered an absolute contraindication to heart transplantation in adults?",
+      "body_hyde": "Historically, ABO incompatibility has been considered an absolute contraindication to orthotopic heart transplantation (OHT) in adults due to the high risk of hyperacute rejection mediated by preformed isohemagglutinins. While ABO-incompatible heart transplantation has been successfully performed in infants, adult protocols strictly adhere to ABO-compatible matching. However, recent advances in desensitization strategies are prompting investigations into intentionally crossing the ABO barrier in highly selected adult patients."
+    },
+    {
+      "id": "69b52a9185870e396d00007f",
+      "type": "list",
+      "body": "In which cells does loss of the Y chromosome (LOY) occur?",
+      "query_parse": {
+        "parsed_query": "In which cells does loss of the Y chromosome (LOY) primarily occur?",
+        "parsed_query_reason": "Added 'primarily' to focus on the most clinically relevant and studied cell types.",
+        "hyde_enabled": true,
+        "hyde_reason": "Identifying the hematopoietic lineage as the primary site of LOY helps retrieve relevant genetics papers.",
+        "hyde_text": "Loss of chromosome Y (LOY) is an age-related somatic mosaicism that occurs predominantly in the hematopoietic system. It is most frequently detected in peripheral blood leukocytes, including T cells, B cells, natural killer (NK) cells, monocytes, and granulocytes. While LOY can theoretically occur in other somatic tissues during aging, it is most prominent and extensively studied in the blood, where its clonal expansion has been linked to immune dysfunction."
+      },
+      "body_normalized": "In which cells does loss of the Y chromosome (LOY) primarily occur?",
+      "body_hyde": "Loss of chromosome Y (LOY) is an age-related somatic mosaicism that occurs predominantly in the hematopoietic system. It is most frequently detected in peripheral blood leukocytes, including T cells, B cells, natural killer (NK) cells, monocytes, and granulocytes. While LOY can theoretically occur in other somatic tissues during aging, it is most prominent and extensively studied in the blood, where its clonal expansion has been linked to immune dysfunction."
+    },
+    {
+      "id": "69abc8d185870e396d000057",
+      "type": "summary",
+      "body": "What is distribution of different subtypes within endogenous Cushing's Syndrome?",
+      "query_parse": {
+        "parsed_query": "What is the distribution of different subtypes within endogenous Cushing's Syndrome?",
+        "parsed_query_reason": "Added missing article 'the'.",
+        "hyde_enabled": false,
+        "hyde_reason": "HyDE is disabled for broad statistical distribution queries to avoid hallucinating specific epidemiological percentages.",
+        "hyde_text": ""
+      },
+      "body_normalized": "What is the distribution of different subtypes within endogenous Cushing's Syndrome?",
+      "body_hyde": null
+    },
+    {
+      "id": "69a5d9b085870e396d00000f",
+      "type": "factoid",
+      "body": "What are piRNAs?",
+      "query_parse": {
+        "parsed_query": "What are piRNAs (PIWI-interacting RNAs)?",
+        "parsed_query_reason": "Expanded piRNAs to PIWI-interacting RNAs.",
+        "hyde_enabled": true,
+        "hyde_reason": "Providing a basic molecular definition and function retrieves relevant molecular biology literature.",
+        "hyde_text": "PIWI-interacting RNAs (piRNAs) are a class of small non-coding RNAs, typically 24-31 nucleotides in length, that bind to PIWI proteins, a specific subclade of the Argonaute protein family. The primary function of the piRNA pathway is to maintain genome integrity, particularly in the germline, by silencing transposable elements at both the transcriptional and post-transcriptional levels."
+      },
+      "body_normalized": "What are piRNAs (PIWI-interacting RNAs)?",
+      "body_hyde": "PIWI-interacting RNAs (piRNAs) are a class of small non-coding RNAs, typically 24-31 nucleotides in length, that bind to PIWI proteins, a specific subclade of the Argonaute protein family. The primary function of the piRNA pathway is to maintain genome integrity, particularly in the germline, by silencing transposable elements at both the transcriptional and post-transcriptional levels."
+    },
+    {
+      "id": "69bedba385870e396d0000ab",
+      "type": "factoid",
+      "body": "What is the total number of protein kinases in the human kinome?",
+      "query_parse": {
+        "parsed_query": "What is the total number of protein kinases in the human kinome?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": false,
+        "hyde_reason": "HyDE is disabled for exact numeric counts.",
+        "hyde_text": ""
+      },
+      "body_normalized": "What is the total number of protein kinases in the human kinome?",
+      "body_hyde": null
+    },
+    {
+      "id": "69a6620d85870e396d000013",
+      "type": "summary",
+      "body": "What is the role of cortisol in the human body?",
+      "query_parse": {
+        "parsed_query": "What is the role of cortisol in the human body?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summarizing the broad metabolic and immune functions of cortisol aids in retrieving physiological overviews.",
+        "hyde_text": "Cortisol is the primary glucocorticoid hormone produced by the zona fasciculata of the adrenal cortex, essential for life and the maintenance of homeostasis. Its primary role involves mediating the body's response to stress by mobilizing energy reserves; it stimulates gluconeogenesis, lipolysis, and protein catabolism to increase blood glucose levels. Furthermore, cortisol exerts potent anti-inflammatory and immunosuppressive effects. It also regulates blood pressure, cardiovascular function, and the sleep-wake cycle."
+      },
+      "body_normalized": "What is the role of cortisol in the human body?",
+      "body_hyde": "Cortisol is the primary glucocorticoid hormone produced by the zona fasciculata of the adrenal cortex, essential for life and the maintenance of homeostasis. Its primary role involves mediating the body's response to stress by mobilizing energy reserves; it stimulates gluconeogenesis, lipolysis, and protein catabolism to increase blood glucose levels. Furthermore, cortisol exerts potent anti-inflammatory and immunosuppressive effects. It also regulates blood pressure, cardiovascular function, and the sleep-wake cycle."
+    },
+    {
+      "id": "69bb1f1685870e396d00008a",
+      "type": "yesno",
+      "body": "Are Phytoplasmas transmitted by plants?",
+      "query_parse": {
+        "parsed_query": "Are Phytoplasmas transmitted by plants?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Explaining the vector-borne transmission mechanism clarifies the biological reality.",
+        "hyde_text": "Phytoplasmas are obligate, cell wall-less bacterial pathogens that reside exclusively in the phloem tissue of infected plants. They are not transmitted directly from plant to plant by contact or seed. Instead, phytoplasmas rely on hemipteran insect vectors, primarily leafhoppers, planthoppers, and psyllids, for their transmission. The insects acquire the bacteria while feeding on the phloem sap of an infected plant and transmit it to healthy plants during subsequent feeding events."
+      },
+      "body_normalized": "Are Phytoplasmas transmitted by plants?",
+      "body_hyde": "Phytoplasmas are obligate, cell wall-less bacterial pathogens that reside exclusively in the phloem tissue of infected plants. They are not transmitted directly from plant to plant by contact or seed. Instead, phytoplasmas rely on hemipteran insect vectors, primarily leafhoppers, planthoppers, and psyllids, for their transmission. The insects acquire the bacteria while feeding on the phloem sap of an infected plant and transmit it to healthy plants during subsequent feeding events."
+    },
+    {
+      "id": "69b521c885870e396d000076",
+      "type": "list",
+      "body": "What are the most common non-cellular life forms?",
+      "query_parse": {
+        "parsed_query": "What are the most common non-cellular life forms?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Listing viruses, viroids, and prions aligns with fundamental biological classifications.",
+        "hyde_text": "The most common non-cellular life forms (or biological entities) are viruses. Viruses consist of genetic material (DNA or RNA) enclosed in a protein coat (capsid) and sometimes a lipid envelope, but they lack the cellular machinery required for independent metabolism and reproduction. Other non-cellular biological entities include viroids, which are infectious, small, circular RNA molecules that primarily cause plant diseases, and prions, which are infectious misfolded proteins."
+      },
+      "body_normalized": "What are the most common non-cellular life forms?",
+      "body_hyde": "The most common non-cellular life forms (or biological entities) are viruses. Viruses consist of genetic material (DNA or RNA) enclosed in a protein coat (capsid) and sometimes a lipid envelope, but they lack the cellular machinery required for independent metabolism and reproduction. Other non-cellular biological entities include viroids, which are infectious, small, circular RNA molecules that primarily cause plant diseases, and prions, which are infectious misfolded proteins."
+    },
+    {
+      "id": "69beec8c85870e396d0000ba",
+      "type": "yesno",
+      "body": "Can hypercortisolemia co-exist alongside anorexia nervosa?",
+      "query_parse": {
+        "parsed_query": "Can hypercortisolemia co-exist alongside anorexia nervosa?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Explaining functional hypercortisolism in starvation states retrieves specific neuroendocrine literature.",
+        "hyde_text": "Yes, hypercortisolemia is a well-documented neuroendocrine adaptation that frequently co-exists with anorexia nervosa. The severe caloric restriction, starvation, and psychological stress characteristic of anorexia nervosa chronically activate the hypothalamic-pituitary-adrenal (HPA) axis. This results in elevated basal levels of serum and urinary free cortisol. Unlike in Cushing's syndrome, this functional hypercortisolism typically lacks the classic physical features of Cushing's and usually resolves upon weight restoration."
+      },
+      "body_normalized": "Can hypercortisolemia co-exist alongside anorexia nervosa?",
+      "body_hyde": "Yes, hypercortisolemia is a well-documented neuroendocrine adaptation that frequently co-exists with anorexia nervosa. The severe caloric restriction, starvation, and psychological stress characteristic of anorexia nervosa chronically activate the hypothalamic-pituitary-adrenal (HPA) axis. This results in elevated basal levels of serum and urinary free cortisol. Unlike in Cushing's syndrome, this functional hypercortisolism typically lacks the classic physical features of Cushing's and usually resolves upon weight restoration."
+    },
+    {
+      "id": "69bc686885870e396d000096",
+      "type": "list",
+      "body": "List the diseases associated with Rhupus",
+      "query_parse": {
+        "parsed_query": "List the diseases associated with Rhupus syndrome.",
+        "parsed_query_reason": "Added 'syndrome' for clarity.",
+        "hyde_enabled": true,
+        "hyde_reason": "Naming the two constituent diseases (SLE and RA) guarantees retrieval of the correct overlap syndrome literature.",
+        "hyde_text": "Rhupus syndrome is a rare clinical overlap syndrome characterized by the simultaneous or sequential presentation of features from two distinct systemic autoimmune diseases: systemic lupus erythematosus (SLE) and rheumatoid arthritis (RA). Patients with rhupus exhibit the erosive, symmetric polyarthritis typical of RA, alongside clinical and immunological manifestations of SLE, such as malar rash, photosensitivity, hematological abnormalities, and the presence of highly specific autoantibodies."
+      },
+      "body_normalized": "List the diseases associated with Rhupus syndrome.",
+      "body_hyde": "Rhupus syndrome is a rare clinical overlap syndrome characterized by the simultaneous or sequential presentation of features from two distinct systemic autoimmune diseases: systemic lupus erythematosus (SLE) and rheumatoid arthritis (RA). Patients with rhupus exhibit the erosive, symmetric polyarthritis typical of RA, alongside clinical and immunological manifestations of SLE, such as malar rash, photosensitivity, hematological abnormalities, and the presence of highly specific autoantibodies."
+    },
+    {
+      "id": "69b5344085870e396d000088",
+      "type": "summary",
+      "body": "How does cocaine affect neurotransmitter receptors at neuronal synapses?",
+      "query_parse": {
+        "parsed_query": "How does cocaine affect neurotransmitters and receptors at neuronal synapses?",
+        "parsed_query_reason": "Slightly broadened to 'neurotransmitters and receptors' as cocaine primarily targets transporters which then affect receptors.",
+        "hyde_enabled": true,
+        "hyde_reason": "Detailing the mechanism of monoamine reuptake inhibition provides strong neuropharmacology terms.",
+        "hyde_text": "Cocaine exerts its primary psychostimulant and addictive effects by binding to and blocking monoamine transporters—specifically the dopamine transporter (DAT), serotonin transporter (SERT), and norepinephrine transporter (NET)—at neuronal synapses. By inhibiting the reuptake of these neurotransmitters, cocaine causes a profound and rapid accumulation of dopamine, serotonin, and norepinephrine in the synaptic cleft. This prolonged neurotransmitter presence overstimulates their respective postsynaptic receptors, particularly amplifying dopaminergic signaling in the mesolimbic reward pathway."
+      },
+      "body_normalized": "How does cocaine affect neurotransmitters and receptors at neuronal synapses?",
+      "body_hyde": "Cocaine exerts its primary psychostimulant and addictive effects by binding to and blocking monoamine transporters—specifically the dopamine transporter (DAT), serotonin transporter (SERT), and norepinephrine transporter (NET)—at neuronal synapses. By inhibiting the reuptake of these neurotransmitters, cocaine causes a profound and rapid accumulation of dopamine, serotonin, and norepinephrine in the synaptic cleft. This prolonged neurotransmitter presence overstimulates their respective postsynaptic receptors, particularly amplifying dopaminergic signaling in the mesolimbic reward pathway."
+    },
+    {
+      "id": "69bef5f785870e396d0000be",
+      "type": "list",
+      "body": "What are the signs of cognitive dysfunction syndrome (CDS) in cats?",
+      "query_parse": {
+        "parsed_query": "What are the signs of cognitive dysfunction syndrome (CDS) in cats?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Listing the standard DISHA signs of feline cognitive dysfunction aids veterinary literature retrieval.",
+        "hyde_text": "Cognitive Dysfunction Syndrome (CDS) in older cats is a progressive neurodegenerative condition analogous to Alzheimer's disease in humans. The clinical signs of feline CDS are commonly categorized by the acronym DISHA. This includes Disorientation (getting lost in familiar environments), altered Interactions with owners or other pets, Sleep-wake cycle disturbances (waking and vocalizing loudly at night), House-soiling (eliminating outside the litter box), and changes in Activity levels."
+      },
+      "body_normalized": "What are the signs of cognitive dysfunction syndrome (CDS) in cats?",
+      "body_hyde": "Cognitive Dysfunction Syndrome (CDS) in older cats is a progressive neurodegenerative condition analogous to Alzheimer's disease in humans. The clinical signs of feline CDS are commonly categorized by the acronym DISHA. This includes Disorientation (getting lost in familiar environments), altered Interactions with owners or other pets, Sleep-wake cycle disturbances (waking and vocalizing loudly at night), House-soiling (eliminating outside the litter box), and changes in Activity levels."
+    },
+    {
+      "id": "69bfefbd85870e396d0000cb",
+      "type": "list",
+      "body": "How is trapped neutrophil syndrome in Border Collies treated?",
+      "query_parse": {
+        "parsed_query": "How is trapped neutrophil syndrome in Border Collies treated?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Describing the palliative and supportive care approaches aligns with current veterinary management.",
+        "hyde_text": "Trapped Neutrophil Syndrome (TNS) is an autosomal recessive immunodeficiency disease in Border Collies, caused by a mutation in the VPS13B gene, which impairs the release of neutrophils from the bone marrow. Currently, there is no curative treatment for TNS. Management is primarily supportive and palliative, focusing on preventing and controlling secondary bacterial infections through prophylactic and aggressive antibiotic therapy. In some cases, systemic corticosteroids or granulocyte colony-stimulating factor (G-CSF) may be administered."
+      },
+      "body_normalized": "How is trapped neutrophil syndrome in Border Collies treated?",
+      "body_hyde": "Trapped Neutrophil Syndrome (TNS) is an autosomal recessive immunodeficiency disease in Border Collies, caused by a mutation in the VPS13B gene, which impairs the release of neutrophils from the bone marrow. Currently, there is no curative treatment for TNS. Management is primarily supportive and palliative, focusing on preventing and controlling secondary bacterial infections through prophylactic and aggressive antibiotic therapy. In some cases, systemic corticosteroids or granulocyte colony-stimulating factor (G-CSF) may be administered."
+    },
+    {
+      "id": "69a7f69885870e396d00001f",
+      "type": "yesno",
+      "body": "Could a highly active telomerase support cellular immortality?",
+      "query_parse": {
+        "parsed_query": "Could a highly active telomerase support cellular immortality?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Explaining the mechanism by which telomerase bypasses the Hayflick limit provides robust keywords.",
+        "hyde_text": "Yes, highly active telomerase can support cellular immortality. Telomerase is a ribonucleoprotein enzyme that elongates telomeres by adding repetitive DNA sequences to the ends of chromosomes. In normal somatic cells, telomerase activity is low or absent, leading to progressive telomere shortening and replicative senescence (the Hayflick limit). However, in germ cells, stem cells, and the vast majority of cancer cells, constitutive or highly upregulated telomerase expression maintains telomere length, thereby circumventing senescence and enabling unlimited replicative potential."
+      },
+      "body_normalized": "Could a highly active telomerase support cellular immortality?",
+      "body_hyde": "Yes, highly active telomerase can support cellular immortality. Telomerase is a ribonucleoprotein enzyme that elongates telomeres by adding repetitive DNA sequences to the ends of chromosomes. In normal somatic cells, telomerase activity is low or absent, leading to progressive telomere shortening and replicative senescence (the Hayflick limit). However, in germ cells, stem cells, and the vast majority of cancer cells, constitutive or highly upregulated telomerase expression maintains telomere length, thereby circumventing senescence and enabling unlimited replicative potential."
+    },
+    {
+      "id": "69bec77985870e396d0000a3",
+      "type": "factoid",
+      "body": "What is the median recovery time of the HPA axis after surgery for Cushing's Disease?",
+      "query_parse": {
+        "parsed_query": "What is the median recovery time of the HPA axis after surgery for Cushing's Disease?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": false,
+        "hyde_reason": "HyDE is disabled for specific timeframes to avoid hallucinating a specific median number of months/years.",
+        "hyde_text": ""
+      },
+      "body_normalized": "What is the median recovery time of the HPA axis after surgery for Cushing's Disease?",
+      "body_hyde": null
+    },
+    {
+      "id": "69adcf9285870e396d000072",
+      "type": "summary",
+      "body": "Please summarize the phenotypic changes in Coffin-Siris  Syndrome",
+      "query_parse": {
+        "parsed_query": "What are the phenotypic changes in Coffin-Siris Syndrome?",
+        "parsed_query_reason": "Changed to a direct question format and fixed spacing.",
+        "hyde_enabled": true,
+        "hyde_reason": "Listing the classic dysmorphic features and developmental delays ensures accurate retrieval of clinical genetics papers.",
+        "hyde_text": "Coffin-Siris Syndrome (CSS) is a rare congenital multi-systemic disorder primarily caused by mutations in genes encoding the BAF (SWI/SNF) chromatin remodeling complex. The classical phenotypic changes include severe to profound intellectual disability, developmental delay, and distinct craniofacial features such as a coarse facial appearance, thick eyebrows, and a broad nasal bridge. A hallmark diagnostic feature is hypoplasia or absence of the fifth fingernail or toenail (aplasia of the distal phalanx)."
+      },
+      "body_normalized": "What are the phenotypic changes in Coffin-Siris Syndrome?",
+      "body_hyde": "Coffin-Siris Syndrome (CSS) is a rare congenital multi-systemic disorder primarily caused by mutations in genes encoding the BAF (SWI/SNF) chromatin remodeling complex. The classical phenotypic changes include severe to profound intellectual disability, developmental delay, and distinct craniofacial features such as a coarse facial appearance, thick eyebrows, and a broad nasal bridge. A hallmark diagnostic feature is hypoplasia or absence of the fifth fingernail or toenail (aplasia of the distal phalanx)."
+    },
+    {
+      "id": "69b52fc985870e396d000085",
+      "type": "summary",
+      "body": "What are the effects of cisplatin?",
+      "query_parse": {
+        "parsed_query": "What are the pharmacological and side effects of cisplatin?",
+        "parsed_query_reason": "Added 'pharmacological and side' to clarify the ambiguous 'effects'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Describing its mechanism of action and primary toxicities provides a comprehensive pharmacological profile.",
+        "hyde_text": "Cisplatin is a widely used platinum-based antineoplastic agent that exerts its cytotoxic effects by crosslinking purine bases in DNA, leading to DNA damage, cell cycle arrest, and apoptosis, particularly in rapidly dividing cancer cells. However, its clinical utility is often limited by severe adverse effects. The most prominent dose-limiting toxicities include nephrotoxicity, ototoxicity (hearing loss), and severe chemotherapy-induced nausea and vomiting (CINV). Additionally, cisplatin can cause peripheral neuropathy and myelosuppression."
+      },
+      "body_normalized": "What are the pharmacological and side effects of cisplatin?",
+      "body_hyde": "Cisplatin is a widely used platinum-based antineoplastic agent that exerts its cytotoxic effects by crosslinking purine bases in DNA, leading to DNA damage, cell cycle arrest, and apoptosis, particularly in rapidly dividing cancer cells. However, its clinical utility is often limited by severe adverse effects. The most prominent dose-limiting toxicities include nephrotoxicity, ototoxicity (hearing loss), and severe chemotherapy-induced nausea and vomiting (CINV). Additionally, cisplatin can cause peripheral neuropathy and myelosuppression."
+    },
+    {
+      "id": "69bee1b485870e396d0000b5",
+      "type": "yesno",
+      "body": "Are leptin levels stable during the menstrual cycle in women?",
+      "query_parse": {
+        "parsed_query": "Are leptin levels stable during the menstrual cycle in women?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Explaining the hormonal fluctuation of leptin across the cycle provides the physiological context needed.",
+        "hyde_text": "Leptin levels are not entirely stable across the normal human menstrual cycle; they exhibit cyclical variations that correlate with reproductive hormones. Research indicates that circulating leptin concentrations typically peak during the luteal phase of the menstrual cycle and are lower during the follicular phase. This fluctuation is thought to be primarily mediated by the stimulatory effect of estradiol and progesterone on adipocyte leptin production."
+      },
+      "body_normalized": "Are leptin levels stable during the menstrual cycle in women?",
+      "body_hyde": "Leptin levels are not entirely stable across the normal human menstrual cycle; they exhibit cyclical variations that correlate with reproductive hormones. Research indicates that circulating leptin concentrations typically peak during the luteal phase of the menstrual cycle and are lower during the follicular phase. This fluctuation is thought to be primarily mediated by the stimulatory effect of estradiol and progesterone on adipocyte leptin production."
+    },
+    {
+      "id": "69a4488485870e396d000005",
+      "type": "yesno",
+      "body": "Is HBV reactivation a common problem associated with CarT cell based therapies?",
+      "query_parse": {
+        "parsed_query": "Is Hepatitis B virus (HBV) reactivation a common problem associated with CAR T-cell based therapies?",
+        "parsed_query_reason": "Expanded HBV and corrected capitalization of CAR T-cell.",
+        "hyde_enabled": true,
+        "hyde_reason": "Describing the immunosuppressive mechanisms leading to viral reactivation captures relevant oncology literature.",
+        "hyde_text": "Hepatitis B virus (HBV) reactivation is a recognized and potentially severe complication associated with Chimeric Antigen Receptor (CAR) T-cell therapies, particularly those targeting B-cell antigens like CD19. The profound immunosuppression resulting from the lymphodepleting conditioning regimens and the subsequent targeted B-cell aplasia induced by the CAR T-cells can impair antiviral immunity. Patients with resolved HBV infection or chronic HBV are at risk, necessitating screening and prophylactic antiviral therapy."
+      },
+      "body_normalized": "Is Hepatitis B virus (HBV) reactivation a common problem associated with CAR T-cell based therapies?",
+      "body_hyde": "Hepatitis B virus (HBV) reactivation is a recognized and potentially severe complication associated with Chimeric Antigen Receptor (CAR) T-cell therapies, particularly those targeting B-cell antigens like CD19. The profound immunosuppression resulting from the lymphodepleting conditioning regimens and the subsequent targeted B-cell aplasia induced by the CAR T-cells can impair antiviral immunity. Patients with resolved HBV infection or chronic HBV are at risk, necessitating screening and prophylactic antiviral therapy."
+    },
+    {
+      "id": "69b52ccc85870e396d000082",
+      "type": "list",
+      "body": "Which proteins are encoded by mitochondrial DNA?",
+      "query_parse": {
+        "parsed_query": "Which proteins are encoded by human mitochondrial DNA?",
+        "parsed_query_reason": "Added 'human' to specify the context.",
+        "hyde_enabled": true,
+        "hyde_reason": "Listing the oxidative phosphorylation complexes encoded by mtDNA provides excellent biochemical keywords.",
+        "hyde_text": "Human mitochondrial DNA (mtDNA) encodes 13 essential polypeptide subunits of the oxidative phosphorylation (OXPHOS) system. These proteins are critical components of the mitochondrial respiratory chain complexes located in the inner mitochondrial membrane. Specifically, mtDNA encodes seven subunits of Complex I (NADH dehydrogenase), one subunit of Complex III (cytochrome b), three subunits of Complex IV (cytochrome c oxidase), and two subunits of Complex V (ATP synthase). All other mitochondrial proteins are encoded by the nuclear genome."
+      },
+      "body_normalized": "Which proteins are encoded by human mitochondrial DNA?",
+      "body_hyde": "Human mitochondrial DNA (mtDNA) encodes 13 essential polypeptide subunits of the oxidative phosphorylation (OXPHOS) system. These proteins are critical components of the mitochondrial respiratory chain complexes located in the inner mitochondrial membrane. Specifically, mtDNA encodes seven subunits of Complex I (NADH dehydrogenase), one subunit of Complex III (cytochrome b), three subunits of Complex IV (cytochrome c oxidase), and two subunits of Complex V (ATP synthase). All other mitochondrial proteins are encoded by the nuclear genome."
+    },
+    {
+      "id": "69bef27185870e396d0000bd",
+      "type": "factoid",
+      "body": "What is the risk of recurrence of Cushing's Disease after trans-sphenoidal surgery?",
+      "query_parse": {
+        "parsed_query": "What is the risk of recurrence of Cushing's Disease after transsphenoidal surgery?",
+        "parsed_query_reason": "Normalized 'trans-sphenoidal' to 'transsphenoidal'.",
+        "hyde_enabled": false,
+        "hyde_reason": "HyDE is disabled for specific rate/risk questions to prevent hallucinating exact percentages.",
+        "hyde_text": ""
+      },
+      "body_normalized": "What is the risk of recurrence of Cushing's Disease after transsphenoidal surgery?",
+      "body_hyde": null
+    },
+    {
+      "id": "69bc6f1a85870e396d000097",
+      "type": "yesno",
+      "body": "Are nausea and vomiting assiciated with area postrema syndrome (APS)?",
+      "query_parse": {
+        "parsed_query": "Are nausea and vomiting associated with area postrema syndrome (APS)?",
+        "parsed_query_reason": "Corrected spelling of 'associated'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Confirming the clinical presentation and linking it to NMOSD aids in retrieving high-quality neurological texts.",
+        "hyde_text": "Yes, intractable nausea and vomiting are the hallmark clinical manifestations of Area Postrema Syndrome (APS). The area postrema, located in the dorsal medulla at the caudal end of the fourth ventricle, lacks a strict blood-brain barrier and serves as the brain's chemoreceptor trigger zone for vomiting. APS is most classically recognized as a core clinical presentation of Neuromyelitis Optica Spectrum Disorder (NMOSD), where pathogenic anti-aquaporin-4 (AQP4) autoantibodies target the area postrema."
+      },
+      "body_normalized": "Are nausea and vomiting associated with area postrema syndrome (APS)?",
+      "body_hyde": "Yes, intractable nausea and vomiting are the hallmark clinical manifestations of Area Postrema Syndrome (APS). The area postrema, located in the dorsal medulla at the caudal end of the fourth ventricle, lacks a strict blood-brain barrier and serves as the brain's chemoreceptor trigger zone for vomiting. APS is most classically recognized as a core clinical presentation of Neuromyelitis Optica Spectrum Disorder (NMOSD), where pathogenic anti-aquaporin-4 (AQP4) autoantibodies target the area postrema."
+    },
+    {
+      "id": "69bedc7085870e396d0000ae",
+      "type": "list",
+      "body": "What are the key stressors impacting Drosophila melanogaster?",
+      "query_parse": {
+        "parsed_query": "What are the key environmental and physiological stressors impacting Drosophila melanogaster?",
+        "parsed_query_reason": "Added 'environmental and physiological' for specificity.",
+        "hyde_enabled": true,
+        "hyde_reason": "Listing common laboratory stress models for Drosophila provides excellent experimental vocabulary.",
+        "hyde_text": "Drosophila melanogaster is frequently used as a model organism to study stress responses. Key stressors impacting these fruit flies include abiotic environmental factors such as thermal stress (heat shock and cold tolerance), desiccation (dehydration stress), and oxidative stress induced by reactive oxygen species (ROS). Nutritional stress, including starvation and high-sugar diets, significantly affects their lifespan. Additionally, biotic stressors such as bacterial or fungal infections trigger robust innate immune responses."
+      },
+      "body_normalized": "What are the key environmental and physiological stressors impacting Drosophila melanogaster?",
+      "body_hyde": "Drosophila melanogaster is frequently used as a model organism to study stress responses. Key stressors impacting these fruit flies include abiotic environmental factors such as thermal stress (heat shock and cold tolerance), desiccation (dehydration stress), and oxidative stress induced by reactive oxygen species (ROS). Nutritional stress, including starvation and high-sugar diets, significantly affects their lifespan. Additionally, biotic stressors such as bacterial or fungal infections trigger robust innate immune responses."
+    },
+    {
+      "id": "69beef5885870e396d0000bb",
+      "type": "yesno",
+      "body": "Is anorexia nervosa equally common in men versus women?",
+      "query_parse": {
+        "parsed_query": "Is anorexia nervosa equally common in men versus women?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Stating the gender disparity provides relevant epidemiological context.",
+        "hyde_text": "Anorexia nervosa is not equally common in men and women; it is significantly more prevalent in females. Epidemiological studies consistently show a pronounced gender disparity, with females representing the vast majority of diagnosed cases. The lifetime prevalence of anorexia nervosa is substantially higher in women compared to men, often estimated at a ratio of approximately 10:1. However, disordered eating and body image issues in males are increasingly recognized."
+      },
+      "body_normalized": "Is anorexia nervosa equally common in men versus women?",
+      "body_hyde": "Anorexia nervosa is not equally common in men and women; it is significantly more prevalent in females. Epidemiological studies consistently show a pronounced gender disparity, with females representing the vast majority of diagnosed cases. The lifetime prevalence of anorexia nervosa is substantially higher in women compared to men, often estimated at a ratio of approximately 10:1. However, disordered eating and body image issues in males are increasingly recognized."
+    },
+    {
+      "id": "69bb3ae685870e396d000092",
+      "type": "factoid",
+      "body": "Where in the body is the foramen of Monro located?",
+      "query_parse": {
+        "parsed_query": "Where in the human body is the foramen of Monro located?",
+        "parsed_query_reason": "Added 'human' for context.",
+        "hyde_enabled": true,
+        "hyde_reason": "Providing the precise neuroanatomical location aids in retrieving neuroanatomy texts.",
+        "hyde_text": "The foramen of Monro, also known as the interventricular foramen, is a neuroanatomical structure located within the brain. Specifically, it is a paired channel situated at the midline of the brain, connecting the paired lateral ventricles with the central third ventricle. Its primary function is to allow the passage of cerebrospinal fluid (CSF), produced by the choroid plexus in the lateral ventricles, to flow into the third ventricle as part of the normal CSF circulation pathway."
+      },
+      "body_normalized": "Where in the human body is the foramen of Monro located?",
+      "body_hyde": "The foramen of Monro, also known as the interventricular foramen, is a neuroanatomical structure located within the brain. Specifically, it is a paired channel situated at the midline of the brain, connecting the paired lateral ventricles with the central third ventricle. Its primary function is to allow the passage of cerebrospinal fluid (CSF), produced by the choroid plexus in the lateral ventricles, to flow into the third ventricle as part of the normal CSF circulation pathway."
+    },
+    {
+      "id": "69b522ab85870e396d000079",
+      "type": "summary",
+      "body": "How do the CRISPR-Cas9 and GAL4/UAS systems differ in their approaches to gene silencing?",
+      "query_parse": {
+        "parsed_query": "How do the CRISPR-Cas9 and GAL4/UAS systems differ in their approaches to gene silencing or modulation?",
+        "parsed_query_reason": "Added 'or modulation' because GAL4/UAS is an activation system often used to drive RNAi for silencing.",
+        "hyde_enabled": true,
+        "hyde_reason": "Contrasting genomic editing vs. transcriptional activation/RNAi provides a strong methodological summary.",
+        "hyde_text": "CRISPR-Cas9 and the GAL4/UAS system utilize fundamentally different mechanisms for genetic manipulation. CRISPR-Cas9 is a genome-editing technology that uses a guide RNA to direct the Cas9 endonuclease to a specific DNA sequence, creating double-strand breaks that lead to permanent genetic knockouts at the DNA level. In contrast, the GAL4/UAS system is a bipartite transcriptional activation system, primarily used in Drosophila, that relies on the yeast GAL4 transcription factor binding to the UAS enhancer to drive tissue-specific ectopic expression of transgenes, such as RNAi constructs for post-transcriptional silencing."
+      },
+      "body_normalized": "How do the CRISPR-Cas9 and GAL4/UAS systems differ in their approaches to gene silencing or modulation?",
+      "body_hyde": "CRISPR-Cas9 and the GAL4/UAS system utilize fundamentally different mechanisms for genetic manipulation. CRISPR-Cas9 is a genome-editing technology that uses a guide RNA to direct the Cas9 endonuclease to a specific DNA sequence, creating double-strand breaks that lead to permanent genetic knockouts at the DNA level. In contrast, the GAL4/UAS system is a bipartite transcriptional activation system, primarily used in Drosophila, that relies on the yeast GAL4 transcription factor binding to the UAS enhancer to drive tissue-specific ectopic expression of transgenes, such as RNAi constructs for post-transcriptional silencing."
+    },
+    {
+      "id": "69bec0d085870e396d0000a2",
+      "type": "yesno",
+      "body": "Does the chance of recurrence plateau after some years for patient's undergoing surgery for Cushing's Disease?",
+      "query_parse": {
+        "parsed_query": "Does the chance of recurrence plateau after some years for patients undergoing surgery for Cushing's Disease?",
+        "parsed_query_reason": "Corrected 'patient's' to 'patients'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Discussing long-term follow-up and late recurrences targets clinical outcome studies.",
+        "hyde_text": "Recurrence of Cushing's disease following initially successful transsphenoidal adenomectomy is a major clinical challenge. Long-term follow-up studies indicate that the risk of recurrence is highest within the first five to ten years post-surgery. However, the chance of recurrence does not appear to definitively plateau; late recurrences have been documented even 10 to 20 years after initial remission. Therefore, lifelong endocrinological surveillance is recommended for all patients who have achieved surgical remission."
+      },
+      "body_normalized": "Does the chance of recurrence plateau after some years for patients undergoing surgery for Cushing's Disease?",
+      "body_hyde": "Recurrence of Cushing's disease following initially successful transsphenoidal adenomectomy is a major clinical challenge. Long-term follow-up studies indicate that the risk of recurrence is highest within the first five to ten years post-surgery. However, the chance of recurrence does not appear to definitively plateau; late recurrences have been documented even 10 to 20 years after initial remission. Therefore, lifelong endocrinological surveillance is recommended for all patients who have achieved surgical remission."
+    },
+    {
+      "id": "69be9af585870e396d00009c",
+      "type": "factoid",
+      "body": "What protein is encoded by the  KCTD15 gene?",
+      "query_parse": {
+        "parsed_query": "What protein is encoded by the KCTD15 gene?",
+        "parsed_query_reason": "Cleaned up extra spaces.",
+        "hyde_enabled": true,
+        "hyde_reason": "Providing the full protein name and its functional associations improves retrieval.",
+        "hyde_text": "The KCTD15 gene encodes the Potassium Channel Tetramerization Domain containing 15 protein (KCTD15). KCTD15 is a regulatory protein that interacts with the transcription factor AP-2, inhibiting its transcriptional activity. It is notably involved in neurodevelopment, particularly in the formation and regulation of the neural crest. Additionally, genome-wide association studies (GWAS) have frequently linked variants in the KCTD15 locus to obesity and body mass index (BMI) regulation."
+      },
+      "body_normalized": "What protein is encoded by the KCTD15 gene?",
+      "body_hyde": "The KCTD15 gene encodes the Potassium Channel Tetramerization Domain containing 15 protein (KCTD15). KCTD15 is a regulatory protein that interacts with the transcription factor AP-2, inhibiting its transcriptional activity. It is notably involved in neurodevelopment, particularly in the formation and regulation of the neural crest. Additionally, genome-wide association studies (GWAS) have frequently linked variants in the KCTD15 locus to obesity and body mass index (BMI) regulation."
+    }
+  ]
+}
