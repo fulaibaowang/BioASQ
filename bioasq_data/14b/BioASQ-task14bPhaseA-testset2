@@ -1,0 +1,404 @@
+{
+  "questions": [
+    {
+      "id": "69befbf985870e396d0000c1",
+      "type": "summary",
+      "body": "What are the genetics behind calico or tortoise male cats?"
+    },
+    {
+      "id": "69b82e2c85870e396d000089",
+      "type": "factoid",
+      "body": "What is CPAP, in the context of sleep apnea?"
+    },
+    {
+      "id": "69b5234485870e396d00007b",
+      "type": "yesno",
+      "body": "Do anti-prion agents exist?"
+    },
+    {
+      "id": "69bfd90985870e396d0000ca",
+      "type": "list",
+      "body": "What are the recently identified expression programs of myeloid cells in gliomas?"
+    },
+    {
+      "id": "69bee4ba85870e396d0000b6",
+      "type": "list",
+      "body": "Which drugs are used for medical treatment of Cushing\u0027s Syndrome?"
+    },
+    {
+      "id": "69be9cd885870e396d00009d",
+      "type": "summary",
+      "body": "What is Aceruloplasminemia?"
+    },
+    {
+      "id": "69b52a7785870e396d00007e",
+      "type": "yesno",
+      "body": "Can the lipid environment of the tumor microenvironment be used as a therapeutic target?"
+    },
+    {
+      "id": "69bfd6cf85870e396d0000c9",
+      "type": "factoid",
+      "body": "Which chemokine receptor is commonly implicated in recruitment of circulating monocytes into GBM tumors?"
+    },
+    {
+      "id": "69bef8de85870e396d0000bf",
+      "type": "factoid",
+      "body": "What is the ocurance rate of Raynaud\u0027s phenomenon?"
+    },
+    {
+      "id": "69c049c385870e396d0000cd",
+      "type": "factoid",
+      "body": "Marshall syndrome is associated with a mutaion in what gene?"
+    },
+    {
+      "id": "69b3382885870e396d000075",
+      "type": "yesno",
+      "body": "Are cancer cells capable of inducing the transformation of normal cells into cancerous cells?"
+    },
+    {
+      "id": "69bf231285870e396d0000c2",
+      "type": "summary",
+      "body": "What are disease-associated microglia (DAM)?"
+    },
+    {
+      "id": "69becf4085870e396d0000a6",
+      "type": "summary",
+      "body": "What is the circadian rhythm?"
+    },
+    {
+      "id": "69c1b9dc85870e396d0000cf",
+      "type": "list",
+      "body": "What disease/condition does  tenotomy treat?"
+    },
+    {
+      "id": "69b5231585870e396d00007a",
+      "type": "list",
+      "body": "Which antibiotics show the highest levels of resistance among pathogenic bacteria?"
+    },
+    {
+      "id": "69bee0a985870e396d0000b4",
+      "type": "yesno",
+      "body": "Are leptin levels increased in patients with Cushing\u0027s Syndrome?"
+    },
+    {
+      "id": "69bb3a0785870e396d000091",
+      "type": "factoid",
+      "body": "What is condyloma acuminatum?"
+    },
+    {
+      "id": "69b521eb85870e396d000077",
+      "type": "summary",
+      "body": "How can Fluorescence-Activated Cell Sorting (FACS) be used to analyze or separate heterogeneous populations of cancer cells within a tumor?"
+    },
+    {
+      "id": "69bee93c85870e396d0000b8",
+      "type": "summary",
+      "body": "What is the standard mortality ratio (SMR) for patients with Cushing\u0027s Disease?"
+    },
+    {
+      "id": "69a4d0b885870e396d00000a",
+      "type": "summary",
+      "body": "What is acromegaly?"
+    },
+    {
+      "id": "69b5281785870e396d00007d",
+      "type": "summary",
+      "body": "How could a missing SRP affect the cell and its neighboring cells?"
+    },
+    {
+      "id": "69bed34d85870e396d0000a7",
+      "type": "list",
+      "body": "What are the key psychophysiological characteristics of the burnout syndrome?"
+    },
+    {
+      "id": "69be997585870e396d00009b",
+      "type": "yesno",
+      "body": "Is Telangiectasia-ectodermal dysplasia-brachydactyly-cardiac anomaly (TEBC) syndrome, a rare autosomal recessive condition, recently linked to the protein kinase D1 (PRKD1) gene?"
+    },
+    {
+      "id": "69b52c7585870e396d000080",
+      "type": "factoid",
+      "body": "Which chromosome is most frequently lost in cells?"
+    },
+    {
+      "id": "69bec97185870e396d0000a4",
+      "type": "yesno",
+      "body": "Do cortisol levels drop at the onset of sleep?"
+    },
+    {
+      "id": "69a5776585870e396d00000b",
+      "type": "factoid",
+      "body": "What is D3-creatine (D3-Cr) dilution used for?"
+    },
+    {
+      "id": "69b532c685870e396d000087",
+      "type": "yesno",
+      "body": "Is it possible for two blood type O parents to have a child with blood type A or B?"
+    },
+    {
+      "id": "69beda9585870e396d0000a9",
+      "type": "yesno",
+      "body": "Does stress impact eating behaviors?"
+    },
+    {
+      "id": "69bf332185870e396d0000c8",
+      "type": "summary",
+      "body": "What is Hesperetin?"
+    },
+    {
+      "id": "69b52cf585870e396d000083",
+      "type": "summary",
+      "body": "How does carbon monoxide (CO) poisoning occur?"
+    },
+    {
+      "id": "69bef97785870e396d0000c0",
+      "type": "summary",
+      "body": "What are the symptoms of Raynaud\u0027s phenomenon?"
+    },
+    {
+      "id": "69bb384685870e396d00008f",
+      "type": "factoid",
+      "body": "Is Wilson\u0027s disease (WD) an autosomal recessive or an autosomal dominant disorder characterized by abnormal copper metabolism?"
+    },
+    {
+      "id": "69b5228285870e396d000078",
+      "type": "summary",
+      "body": "How does the GAL4/UAS system combined with RNAi enable targeted gene silencing?"
+    },
+    {
+      "id": "69bef13285870e396d0000bc",
+      "type": "factoid",
+      "body": "What is the recommended daily glucocorticoid replacement dose (DGRD) for patients with adrenal insufficiency?"
+    },
+    {
+      "id": "69bdd44585870e396d000099",
+      "type": "factoid",
+      "body": "What does the M in AIM(AKA  CD5L), a protein associated with apoptosis, stand for?"
+    },
+    {
+      "id": "69b52cb485870e396d000081",
+      "type": "factoid",
+      "body": "How many polypeptides are encoded by mitochondrial DNA?"
+    },
+    {
+      "id": "69becd7a85870e396d0000a5",
+      "type": "summary",
+      "body": "How does stress impact the immune system?"
+    },
+    {
+      "id": "69a5783385870e396d00000c",
+      "type": "yesno",
+      "body": "Is chlormethiazole a neuroprotectant?"
+    },
+    {
+      "id": "69bedb4785870e396d0000aa",
+      "type": "summary",
+      "body": "How does RNA interference (RNAi) achieve gene silencing?"
+    },
+    {
+      "id": "69bedde085870e396d0000b2",
+      "type": "yesno",
+      "body": "Does stress only lead to overeating?"
+    },
+    {
+      "id": "69bdd8a785870e396d00009a",
+      "type": "summary",
+      "body": "What is the function of the Quaking protein?"
+    },
+    {
+      "id": "69bedd0485870e396d0000b0",
+      "type": "summary",
+      "body": "How does palm oil consumption affect human health?"
+    },
+    {
+      "id": "69bebea685870e396d0000a1",
+      "type": "factoid",
+      "body": "What is the reoccurrence rate of Cushing\u0027s Disease?"
+    },
+    {
+      "id": "69bb372685870e396d00008d",
+      "type": "summary",
+      "body": "What is Still\u0027s disease?"
+    },
+    {
+      "id": "69b52dba85870e396d000084",
+      "type": "yesno",
+      "body": "Can vimentin be used as a therapeutic target in cancer?"
+    },
+    {
+      "id": "69a66ed385870e396d000017",
+      "type": "summary",
+      "body": "What are the clinical tests to guide the differential diagnosis of hypercortisolism in humans?"
+    },
+    {
+      "id": "69bb37c185870e396d00008e",
+      "type": "yesno",
+      "body": "Is Dragged-fovea diplopia syndrome (DFDS) a type of double vision?"
+    },
+    {
+      "id": "69bedc0985870e396d0000ad",
+      "type": "summary",
+      "body": "What are the differences between PI4KIIα and PI4KIIβ?"
+    },
+    {
+      "id": "69beb8eb85870e396d0000a0",
+      "type": "factoid",
+      "body": "How often is remission observed after surgery in patient\u0027s with Cushing\u0027s Disease?"
+    },
+    {
+      "id": "69bf2fab85870e396d0000c3",
+      "type": "list",
+      "body": "What are the 3 syptoms of  Austrian syndrome caused by Streptococcus pneumoniae."
+    },
+    {
+      "id": "69bedbb585870e396d0000ac",
+      "type": "factoid",
+      "body": "What is the total number of lipid kinases in the human kinome?"
+    },
+    {
+      "id": "69ac812c85870e396d00006a",
+      "type": "summary",
+      "body": "What is the treatment of choice for adrenal Cushing\u0027s Syndrome?"
+    },
+    {
+      "id": "69bb365285870e396d00008c",
+      "type": "yesno",
+      "body": "ia ABO incompatibility was considered an absolute contraindication to heart transplantation (HT) in adults.?"
+    },
+    {
+      "id": "69b52a9185870e396d00007f",
+      "type": "list",
+      "body": "In which cells does loss of the Y chromosome (LOY) occur?"
+    },
+    {
+      "id": "69abc8d185870e396d000057",
+      "type": "summary",
+      "body": "What is distribution of different subtypes within endogenous Cushing\u0027s Syndrome?"
+    },
+    {
+      "id": "69a5d9b085870e396d00000f",
+      "type": "factoid",
+      "body": "What are piRNAs?"
+    },
+    {
+      "id": "69bedba385870e396d0000ab",
+      "type": "factoid",
+      "body": "What is the total number of protein kinases in the human kinome?"
+    },
+    {
+      "id": "69a6620d85870e396d000013",
+      "type": "summary",
+      "body": "What is the role of cortisol in the human body?"
+    },
+    {
+      "id": "69bb1f1685870e396d00008a",
+      "type": "yesno",
+      "body": "Are Phytoplasmas transmitted by plants?"
+    },
+    {
+      "id": "69b521c885870e396d000076",
+      "type": "list",
+      "body": "What are the most common non-cellular life forms?"
+    },
+    {
+      "id": "69beec8c85870e396d0000ba",
+      "type": "yesno",
+      "body": "Can hypercortisolemia co-exist alongside anorexia nervosa?"
+    },
+    {
+      "id": "69bc686885870e396d000096",
+      "type": "list",
+      "body": "List the diseases associated with Rhupus"
+    },
+    {
+      "id": "69b5344085870e396d000088",
+      "type": "summary",
+      "body": "How does cocaine affect neurotransmitter receptors at neuronal synapses?"
+    },
+    {
+      "id": "69bef5f785870e396d0000be",
+      "type": "list",
+      "body": "What are the signs of cognitive dysfunction syndrome (CDS) in cats?"
+    },
+    {
+      "id": "69bfefbd85870e396d0000cb",
+      "type": "list",
+      "body": "How is trapped neutrophil syndrome in Border Collies treated?"
+    },
+    {
+      "id": "69a7f69885870e396d00001f",
+      "type": "yesno",
+      "body": "Could a highly active telomerase support cellular immortality?"
+    },
+    {
+      "id": "69bec77985870e396d0000a3",
+      "type": "factoid",
+      "body": "What is the median recovery time of the HPA axis after surgery for Cushing\u0027s Disease?"
+    },
+    {
+      "id": "69adcf9285870e396d000072",
+      "type": "summary",
+      "body": "Please summarize the phenotypic changes in Coffin-Siris  Syndrome"
+    },
+    {
+      "id": "69b52fc985870e396d000085",
+      "type": "summary",
+      "body": "What are the effects of cisplatin?"
+    },
+    {
+      "id": "69bee1b485870e396d0000b5",
+      "type": "yesno",
+      "body": "Are leptin levels stable during the menstrual cycle in women?"
+    },
+    {
+      "id": "69a4488485870e396d000005",
+      "type": "yesno",
+      "body": "Is HBV reactivation a common problem associated with CarT cell based therapies?"
+    },
+    {
+      "id": "69b52ccc85870e396d000082",
+      "type": "list",
+      "body": "Which proteins are encoded by mitochondrial DNA?"
+    },
+    {
+      "id": "69bef27185870e396d0000bd",
+      "type": "factoid",
+      "body": "What is the risk of recurrence of Cushing\u0027s Disease after trans-sphenoidal surgery?"
+    },
+    {
+      "id": "69bc6f1a85870e396d000097",
+      "type": "yesno",
+      "body": "Are nausea and vomiting assiciated with area postrema syndrome (APS)?"
+    },
+    {
+      "id": "69bedc7085870e396d0000ae",
+      "type": "list",
+      "body": "What are the key stressors impacting Drosophila melanogaster?"
+    },
+    {
+      "id": "69beef5885870e396d0000bb",
+      "type": "yesno",
+      "body": "Is anorexia nervosa equally common in men versus women?"
+    },
+    {
+      "id": "69bb3ae685870e396d000092",
+      "type": "factoid",
+      "body": "Where in the body is the foramen of Monro located?"
+    },
+    {
+      "id": "69b522ab85870e396d000079",
+      "type": "summary",
+      "body": "How do the CRISPR-Cas9 and GAL4/UAS systems differ in their approaches to gene silencing?"
+    },
+    {
+      "id": "69bec0d085870e396d0000a2",
+      "type": "yesno",
+      "body": "Does the chance of recurrence plateau after some years for patient\u0027s undergoing surgery for Cushing\u0027s Disease?"
+    },
+    {
+      "id": "69be9af585870e396d00009c",
+      "type": "factoid",
+      "body": "What protein is encoded by the  KCTD15 gene?"
+    }
+  ]
+}
