@@ -5,14 +5,14 @@
 # The version in this directory (private_scripts) includes experimental
 # facet + listwise support and is kept as reference.
 
-python scripts/public/query_parsing/prepare_hyde_query.py \
-  example/hyde/raw/13b_golden_50q_sample.hyde_ready.json \
-  -o example/hyde/ready/13b_golden_50q_sample.json --no-fallback
+python scripts/public/query_parsing/prepare_query.py \
+  bioasq_data/14b/BioASQ-task14bPhaseA-testset2-rewrite \
+  -o bioasq_data/14b/BioASQ-task14bPhaseA-testset2-rewrite-ready.json --no-fallback
 
-python scripts/public/query_parsing/prepare_hyde_query.py \
-  example/hyde/raw/BioASQ-task14bPhaseB-testset1.hyde_ready.json \
-  -o example/hyde/ready/BioASQ-task14bPhaseB-testset1.json --no-fallback
+python3 scripts/public/shared_scripts/generation/generate_answers.py \
+  --input-path bioasq_data/14b/BioASQ-task14bPhaseB-testset2 \
+  --output-dir bioasq14_output/batch_2_B \
+  --evidence-source snippets
 
-python scripts/public/query_parsing/prepare_hyde_query.py \
-  example/hyde/raw/training14b_3pct_sample.hyde_ready.json \
-  -o example/hyde/ready/training14b_3pct_sample.json --no-fallback
+python3 scripts/public/shared_scripts/generation/rescue_failed_generation.py \
+  --input bioasq14_output/batch_2_B/BioASQ-task14bPhaseB-testset2_answers.json
