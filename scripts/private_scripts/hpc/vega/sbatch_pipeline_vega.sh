@@ -23,6 +23,7 @@ WORKDIR="${PWD}"
 # Host paths that will be mounted inside the container
 PUBMED_HOST="/ceph/hpc/data/s25t12-03-users/pubmed"
 YUN_HOST="/ceph/hpc/data/s25t12-03-users/"
+HOME_HOST="/ceph/hpc/home/wangy"
 
 # Pipeline config
 PIPELINE_CONFIG="scripts/private_scripts/hpc/vega/config.env"
@@ -61,6 +62,7 @@ srun singularity exec \
   -B "${WORKDIR}:/work" \
   -B "${PUBMED_HOST}:/pubmed" \
   -B "${YUN_HOST}:/yun" \
+  -B "${HOME_HOST}:/home/wangy" \
   --pwd /work \
   "${CONTAINER_IMG}" \
   bash -lc "
