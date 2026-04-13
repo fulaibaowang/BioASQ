@@ -13,7 +13,7 @@
 # ---
 
 # %% [markdown]
-# # Adaptive Rerank Cutoff: Score-Gap vs Oracle
+# # Rerank cutoff 01 — Adaptive gap vs oracle
 #
 # Given reranked run file(s) and gold relevance judgments, this notebook evaluates
 # whether reranker **score gaps** predict a good adaptive cutoff for context
@@ -56,8 +56,11 @@ except NameError:
 REPO_ROOT = _NB_DIR if (_NB_DIR / "scripts").exists() else _NB_DIR.parent
 assert (REPO_ROOT / "scripts").exists(), f"Cannot locate repo root (tried {REPO_ROOT})"
 sys.path.insert(0, str(REPO_ROOT / "scripts" / "public" / "shared_scripts"))
+sys.path.insert(0, str(REPO_ROOT / "notebooks"))
 
 from retrieval_eval.common import build_topics_and_gold, load_questions
+
+from _rerank_plot_sample import sample_queries_for_diagnostic_plots
 
 # %% [markdown]
 # ## Configuration
@@ -203,15 +206,21 @@ for run_label, runs_dir in RERANK_RUN_SOURCES:
             docs = qdf["docno"].values.tolist()
             gold = gmap.get(qid, set())
             R, N = len(gold), len(scores)
+            pool = set(docs)
+            gold_in_pool = gold & pool
+            R_pool = len(gold_in_pool)
 
             fg = future_gain_curve(docs, gold, R) if R > 0 else np.zeros(N + 1)
-            query_arrays[(run_label, split, qid)] = dict(scores=scores, fg=fg, docs=docs)
+            query_arrays[(run_label, split, qid)] = dict(
+                scores=scores, fg=fg, docs=docs, gold_in_pool=gold_in_pool,
+            )
 
             rec: dict = dict(
                 rerank_source=run_label,
                 split=split,
                 qid=qid,
                 n_gold=R,
+                n_pool_gold=R_pool,
                 n_docs=N,
                 ap_total=fg[0],
             )
@@ -236,6 +245,134 @@ print(
     f"{df_q['rerank_source'].nunique()} rerank sources, {df_q['split'].nunique()} splits"
 )
 df_q.head()
+
+# %% [markdown]
+# ## 1b. Aligned pool-conditional residual recall (trilogy table)
+#
+# Uses `G_q^(N) = gold ∩ pool` only. **Kept** = top-`k_pred` reranked docs. Loss =
+# fraction of pool-reachable gold not in that prefix.
+
+# %%
+def _pool_residual_loss(docnos: list[str], gold_in_pool: set[str], k: int) -> float:
+    if not gold_in_pool:
+        return float("nan")
+    k = max(0, min(k, len(docnos)))
+    topk = set(docnos[:k])
+    return len(gold_in_pool - topk) / len(gold_in_pool)
+
+
+def _build_aligned_pool_residual(df: pd.DataFrame, qarr: dict, wf: float) -> pd.DataFrame:
+    rows = []
+    kp_col = f"kp_{wf}"
+    for src in df["rerank_source"].unique():
+        for split in df["split"].unique():
+            sub = df[(df["rerank_source"] == src) & (df["split"] == split)]
+            v = sub["n_pool_gold"] > 0
+            subp = sub[v]
+            n_skip = int((~v).sum())
+            if subp.empty:
+                rows.append(
+                    dict(
+                        rerank_source=src,
+                        split=split,
+                        method=f"k_pred_{wf}N",
+                        n_eval=0,
+                        n_skipped_pool_gold=n_skip,
+                        mean_res_loss=np.nan,
+                        median_res_loss=np.nan,
+                        p90_res_loss=np.nan,
+                        mean_kept=np.nan,
+                        median_kept=np.nan,
+                    )
+                )
+                continue
+            losses = []
+            for _, r in subp.iterrows():
+                arr = qarr[(r["rerank_source"], r["split"], r["qid"])]
+                k = int(r[kp_col])
+                losses.append(
+                    _pool_residual_loss(arr["docs"], arr["gold_in_pool"], k)
+                )
+            lo = np.asarray(losses, dtype=np.float64)
+            rows.append(
+                dict(
+                    rerank_source=src,
+                    split=split,
+                    method=f"k_pred_{wf}N",
+                    n_eval=len(subp),
+                    n_skipped_pool_gold=n_skip,
+                    mean_res_loss=float(lo.mean()),
+                    median_res_loss=float(np.median(lo)),
+                    p90_res_loss=float(np.percentile(lo, 90)),
+                    mean_kept=float(subp[kp_col].mean()),
+                    median_kept=float(subp[kp_col].median()),
+                )
+            )
+    return pd.DataFrame(rows)
+
+
+_fmt_align = dict(
+    mean_res_loss="{:.4f}",
+    median_res_loss="{:.4f}",
+    p90_res_loss="{:.4f}",
+    mean_kept="{:.1f}",
+    median_kept="{:.0f}",
+)
+for wf in WINDOW_MAX_FRAC_LIST:
+    print(f"\n=== Aligned pool residual (k_pred, window={wf}N) ===")
+    _at = _build_aligned_pool_residual(df_q, query_arrays, wf)
+    display(_at.style.format(_fmt_align))
+
+# pooled rows
+for wf in WINDOW_MAX_FRAC_LIST:
+    parts = []
+    kp_col = f"kp_{wf}"
+    for src in sorted(df_q["rerank_source"].unique()):
+        dsrc = df_q[df_q["rerank_source"] == src]
+        n_sk = int((dsrc["n_pool_gold"] == 0).sum())
+        sub = dsrc[dsrc["n_pool_gold"] > 0]
+        if sub.empty:
+            parts.append(
+                dict(
+                    rerank_source=src,
+                    split="__pooled__",
+                    method=f"k_pred_{wf}N",
+                    n_eval=0,
+                    n_skipped_pool_gold=n_sk,
+                    mean_res_loss=np.nan,
+                    median_res_loss=np.nan,
+                    p90_res_loss=np.nan,
+                    mean_kept=np.nan,
+                    median_kept=np.nan,
+                )
+            )
+            continue
+        losses = [
+            _pool_residual_loss(
+                query_arrays[(r["rerank_source"], r["split"], r["qid"])]["docs"],
+                query_arrays[(r["rerank_source"], r["split"], r["qid"])]["gold_in_pool"],
+                int(r[kp_col]),
+            )
+            for _, r in sub.iterrows()
+        ]
+        lo = np.asarray(losses, dtype=np.float64)
+        parts.append(
+            dict(
+                rerank_source=src,
+                split="__pooled__",
+                method=f"k_pred_{wf}N",
+                n_eval=len(sub),
+                n_skipped_pool_gold=n_sk,
+                mean_res_loss=float(lo.mean()),
+                median_res_loss=float(np.median(lo)),
+                p90_res_loss=float(np.percentile(lo, 90)),
+                mean_kept=float(sub[kp_col].mean()),
+                median_kept=float(sub[kp_col].median()),
+            )
+        )
+    if parts:
+        print(f"\n=== Pooled (all splits)  window={wf}N ===")
+        display(pd.DataFrame(parts).style.format(_fmt_align))
 
 # %% [markdown]
 # ## 2. Aggregate Results (per split x tau x window)
@@ -359,38 +496,36 @@ for src in sorted(df_st["rerank_source"].unique()):
         display(sub.drop(columns=["rerank_source", "split"]).style.format(_sfmt))
 
 # %% [markdown]
-# ## 5. Diagnostic Plots (48 sampled queries per rerank source)
+# ## 5. Diagnostic Plots (canonical 48 queries, same across rerank sources)
 
 # %%
 from matplotlib.lines import Line2D
 
-rng = np.random.default_rng(RNG_SEED)
 ncols = 6
 
+_canonical_pool = (
+    df_q[df_q["n_gold"] > 0][["split", "qid", "n_gold"]]
+    .drop_duplicates(subset=["split", "qid"], keep="first")
+)
+canonical_48 = sample_queries_for_diagnostic_plots(
+    _canonical_pool,
+    sample_size=SAMPLE_SIZE,
+    rng_seed=RNG_SEED,
+    n_gold_bins=N_GOLD_BINS,
+)
+print(f"canonical_48: {len(canonical_48)} (split, qid) pairs for all rerank_source figures")
+
 for run_label in sorted(df_q["rerank_source"].unique()):
-    df_pos = df_q[(df_q["n_gold"] > 0) & (df_q["rerank_source"] == run_label)].copy()
-    if df_pos.empty:
-        print(f"No positive-gold rows for rerank_source={run_label}; skip plots.")
+    sampled = [(s, q) for s, q in canonical_48 if (run_label, s, q) in query_arrays]
+    if len(sampled) < len(canonical_48):
+        print(
+            f"  rerank_source={run_label}: only {len(sampled)}/{len(canonical_48)} "
+            "canonical queries present in this source; plotting available subset."
+        )
+    if not sampled:
+        print(f"No plot rows for rerank_source={run_label}; skip plots.")
         continue
 
-    sampled: list[tuple[str, str]] = []
-    per_bin = max(1, SAMPLE_SIZE // len(N_GOLD_BINS))
-    for lo, hi, _ in N_GOLD_BINS:
-        pool = df_pos[(df_pos["n_gold"] >= lo) & (df_pos["n_gold"] <= hi)]
-        n_take = min(per_bin, len(pool))
-        if n_take > 0:
-            chosen = pool.sample(n=n_take, random_state=int(rng.integers(1 << 31)))
-            sampled.extend(zip(chosen["split"], chosen["qid"]))
-
-    if len(sampled) < SAMPLE_SIZE:
-        already = set(sampled)
-        rest = df_pos[~df_pos.apply(lambda r: (r["split"], r["qid"]) in already, axis=1)]
-        n_extra = min(SAMPLE_SIZE - len(sampled), len(rest))
-        if n_extra > 0:
-            extra = rest.sample(n=n_extra, random_state=int(rng.integers(1 << 31)))
-            sampled.extend(zip(extra["split"], extra["qid"]))
-
-    sampled = sampled[:SAMPLE_SIZE]
     print(f"rerank_source={run_label}: plotting {len(sampled)} queries")
 
     nrows = (len(sampled) + ncols - 1) // ncols
