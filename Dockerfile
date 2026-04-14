@@ -1,17 +1,18 @@
-# syntax=docker/dockerfile:1
+FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
 
-# CUDA runtime base (Ubuntu 22.04) for GPU usage
-# If your HPC uses a different CUDA version, adjust the tag accordingly.
-FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 \
+    CUDA_HOME=/usr/local/cuda \
+    PATH=/usr/lib/jvm/java-21-openjdk-amd64/bin:/usr/local/cuda/bin:${PATH}
+
+WORKDIR /app
 
 # -----
 # System packages
 # -----
-# Includes:
-# - python + pip
-# - build tools (for hnswlib / any native wheels)
-# - openjdk for PyTerrier
-# - basic debugging tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
@@ -37,73 +38,78 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openjdk-21-jre-headless \
  && rm -rf /var/lib/apt/lists/*
 
-# Make `python` point to python3
-RUN ln -sf /usr/bin/python3 /usr/bin/python
-
-# new for reranking
-RUN pip install nltk rank_bm25
-RUN python -c "import nltk; nltk.download('punkt_tab'); nltk.download('punkt')"
-
-# Make Java available for PyTerrier
-ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-ENV PATH="${JAVA_HOME}/bin:${PATH}"
+RUN ln -sf /usr/bin/python3 /usr/bin/python && \
+    python -m pip install --upgrade pip setuptools wheel
 
 # -----
-# Python environment
+# Small NLP extras used by your project
 # -----
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
-WORKDIR /app
-
-# Upgrade pip tooling
-RUN python -m pip install --no-cache-dir -U pip setuptools wheel
-
-# -----
-# Install PyTorch (GPU build) first
-# -----
-# IMPORTANT:
-# - This uses the official PyTorch wheel index for CUDA 12.4.
-# - If your base image CUDA tag changes, match the torch CUDA wheels accordingly.
-RUN python -m pip install --no-cache-dir \
-  torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+RUN python -m pip install \
+    nltk \
+    rank_bm25 \
+ && python - <<'PY'
+import nltk
+nltk.download('punkt_tab')
+nltk.download('punkt')
+print('nltk data ready')
+PY
 
 # -----
-# Install project dependencies
+# Install PyTorch first from the CUDA 12.8 wheel index
+# This is the key B200-related change compared with your old CUDA 12.4 image.
 # -----
-RUN python -m pip install --no-cache-dir \
-  lxml \
-  pubmed-parser \
-  tqdm \
-  requests \
-  orjson \
-  ujson \
-  numpy \
-  pandas \
-  pyarrow \
-  polars \
-  python-terrier \
-  ranx \
-  beautifulsoup4 \
-  accelerate \
-  jupyterlab \
-  matplotlib \
-  scikit-learn \
-  transformers==4.44.2 \
-  sentence-transformers \
-  hnswlib
-
-#new for FlagEmbedding
-RUN pip install --no-cache-dir -U FlagEmbedding==1.3.4
-RUN python -c "from FlagEmbedding import FlagLLMReranker; print('ok')"
-# -----
-# Clone your repo
-# -----
-# RUN git clone https://github.com/fulaibaowang/BioASQ.git /app/bioasq
-# WORKDIR /app/bioasq
+RUN python -m pip install \
+    torch \
+    torchvision \
+    torchaudio \
+    --index-url https://download.pytorch.org/whl/cu128
 
 # -----
-# Optional: verify GPU is visible at container runtime
-# (This is just a default command; override in your job script.)
+# Project dependencies
 # -----
-CMD ["bash", "-lc", "python -c \"import torch; print('torch', torch.__version__); print('cuda available', torch.cuda.is_available()); print('cuda', torch.version.cuda); print('devices', torch.cuda.device_count())\""]
+RUN python -m pip install \
+    lxml \
+    pubmed-parser \
+    tqdm \
+    requests \
+    orjson \
+    ujson \
+    numpy \
+    pandas \
+    pyarrow \
+    polars \
+    python-terrier \
+    ranx \
+    beautifulsoup4 \
+    accelerate \
+    jupyterlab \
+    matplotlib \
+    scikit-learn \
+    transformers==4.44.2 \
+    sentence-transformers \
+    hnswlib
+
+# -----
+# FlagEmbedding / reranking
+# -----
+RUN python -m pip install -U FlagEmbedding==1.3.4 && \
+    python - <<'PY'
+from FlagEmbedding import FlagLLMReranker
+print('FlagEmbedding import ok:', FlagLLMReranker is not None)
+PY
+
+# -----
+# Build-time import smoke test
+# -----
+RUN python - <<'PY'
+import sys
+import torch
+import transformers
+print('Python:', sys.version)
+print('Torch:', torch.__version__)
+print('Torch CUDA build:', torch.version.cuda)
+print('Transformers:', transformers.__version__)
+PY
+
+ENTRYPOINT ["tini", "--"]
+CMD ["bash", "-lc", "python - <<'PY'\nimport torch\nprint('torch', torch.__version__)\nprint('cuda available', torch.cuda.is_available())\nprint('cuda build', torch.version.cuda)\nprint('device count', torch.cuda.device_count())\nif torch.cuda.is_available():\n    print('device 0', torch.cuda.get_device_name(0))\n    print('capability', torch.cuda.get_device_capability(0))\nPY"]
