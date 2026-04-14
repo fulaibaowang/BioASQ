@@ -82,8 +82,8 @@ flowchart TD
 
 - Baseline evidence uses document-level contexts built from title and abstract text (truncated to a fixed character budget per passage).
 - Snippet evidence uses title plus the highest-scoring sliding windows from the snippet reranking stage as compact contexts.
-- Default model: `llama3.3:latest` via Ollama with `temperature=0.0` for deterministic output.
-- Note: this part is currently wired to a personal/local LLM endpoint; this step can be skipped via `--no-generation` (or adapted to your own API) without affecting retrieval and reranking reproducibility.
+- **OpenAI-compatible LLM:** Set `GENERATION_BACKEND=openai_compat`, non-secret `GEN_API_BASE` (and `GENERATION_MODEL` for the provider model id) in your run-sourced env; put `GEN_API_KEY` in secrets only (gitignored `.env`, exports, or scheduler secrets). Same prompts and answer JSON schema as the default path in [generate_answers.py](scripts/public/shared_scripts/generation/generate_answers.py). Defaults and the other backend are documented in that script and in [workflow_config_full.env](scripts/public/shared_scripts/workflow_config_full.env).
+- This step can be skipped via `--no-generation` without affecting retrieval and reranking reproducibility.
 
 Scripts, configs, and detailed usage: [scripts/public/README.md](scripts/public/README.md).
 
