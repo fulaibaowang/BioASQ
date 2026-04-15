@@ -41,61 +41,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN ln -sf /usr/bin/python3 /usr/bin/python && \
     python -m pip install --upgrade pip setuptools wheel
 
+COPY requirements-docker-pytorch.txt requirements-docker.txt ./
+
 # -----
-# Small NLP extras used by your project
+# PyTorch (CUDA 12.8 wheels) then pinned Python deps (see requirements-docker*.txt)
 # -----
-RUN python -m pip install \
-    nltk \
-    rank_bm25 \
+RUN python -m pip install -r requirements-docker-pytorch.txt
+
+RUN python -m pip install -r requirements-docker.txt \
  && python - <<'PY'
 import nltk
-nltk.download('punkt_tab')
-nltk.download('punkt')
-print('nltk data ready')
+nltk.download("punkt_tab")
+nltk.download("punkt")
+print("nltk data ready")
 PY
 
-# -----
-# Install PyTorch first from the CUDA 12.8 wheel index
-# This is the key B200-related change compared with your old CUDA 12.4 image.
-# -----
-RUN python -m pip install \
-    torch \
-    torchvision \
-    torchaudio \
-    --index-url https://download.pytorch.org/whl/cu128
-
-# -----
-# Project dependencies
-# -----
-RUN python -m pip install \
-    lxml \
-    pubmed-parser \
-    tqdm \
-    requests \
-    orjson \
-    ujson \
-    numpy \
-    pandas \
-    pyarrow \
-    polars \
-    python-terrier \
-    ranx \
-    beautifulsoup4 \
-    accelerate \
-    jupyterlab \
-    matplotlib \
-    scikit-learn \
-    transformers==4.44.2 \
-    sentence-transformers \
-    hnswlib
-
-# -----
-# FlagEmbedding / reranking
-# -----
-RUN python -m pip install -U FlagEmbedding==1.3.4 && \
-    python - <<'PY'
+RUN python - <<'PY'
 from FlagEmbedding import FlagLLMReranker
-print('FlagEmbedding import ok:', FlagLLMReranker is not None)
+print("FlagEmbedding import ok:", FlagLLMReranker is not None)
 PY
 
 # -----

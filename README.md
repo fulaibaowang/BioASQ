@@ -2,6 +2,8 @@
 
 This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A style document retrieval.
 
+**Quickstart (Docker, local venv, output folders):** [scripts/public/shared_scripts/README.md#first-time-on-a-new-machine](scripts/public/shared_scripts/README.md#first-time-on-a-new-machine)
+
 ## Plan and Goals
 
 - Stage 1: hybrid retrieval (BM25+RM3, dense, retrieval fusion), fetch ~500-2000 docs per query.
@@ -97,5 +99,7 @@ See [scripts/public/shared_scripts/docs/USAGE.md](scripts/public/shared_scripts/
 
 ## Environment
 
-For a reproducible environment see [Dockerfile](Dockerfile).
+For a reproducible environment see [Dockerfile](Dockerfile). Python packages for that image live in [requirements-docker-pytorch.txt](requirements-docker-pytorch.txt) (CUDA 12.8 PyTorch wheels) and [requirements-docker.txt](requirements-docker.txt) (rest of the stack).
+
+CI runs a small **smoke** workflow (Python `compileall` + pipeline `--help`) on changes under `scripts/public/shared_scripts/`; see [.github/workflows/pipeline-smoke.yml](.github/workflows/pipeline-smoke.yml).
 

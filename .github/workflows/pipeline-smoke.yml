@@ -1,0 +1,35 @@
+# Lightweight checks: no corpus, indices, or GPU. Catches broken shell/Python syntax.
+name: Pipeline smoke
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/public/shared_scripts/**"
+      - ".github/workflows/pipeline-smoke.yml"
+      - "Dockerfile"
+      - "requirements-docker.txt"
+      - "requirements-docker-pytorch.txt"
+  pull_request:
+    paths:
+      - "scripts/public/shared_scripts/**"
+      - ".github/workflows/pipeline-smoke.yml"
+      - "Dockerfile"
+      - "requirements-docker.txt"
+      - "requirements-docker-pytorch.txt"
+
+jobs:
+  python-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Byte-compile shared pipeline Python (no imports)
+        run: python -m compileall -q scripts/public/shared_scripts
+
+      - name: Pipeline orchestrator --help
+        run: bash scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh -h
