@@ -1,0 +1,724 @@
+{
+  "questions": [
+    {
+      "id": "69c41aa085870e396d0000d1",
+      "type": "list",
+      "body": "What are some genetic forms of Cushing's Syndrome?",
+      "query_parse": {
+        "parsed_query": "genetic forms of Cushing's Syndrome",
+        "parsed_query_reason": "Removed conversational filler 'What are some'.",
+        "hyde_enabled": true,
+        "hyde_reason": "List question. HyDE can generate examples of genetic syndromes associated with Cushing's.",
+        "hyde_text": "Genetic forms of Cushing's syndrome are typically rare and can be associated with hereditary conditions such as Multiple Endocrine Neoplasia type 1 (MEN1), Carney complex (CNC), McCune-Albright syndrome, and familial isolated pituitary adenoma (FIPA). Mutations in genes like PRKAR1A, MEN1, AIP, and USP8 have been implicated in the pathogenesis of familial hypercortisolism and pituitary adenomas."
+      }
+    },
+    {
+      "id": "69d2708e85870e396d00010c",
+      "type": "factoid",
+      "body": "What enzyme is missing or mutated in Hunter syndrome?",
+      "query_parse": {
+        "parsed_query": "enzyme missing or mutated in Hunter syndrome MPS II",
+        "parsed_query_reason": "Added alternative name for Hunter syndrome (MPS II).",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid, specifically identifying an enzyme. HyDE can state the exact enzyme to pull relevant papers.",
+        "hyde_text": "Hunter syndrome, also known as mucopolysaccharidosis type II (MPS II), is an X-linked recessive lysosomal storage disease caused by a deficiency or mutation in the enzyme iduronate-2-sulfatase (I2S). This deficiency leads to the accumulation of glycosaminoglycans (GAGs), specifically heparan sulfate and dermatan sulfate, in various tissues."
+      }
+    },
+    {
+      "id": "69cd762585870e396d0000ed",
+      "type": "yesno",
+      "body": "Is tooth size a predominantly genetically determined phenotype?",
+      "query_parse": {
+        "parsed_query": "Is tooth size a predominantly genetically determined phenotype?",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Yes/No question about genetics. HyDE can discuss heritability of tooth size.",
+        "hyde_text": "Tooth size is considered a highly heritable and predominantly genetically determined phenotype. Genetic factors account for a significant portion of the variance in human dental dimensions. Several candidate genes, including those involved in the Wnt, Hedgehog, and TGF-beta signaling pathways, have been associated with crown size and overall tooth morphology."
+      }
+    },
+    {
+      "id": "69d2596285870e396d000107",
+      "type": "yesno",
+      "body": "Has immune checkpoint blockade (anti-PD-1/PD-L1) demonstrated significant clinical benefit so far in GBM patients?",
+      "query_parse": {
+        "parsed_query": "immune checkpoint blockade anti-PD-1 PD-L1 clinical benefit in glioblastoma GBM patients",
+        "parsed_query_reason": "Expanded GBM to glioblastoma for better retrieval.",
+        "hyde_enabled": true,
+        "hyde_reason": "Yes/No question about treatment efficacy. HyDE can summarize the consensus on PD-1/PD-L1 in GBM.",
+        "hyde_text": "The clinical efficacy of immune checkpoint blockade, specifically anti-PD-1 and anti-PD-L1 therapies, has been extensively evaluated in patients with glioblastoma (GBM). Despite success in other malignancies, phase III clinical trials (such as CheckMate 143, 498, and 548) have largely failed to demonstrate a significant survival benefit for PD-1/PD-L1 inhibitors in unselected cohorts of newly diagnosed or recurrent GBM, owing to the highly immunosuppressive tumor microenvironment and low tumor mutational burden."
+      }
+    },
+    {
+      "id": "69c41f5f85870e396d0000d6",
+      "type": "factoid",
+      "body": "What is the correlation of blood serotonin levels in autistic individuals?",
+      "query_parse": {
+        "parsed_query": "correlation of blood serotonin levels in autism spectrum disorder ASD individuals",
+        "parsed_query_reason": "Normalized 'autistic' to 'autism spectrum disorder ASD'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid about a biomarker correlation. HyDE can state the phenomenon (hyperserotonemia).",
+        "hyde_text": "A well-replicated biomarker finding in autism spectrum disorder (ASD) is hyperserotonemia. Approximately 25-30% of autistic individuals exhibit elevated levels of whole blood serotonin (5-hydroxytryptamine, 5-HT). This correlation has driven research into the serotonin transporter (SERT) and platelet serotonin uptake mechanisms in the pathophysiology of ASD."
+      }
+    },
+    {
+      "id": "69d1907085870e396d000101",
+      "type": "factoid",
+      "body": "Endozepines are produced by what cell type?",
+      "query_parse": {
+        "parsed_query": "Endozepines produced by cell type",
+        "parsed_query_reason": "Removed conversational wording.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid question about cell origin. HyDE can mention astrocytes/glia.",
+        "hyde_text": "Endozepines, including the diazepam-binding inhibitor (DBI) and its processing products, are predominantly synthesized and released by astrocytes and other glial cells in the central nervous system. These endogenous modulators interact with GABA-A receptors and peripheral-type benzodiazepine receptors to regulate neurogenesis, synaptic transmission, and neurosteroid biosynthesis."
+      }
+    },
+    {
+      "id": "69cd734685870e396d0000e8",
+      "type": "yesno",
+      "body": "Does consanguinity increase the likelihood of lethal alleles occurring in the homozygous condition?",
+      "query_parse": {
+        "parsed_query": "consanguinity increases likelihood of lethal alleles occurring in homozygous condition",
+        "parsed_query_reason": "Turned into a statement for better dense retrieval.",
+        "hyde_enabled": true,
+        "hyde_reason": "Yes/No question about basic genetics. HyDE can confirm the principle.",
+        "hyde_text": "Consanguinity significantly increases the likelihood that rare recessive lethal alleles will be expressed in the homozygous condition. Because related individuals share a higher proportion of their genome inherited identical by descent (IBD) from a common ancestor, the offspring of consanguineous unions have a higher coefficient of inbreeding, elevating the risk of homozygous manifestation of deleterious or lethal genetic variants."
+      }
+    },
+    {
+      "id": "69d2601385870e396d000108",
+      "type": "list",
+      "body": "What are the four transcriptional subtypes of GBM defined in the Verhaak classification?",
+      "query_parse": {
+        "parsed_query": "four transcriptional subtypes of glioblastoma GBM defined in Verhaak classification",
+        "parsed_query_reason": "Expanded GBM to glioblastoma.",
+        "hyde_enabled": true,
+        "hyde_reason": "List question. HyDE can list the four exact subtypes.",
+        "hyde_text": "In the landmark Verhaak classification based on TCGA data, glioblastoma (GBM) was categorized into four distinct transcriptional subtypes: Proneural, Neural, Classical, and Mesenchymal. Each subtype is characterized by specific genomic abnormalities, such as EGFR amplification in the Classical subtype, NF1 mutations in the Mesenchymal subtype, and PDGFRA/IDH1 mutations in the Proneural subtype."
+      }
+    },
+    {
+      "id": "69c4250a85870e396d0000db",
+      "type": "yesno",
+      "body": "Can bone mineral density be reversed to normal ranges following remission of Cushing's Syndrome?",
+      "query_parse": {
+        "parsed_query": "reversibility of bone mineral density to normal ranges following remission of Cushing's Syndrome",
+        "parsed_query_reason": "Turned into a concept query.",
+        "hyde_enabled": true,
+        "hyde_reason": "Yes/no about clinical prognosis. HyDE can discuss the recovery of BMD.",
+        "hyde_text": "Following the surgical or medical remission of Cushing's syndrome, patients often experience a gradual recovery in bone mineral density (BMD). Chronic hypercortisolism causes severe secondary osteoporosis. While substantial increases in BMD at the lumbar spine and femoral neck are observed over several years post-remission, whether it fully reverses to normal age-matched ranges depends on the duration of disease, age, and concurrent use of bisphosphonates or calcium/vitamin D supplementation."
+      }
+    },
+    {
+      "id": "69d274ff85870e396d00010f",
+      "type": "list",
+      "body": "What are the Pulmonary Manifestations of Sjögren's Disease?",
+      "query_parse": {
+        "parsed_query": "pulmonary manifestations of Sjögren's Disease syndrome",
+        "parsed_query_reason": "Added 'syndrome' as an alias.",
+        "hyde_enabled": true,
+        "hyde_reason": "List question. HyDE can list interstitial lung disease, airway disease, etc.",
+        "hyde_text": "Pulmonary manifestations of primary Sjögren's syndrome (pSS) are common and diverse. They primarily include airway abnormalities such as bronchiectasis, bronchiolitis (e.g., follicular bronchiolitis), and interstitial lung diseases (ILD). The most frequent ILD patterns on HRCT are nonspecific interstitial pneumonia (NSIP) and usual interstitial pneumonia (UIP). Patients may also present with cystic lung disease, pleural effusion, or tracheobronchial involvement."
+      }
+    },
+    {
+      "id": "69cd706585870e396d0000e5",
+      "type": "summary",
+      "body": "Why is the Curly (Cy) allele in Drosophila melanogaster lethal in the homozygous state?",
+      "query_parse": {
+        "parsed_query": "reason Curly Cy allele in Drosophila melanogaster lethal in homozygous state",
+        "parsed_query_reason": "Rephrased for dense retrieval.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary about a genetic mechanism. HyDE can mention the specific gene or structural variation.",
+        "hyde_text": "The Curly (Cy) allele in Drosophila melanogaster is a dominant visible marker that causes curled wings but is recessive lethal. The lethality in the homozygous state is due to the fact that the Cy mutation is associated with chromosomal inversions, specifically In(2L)Cy and In(2R)Cy, which often harbor recessive lethal mutations or disrupt essential genes at the inversion breakpoints, preventing homozygous survival and making it a useful balancer chromosome."
+      }
+    },
+    {
+      "id": "69bf318085870e396d0000c6",
+      "type": "factoid",
+      "body": "Which receptor is widely used as a marker of homeostatic microglia?",
+      "query_parse": {
+        "parsed_query": "receptor widely used as marker of homeostatic microglia",
+        "parsed_query_reason": "Removed question word.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid. HyDE can name markers like P2RY12, TMEM119, CX3CR1.",
+        "hyde_text": "Several unique surface receptors are widely used as specific markers of homeostatic microglia in the central nervous system. Transmembrane protein 119 (TMEM119) and the purinergic receptor P2RY12 are highly expressed on resting, homeostatic microglia but are rapidly downregulated during neuroinflammation or upon transition to disease-associated microglia (DAM) phenotypes. Fractalkine receptor (CX3CR1) is also widely utilized, though less exclusive to the homeostatic state."
+      }
+    },
+    {
+      "id": "69c4216785870e396d0000d9",
+      "type": "list",
+      "body": "What are common drugs used for epilepsy in humans?",
+      "query_parse": {
+        "parsed_query": "common drugs antiepileptic drugs AEDs used for epilepsy in humans",
+        "parsed_query_reason": "Added AEDs synonym.",
+        "hyde_enabled": true,
+        "hyde_reason": "List of drugs. HyDE can name levetiracetam, valproate, etc.",
+        "hyde_text": "Common antiepileptic drugs (AEDs) used in the treatment of human epilepsy include broad-spectrum agents such as valproic acid, levetiracetam, lamotrigine, and topiramate, which are effective for generalized and focal seizures. Narrow-spectrum drugs for focal seizures include carbamazepine, oxcarbazepine, phenytoin, and gabapentin. Ethosuximide is standard for absence seizures."
+      }
+    },
+    {
+      "id": "69d0446d85870e396d0000fd",
+      "type": "summary",
+      "body": "Explain Dynamic cerebral autoregulation (dCA)",
+      "query_parse": {
+        "parsed_query": "dynamic cerebral autoregulation dCA explanation mechanism",
+        "parsed_query_reason": "Added 'mechanism' for context.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary/Explanation. HyDE can describe the physiological process.",
+        "hyde_text": "Dynamic cerebral autoregulation (dCA) refers to the transient, regulatory mechanism by which cerebral blood vessels respond to rapid, sudden fluctuations in arterial blood pressure (ABP) to maintain stable cerebral blood flow (CBF). It is typically assessed using transcranial Doppler ultrasound to measure cerebral blood flow velocity during spontaneous or induced changes in ABP, often quantified by transfer function analysis (gain, phase, and coherence)."
+      }
+    },
+    {
+      "id": "69cd798585870e396d0000f3",
+      "type": "summary",
+      "body": "How is venous blood flow in the lower body maintained to prevent stagnation?",
+      "query_parse": {
+        "parsed_query": "mechanisms maintaining venous blood flow return in lower body to prevent stagnation",
+        "parsed_query_reason": "Added 'return' and 'mechanisms'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary. HyDE can describe the skeletal muscle pump and venous valves.",
+        "hyde_text": "Venous blood flow in the lower body is maintained against gravity by several key physiological mechanisms to prevent blood pooling and stagnation. The primary mechanism is the skeletal muscle pump, particularly the calf muscles, which compress the deep veins during movement. One-way venous valves prevent the retrograde flow of blood. Additionally, the respiratory pump, driven by changes in intrathoracic and intra-abdominal pressure during breathing, assists venous return to the right atrium."
+      }
+    },
+    {
+      "id": "69c42c1e85870e396d0000df",
+      "type": "list",
+      "body": "What are frequent genes for familial breast cancer?",
+      "query_parse": {
+        "parsed_query": "frequent mutated genes in familial breast cancer",
+        "parsed_query_reason": "Added 'mutated'.",
+        "hyde_enabled": true,
+        "hyde_reason": "List. HyDE can list BRCA1, BRCA2, PALB2, etc.",
+        "hyde_text": "The most frequent highly penetrant genes associated with hereditary familial breast cancer are BRCA1 and BRCA2. Mutations in these tumor suppressor genes account for a majority of inherited breast and ovarian cancer syndromes. Other moderate-to-high penetrance genes implicated in familial breast cancer susceptibility include PALB2, CHEK2, ATM, TP53 (Li-Fraumeni syndrome), PTEN (Cowden syndrome), and STK11 (Peutz-Jeghers syndrome)."
+      }
+    },
+    {
+      "id": "69d0456485870e396d0000ff",
+      "type": "list",
+      "body": "Astroglial mediated inflammation plays a prominent role in the pathogenesis of what type of diseases?",
+      "query_parse": {
+        "parsed_query": "Astroglial astrocyte mediated inflammation pathogenesis disease types",
+        "parsed_query_reason": "Added astrocyte synonym.",
+        "hyde_enabled": true,
+        "hyde_reason": "List/Summary. HyDE can mention neurodegenerative diseases.",
+        "hyde_text": "Astroglial-mediated inflammation (astrogliosis and neuroinflammation) plays a prominent role in the pathogenesis of a wide range of neurodegenerative and neurological diseases. Reactive astrocytes secrete pro-inflammatory cytokines and chemokines, contributing to disease progression in Alzheimer's disease (AD), Parkinson's disease (PD), amyotrophic lateral sclerosis (ALS), multiple sclerosis (MS), and ischemic stroke, as well as traumatic brain injury (TBI)."
+      }
+    },
+    {
+      "id": "69ce718d85870e396d0000f7",
+      "type": "factoid",
+      "body": "Which form of cancer exhibits the highest metastatic potential?",
+      "query_parse": {
+        "parsed_query": "form of cancer exhibiting highest metastatic potential",
+        "parsed_query_reason": "Removed 'Which'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid. Melanoma or pancreatic/SCLC often cited.",
+        "hyde_text": "Melanoma is often cited as the form of cancer with the highest metastatic potential, as it can metastasize to distant organs even when the primary tumor is very small or thin (Clark levels). Other highly aggressive cancers known for early and widespread metastasis include small cell lung cancer (SCLC), pancreatic ductal adenocarcinoma (PDAC), and anaplastic thyroid carcinoma, which tend to disseminate systemically early in disease progression."
+      }
+    },
+    {
+      "id": "69c4275885870e396d0000dc",
+      "type": "yesno",
+      "body": "Does Autoimmune Addison's Disease equally affect males and females?",
+      "query_parse": {
+        "parsed_query": "Autoimmune Addison's Disease sex gender prevalence distribution males females",
+        "parsed_query_reason": "Converted to a search about sex distribution.",
+        "hyde_enabled": true,
+        "hyde_reason": "Yes/No. HyDE can state female predominance.",
+        "hyde_text": "Autoimmune Addison's disease (primary adrenal insufficiency) does not affect males and females equally. Like many autoimmune disorders, it exhibits a significant female predominance. Epidemiological studies indicate that the incidence and prevalence of isolated autoimmune Addison's disease are higher in women, typically presenting with a female-to-male ratio of approximately 2:1 to 3:1."
+      }
+    },
+    {
+      "id": "69d199c185870e396d000102",
+      "type": "list",
+      "body": "What dieases are caused by prions?",
+      "query_parse": {
+        "parsed_query": "diseases caused by prions prion diseases transmissible spongiform encephalopathies TSEs",
+        "parsed_query_reason": "Corrected 'dieases' and added 'TSEs'.",
+        "hyde_enabled": true,
+        "hyde_reason": "List. HyDE can name CJD, Kuru, BSE, etc.",
+        "hyde_text": "Prions are infectious misfolded proteins that cause a group of fatal neurodegenerative disorders known as transmissible spongiform encephalopathies (TSEs). In humans, prion diseases include Creutzfeldt-Jakob disease (CJD), variant CJD (vCJD), Gerstmann-Sträussler-Scheinker syndrome (GSS), fatal familial insomnia (FFI), and kuru. In animals, prion diseases include bovine spongiform encephalopathy (BSE) in cattle, scrapie in sheep and goats, and chronic wasting disease (CWD) in cervids."
+      }
+    },
+    {
+      "id": "69cd70f185870e396d0000e6",
+      "type": "factoid",
+      "body": "During which stage of development are most lethal alleles expressed in Drosophila melanogaster?",
+      "query_parse": {
+        "parsed_query": "stage of development most lethal alleles expressed in Drosophila melanogaster",
+        "parsed_query_reason": "Removed 'During which'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid. HyDE can state embryonic or larval.",
+        "hyde_text": "In Drosophila melanogaster, the majority of homozygous recessive lethal alleles result in mortality during the embryonic and early larval stages. Essential genes required for fundamental cellular processes and early morphogenesis are heavily transcribed during embryogenesis. When these genes are disrupted by lethal mutations, developmental arrest and death typically occur before the pupal or adult stages, often at the embryonic-to-larval transition."
+      }
+    },
+    {
+      "id": "69c42c7285870e396d0000e0",
+      "type": "factoid",
+      "body": "Which is the relative frequency of hereditary breast cancer?",
+      "query_parse": {
+        "parsed_query": "relative frequency percentage of hereditary breast cancer",
+        "parsed_query_reason": "Added 'percentage'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid. HyDE can state the ~5-10% figure.",
+        "hyde_text": "The relative frequency of hereditary breast cancer is estimated to be approximately 5% to 10% of all breast cancer cases. The majority of these hereditary cases are attributed to highly penetrant germline mutations in the BRCA1 and BRCA2 genes, while the remaining 90% to 95% of breast cancers are considered sporadic, resulting from somatic mutations and environmental factors."
+      }
+    },
+    {
+      "id": "69bb38c385870e396d000090",
+      "type": "list",
+      "body": "Please list the charactristics of Zinner syndrome",
+      "query_parse": {
+        "parsed_query": "characteristics features of Zinner syndrome",
+        "parsed_query_reason": "Corrected spelling, removed 'Please list the'.",
+        "hyde_enabled": true,
+        "hyde_reason": "List. HyDE can describe seminal vesicle cyst, unilateral renal agenesis, etc.",
+        "hyde_text": "Zinner syndrome is a rare congenital malformation of the mesonephric (Wolffian) duct. The classic triad of characteristics associated with Zinner syndrome includes unilateral renal agenesis, ipsilateral seminal vesicle cyst, and ejaculatory duct obstruction. Patients may remain asymptomatic or present in the second or third decade of life with symptoms such as dysuria, perineal pain, recurrent urinary tract infections, and infertility."
+      }
+    },
+    {
+      "id": "69cd770f85870e396d0000ef",
+      "type": "list",
+      "body": "Which core transcription factors maintain pluripotency in embryonic stem cells?",
+      "query_parse": {
+        "parsed_query": "core transcription factors maintaining pluripotency in embryonic stem cells ESCs",
+        "parsed_query_reason": "Removed 'Which' and added 'ESCs'.",
+        "hyde_enabled": true,
+        "hyde_reason": "List. HyDE can name OCT4, SOX2, NANOG.",
+        "hyde_text": "The core transcriptional network that maintains pluripotency and self-renewal in embryonic stem cells (ESCs) is primarily driven by three master transcription factors: OCT4 (POU5F1), SOX2, and NANOG. Together, this triad forms a highly integrated autoregulatory loop that activates the expression of pluripotency-associated genes while simultaneously repressing lineage-specific genes to prevent differentiation."
+      }
+    },
+    {
+      "id": "69c42d1b85870e396d0000e1",
+      "type": "factoid",
+      "body": "During which phase of the menstrual cycle do serotonin levels peak?",
+      "query_parse": {
+        "parsed_query": "phase of menstrual cycle serotonin levels peak",
+        "parsed_query_reason": "Removed 'During which'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid. HyDE can state the luteal or ovulatory phase.",
+        "hyde_text": "Serotonin levels in the brain and periphery fluctuate in correlation with ovarian steroid hormones during the menstrual cycle. Studies indicate that blood and platelet serotonin levels, as well as central serotonergic activity, typically peak during the mid-cycle (ovulatory phase) and the luteal phase, mirroring the rise in estrogen and progesterone levels. Conversely, levels tend to drop premenstrually."
+      }
+    },
+    {
+      "id": "69bc660a85870e396d000094",
+      "type": "list",
+      "body": "Please list the types of 3D-printed prosthesis",
+      "query_parse": {
+        "parsed_query": "types of 3D-printed prostheses prosthetics",
+        "parsed_query_reason": "Removed conversational filler and corrected plural.",
+        "hyde_enabled": true,
+        "hyde_reason": "List. HyDE can name limb, dental, maxillofacial, etc.",
+        "hyde_text": "3D-printed prostheses have revolutionized personalized medicine and biomechanical engineering. Types of 3D-printed prostheses include upper limb prostheses (bionic hands, functional hooks, passive arms), lower limb prosthetics (custom sockets, trans-tibial pylons), maxillofacial implants (cranial plates, orbital floors, mandibular reconstructions), dental prostheses (crowns, bridges, dentures), and customized orthopedic joint replacements (hip and knee implants) fabricated from biocompatible polymers, resins, and titanium alloys."
+      }
+    },
+    {
+      "id": "69ce705685870e396d0000f6",
+      "type": "list",
+      "body": "In which cellular membranes are lipid rafts present?",
+      "query_parse": {
+        "parsed_query": "cellular membranes lipid rafts present localization",
+        "parsed_query_reason": "Removed 'In which'.",
+        "hyde_enabled": true,
+        "hyde_reason": "List. HyDE can say plasma membrane, Golgi, etc.",
+        "hyde_text": "Lipid rafts are dynamic, cholesterol- and sphingolipid-enriched microdomains predominantly localized in the plasma membrane of eukaryotic cells, particularly in the outer exoplasmic leaflet. Beyond the plasma membrane, lipid rafts are also present in the membranes of the trans-Golgi network (TGN) where they are assembled, and in endosomal membranes, playing crucial roles in signal transduction, membrane sorting, and vesicle trafficking."
+      }
+    },
+    {
+      "id": "69d4116785870e396d000110",
+      "type": "list",
+      "body": "What are the types of intracranial blood hemorrhage?",
+      "query_parse": {
+        "parsed_query": "types of intracranial blood hemorrhage bleeding",
+        "parsed_query_reason": "Removed 'What are the'.",
+        "hyde_enabled": true,
+        "hyde_reason": "List. HyDE can name epidural, subdural, subarachnoid, intracerebral.",
+        "hyde_text": "Intracranial hemorrhage (ICH) encompasses several types of bleeding within the skull, classified by their anatomical location. The main types include epidural hematoma (bleeding between the skull and dura mater), subdural hematoma (bleeding between the dura mater and arachnoid membrane), subarachnoid hemorrhage (bleeding in the subarachnoid space, often from an aneurysm), and intracerebral hemorrhage (bleeding directly within the brain parenchyma, including intraparenchymal and intraventricular hemorrhage)."
+      }
+    },
+    {
+      "id": "69bd47de85870e396d000098",
+      "type": "summary",
+      "body": "Summarize Castleman's Disease",
+      "query_parse": {
+        "parsed_query": "Castleman's Disease summary mechanism characteristics",
+        "parsed_query_reason": "Removed 'Summarize'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary. HyDE can describe the lymphoproliferative disorder.",
+        "hyde_text": "Castleman disease (CD) is a rare group of lymphoproliferative disorders characterized by non-clonal lymph node enlargement. It is classified clinically into unicentric Castleman disease (UCD), affecting a single lymph node region, and multicentric Castleman disease (MCD), which involves systemic lymphadenopathy and inflammation. MCD is further divided into HHV-8-associated MCD (often seen in HIV patients) and idiopathic MCD (iMCD). Pathologically, it presents with hyaline vascular, plasmacytic, or mixed variants. Interleukin-6 (IL-6) overproduction drives much of the systemic inflammation in MCD."
+      }
+    },
+    {
+      "id": "69cd724e85870e396d0000e7",
+      "type": "summary",
+      "body": "What effects would reduced activity of Johnston's organ have on Drosophila melanogaster?",
+      "query_parse": {
+        "parsed_query": "effects reduced activity of Johnston's organ Drosophila melanogaster",
+        "parsed_query_reason": "Removed 'What'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary. HyDE can mention hearing, mating, proprioception.",
+        "hyde_text": "The Johnston's organ, located in the second antennal segment of Drosophila melanogaster, is the primary mechanosensory organ responsible for hearing and proprioception. Reduced activity or ablation of Johnston's organ impairs the fly's auditory perception, severely disrupting acoustic communication such as the recognition of male courtship songs by females. It also negatively affects proprioceptive feedback during flight, leading to impaired flight control, mechanosensation, and gravitaxis."
+      }
+    },
+    {
+      "id": "69c4225f85870e396d0000da",
+      "type": "factoid",
+      "body": "Which is the responsible hormone for cortisol overproduction in Food-dependent Cushing's Syndrome?",
+      "query_parse": {
+        "parsed_query": "responsible hormone for cortisol overproduction in Food-dependent Cushing's Syndrome GIP",
+        "parsed_query_reason": "Added GIP as it is the known hormone.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid. HyDE can explicitly name GIP.",
+        "hyde_text": "In food-dependent Cushing's syndrome, a rare form of ACTH-independent macronodular adrenal hyperplasia (AIMAH), cortisol overproduction is driven by the aberrant expression of illegitimate receptors on the adrenal cortex. The primary hormone responsible for stimulating this pathological cortisol release postprandially is Glucose-dependent Insulinotropic Peptide (GIP), a gastrointestinal incretin hormone released after meals."
+      }
+    },
+    {
+      "id": "69bea35585870e396d00009f",
+      "type": "list",
+      "body": "Alpha Klotho is beingg investigated as a potential biomarker for what dieases?",
+      "query_parse": {
+        "parsed_query": "Alpha Klotho investigated as potential biomarker for diseases",
+        "parsed_query_reason": "Corrected spelling 'beingg' and 'dieases'.",
+        "hyde_enabled": true,
+        "hyde_reason": "List. HyDE can mention CKD, aging, neurodegeneration.",
+        "hyde_text": "Alpha-Klotho, an anti-aging protein primarily expressed in the kidneys, is being heavily investigated as a potential biomarker for chronic kidney disease (CKD), acute kidney injury (AKI), and cardiovascular diseases. Soluble Klotho levels decline early in CKD progression. Additionally, due to its role in mineral metabolism and senescence, it is being studied as a biomarker for neurodegenerative disorders like Alzheimer's disease, osteoporosis, and general aging-related frailty."
+      }
+    },
+    {
+      "id": "69cd704d85870e396d0000e4",
+      "type": "summary",
+      "body": "At what point are lethal alleles expressed during human development?",
+      "query_parse": {
+        "parsed_query": "point developmental stage lethal alleles expressed during human development",
+        "parsed_query_reason": "Rephrased.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary. HyDE can discuss embryonic lethality, miscarriage.",
+        "hyde_text": "In human development, most severe lethal alleles are expressed early during embryogenesis, often resulting in embryonic lethality, failed implantation, or spontaneous abortion (miscarriage) during the first trimester. Some recessive lethal alleles, however, may not manifest until later stages of fetal development, resulting in stillbirth, or even shortly after birth (perinatal or neonatal lethality) if the gene is critical for extrauterine survival."
+      }
+    },
+    {
+      "id": "69cb68ae85870e396d0000e3",
+      "type": "factoid",
+      "body": "What is the most frequent cause of primary adrenal insufficiency?",
+      "query_parse": {
+        "parsed_query": "most frequent cause of primary adrenal insufficiency Addison's disease",
+        "parsed_query_reason": "Added 'Addison's disease'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid. HyDE can state autoimmune adrenalitis.",
+        "hyde_text": "In developed countries, the most frequent cause of primary adrenal insufficiency (Addison's disease) is autoimmune adrenalitis, which accounts for up to 80-90% of cases. This involves the autoimmune destruction of the adrenal cortex, often associated with 21-hydroxylase antibodies. In developing nations, infectious causes, particularly tuberculosis (TB), remain a highly prevalent cause of adrenal gland destruction."
+      }
+    },
+    {
+      "id": "69bc67a485870e396d000095",
+      "type": "summary",
+      "body": "Describe DYT-TOR1A dystonia",
+      "query_parse": {
+        "parsed_query": "DYT-TOR1A dystonia description symptoms mechanism",
+        "parsed_query_reason": "Removed 'Describe'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary. HyDE can explain the DYT1 mutation.",
+        "hyde_text": "DYT-TOR1A dystonia (formerly known as DYT1 dystonia) is an early-onset, autosomal dominant movement disorder with reduced penetrance. It is primarily caused by an in-frame GAG deletion (c.907_909delGAG) in the TOR1A gene, which encodes the protein torsinA. Clinically, it typically presents in childhood or adolescence with focal dystonia in a limb (e.g., twisting of the foot or hand) that frequently generalizes to involve the trunk and other limbs, while sparing cognition."
+      }
+    },
+    {
+      "id": "69cd7cdf85870e396d0000f5",
+      "type": "list",
+      "body": "Which antigens expressed on the surface of red blood cells are assessed for their presence or absence?",
+      "query_parse": {
+        "parsed_query": "antigens expressed on surface of red blood cells assessed for presence or absence blood groups",
+        "parsed_query_reason": "Added 'blood groups'.",
+        "hyde_enabled": true,
+        "hyde_reason": "List. HyDE can mention ABO and Rh.",
+        "hyde_text": "The major antigens expressed on the surface of red blood cells (erythrocytes) that are routinely assessed for their presence or absence during blood typing are the A and B carbohydrate antigens of the ABO blood group system, and the D antigen of the Rhesus (Rh) system. In pre-transfusion testing, alloantibody screening may also assess antigens from other clinically significant systems, such as Kell, Duffy, Kidd, MNS, and Lewis."
+      }
+    },
+    {
+      "id": "69c42d6585870e396d0000e2",
+      "type": "factoid",
+      "body": "During which phase of the menstrual cycle do serotonin levels reach a minimum?",
+      "query_parse": {
+        "parsed_query": "phase of menstrual cycle serotonin levels reach minimum",
+        "parsed_query_reason": "Removed 'During which'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid. HyDE can mention premenstrual or early follicular.",
+        "hyde_text": "Serotonin levels typically reach a minimum during the premenstrual (late luteal) phase and the early follicular phase (during menstruation). The abrupt decline in circulating estrogen and progesterone levels prior to menses is associated with decreased serotonergic tone and a drop in blood serotonin concentrations. This minimum serotonin level is implicated in the pathophysiology of premenstrual syndrome (PMS) and premenstrual dysphoric disorder (PMDD)."
+      }
+    },
+    {
+      "id": "69d0424e85870e396d0000fa",
+      "type": "yesno",
+      "body": "Is lactylation the process of post transational modification of proline residues on histone and other proteins",
+      "query_parse": {
+        "parsed_query": "lactylation post-translational modification of lysine residues on histone and other proteins",
+        "parsed_query_reason": "Corrected 'transational' to 'post-translational' and shifted focus from proline (incorrect in premise) to lysine (correct) or kept general. Let's keep the query close to the premise but add 'lysine' for retrieval context.",
+        "hyde_enabled": true,
+        "hyde_reason": "Yes/no. HyDE can explain that lactylation occurs on lysine, not proline.",
+        "hyde_text": "Lactylation is a recently identified post-translational modification (PTM) primarily characterized by the addition of a lactyl group derived from lactate. Unlike hydroxylation, which targets proline, histone lactylation specifically occurs on lysine residues (K-lactylation) of histone tails and non-histone proteins. This modification links cellular metabolic states, such as glycolysis and macrophage polarization, to epigenetic regulation and gene transcription."
+      }
+    },
+    {
+      "id": "69cd766c85870e396d0000ee",
+      "type": "yesno",
+      "body": "Have changes in human diet and lifestyle throughout history contributed to an increased need for orthodontic interventions?",
+      "query_parse": {
+        "parsed_query": "changes in human diet and lifestyle history contributed to increased need for orthodontic interventions malocclusion",
+        "parsed_query_reason": "Added 'malocclusion' as the clinical outcome.",
+        "hyde_enabled": true,
+        "hyde_reason": "Yes/no. HyDE can summarize the evolutionary biology perspective on jaw size.",
+        "hyde_text": "Evolutionary and anthropological evidence suggests that changes in human diet and lifestyle, particularly the transition from a hunter-gatherer diet of tough, uncooked foods to an agricultural and modern diet of soft, processed foods, have significantly reduced masticatory stress. This lack of mechanical loading during development has led to reduced jaw size (maxillary and mandibular underdevelopment) without a concomitant reduction in tooth size, contributing to higher rates of dental crowding, malocclusion, and the increased modern need for orthodontic interventions."
+      }
+    },
+    {
+      "id": "69c42bf785870e396d0000de",
+      "type": "list",
+      "body": "What are the causes of carotenemia?",
+      "query_parse": {
+        "parsed_query": "causes etiology of carotenemia",
+        "parsed_query_reason": "Added 'etiology'.",
+        "hyde_enabled": true,
+        "hyde_reason": "List. HyDE can state excessive beta-carotene intake, hypothyroidism, etc.",
+        "hyde_text": "Carotenemia is most commonly caused by excessive dietary intake of foods rich in beta-carotene, such as carrots, sweet potatoes, pumpkins, and leafy greens. It can also be associated with certain metabolic and systemic conditions that impair the conversion of carotene to vitamin A, including hypothyroidism (myxedema), diabetes mellitus, anorexia nervosa, liver disease, and renal disease. It presents as a benign, yellow-orange discoloration of the skin, sparing the sclera."
+      }
+    },
+    {
+      "id": "69a5db9585870e396d000010",
+      "type": "yesno",
+      "body": "Can piRNAs predict how long a person will live?",
+      "query_parse": {
+        "parsed_query": "PIWI-interacting RNAs piRNAs predict human lifespan longevity",
+        "parsed_query_reason": "Expanded piRNAs.",
+        "hyde_enabled": true,
+        "hyde_reason": "Yes/no. HyDE can discuss piRNAs as aging biomarkers.",
+        "hyde_text": "Recent research into non-coding RNAs has investigated whether PIWI-interacting RNAs (piRNAs), which protect the genome against transposon mobilization, can serve as biomarkers for aging and human longevity. Differential expression of specific piRNAs in somatic cells and biofluids has been correlated with biological age, cellular senescence, and age-related diseases. While piRNA signatures might reflect biological aging, their utility to precisely predict the exact lifespan of an individual remains speculative and under investigation."
+      }
+    },
+    {
+      "id": "69bedd7e85870e396d0000b1",
+      "type": "yesno",
+      "body": "Does the human proteome include an enzyme with reverse transcriptase-like activity?",
+      "query_parse": {
+        "parsed_query": "human proteome includes enzyme with reverse transcriptase-like activity telomerase retrotransposons",
+        "parsed_query_reason": "Added 'telomerase' and 'retrotransposons' for retrieval context.",
+        "hyde_enabled": true,
+        "hyde_reason": "Yes/no. HyDE can mention TERT and LINE-1.",
+        "hyde_text": "The human proteome does include enzymes with reverse transcriptase-like activity. The most prominent endogenous example is Telomerase Reverse Transcriptase (TERT), which synthesizes telomeric DNA from an RNA template to maintain chromosome ends. Additionally, the human genome encodes endogenous reverse transcriptases derived from retroelements, such as the LINE-1 (Long Interspersed Nuclear Element-1) ORF2 protein, which possesses both endonuclease and reverse transcriptase activities crucial for retrotransposition."
+      }
+    },
+    {
+      "id": "69c420bd85870e396d0000d8",
+      "type": "summary",
+      "body": "What is the biochemical mechanism behind caffeine's effect on humans?",
+      "query_parse": {
+        "parsed_query": "biochemical mechanism of caffeine effect on humans adenosine receptor antagonist",
+        "parsed_query_reason": "Added 'adenosine receptor antagonist'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary. HyDE can describe adenosine antagonism and phosphodiesterase inhibition.",
+        "hyde_text": "The primary biochemical mechanism underlying caffeine's stimulant effect in humans is its role as a non-selective, competitive antagonist of adenosine receptors, primarily the A1 and A2A subtypes in the central nervous system. By blocking adenosine, an inhibitory neuromodulator, caffeine promotes the release of neurotransmitters such as dopamine, norepinephrine, and glutamate, promoting wakefulness. At higher, mostly non-physiological doses, caffeine also acts as a phosphodiesterase (PDE) inhibitor, raising intracellular cAMP levels."
+      }
+    },
+    {
+      "id": "69d1a91785870e396d000104",
+      "type": "summary",
+      "body": "What is Ferroptosis?",
+      "query_parse": {
+        "parsed_query": "Ferroptosis definition mechanism",
+        "parsed_query_reason": "Removed 'What is'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary. HyDE can explain iron-dependent lipid peroxidation.",
+        "hyde_text": "Ferroptosis is a distinct form of regulated cell death characterized by the iron-dependent accumulation of lethal lipid peroxides. It is morphologically, biochemically, and genetically distinct from apoptosis, necrosis, and autophagy. The core mechanism involves the failure of the glutathione-dependent lipid antioxidant defenses, primarily driven by the inactivation or inhibition of glutathione peroxidase 4 (GPX4) and the cystine/glutamate antiporter (system Xc-). It plays a crucial role in cancer biology, neurodegeneration, and ischemia-reperfusion injury."
+      }
+    },
+    {
+      "id": "69cd774885870e396d0000f0",
+      "type": "factoid",
+      "body": "What kinase is commonly activated in chronic myeloid leukemia?",
+      "query_parse": {
+        "parsed_query": "kinase commonly activated in chronic myeloid leukemia CML BCR-ABL1",
+        "parsed_query_reason": "Added 'BCR-ABL1' and 'CML'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid. HyDE can explicitly name BCR-ABL.",
+        "hyde_text": "The kinase commonly activated in chronic myeloid leukemia (CML) is the BCR-ABL1 tyrosine kinase. This constitutively active non-receptor tyrosine kinase is the product of the Philadelphia chromosome, a reciprocal translocation t(9;22)(q34;q11) that fuses the breakpoint cluster region (BCR) gene with the Abelson murine leukemia viral oncogene homolog 1 (ABL1) gene. It is the primary target for tyrosine kinase inhibitors (TKIs) like imatinib."
+      }
+    },
+    {
+      "id": "69c41b4c85870e396d0000d2",
+      "type": "summary",
+      "body": "How does post-traumatic stress disorder affect the cortisol awaking response?",
+      "query_parse": {
+        "parsed_query": "effect of post-traumatic stress disorder PTSD on cortisol awakening response CAR",
+        "parsed_query_reason": "Expanded acronyms.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary. HyDE can describe the blunted CAR.",
+        "hyde_text": "Post-traumatic stress disorder (PTSD) is frequently associated with dysregulation of the hypothalamic-pituitary-adrenal (HPA) axis. Studies consistently show that individuals with PTSD often exhibit an altered cortisol awakening response (CAR). Specifically, PTSD is generally characterized by a blunted or attenuated CAR compared to healthy controls, reflecting an enhanced negative feedback sensitivity of the HPA axis and overall hypocortisolism, despite the chronic stress nature of the disorder."
+      }
+    },
+    {
+      "id": "69be9d0485870e396d00009e",
+      "type": "factoid",
+      "body": "Morning Glory syndrome affects which of the 5 senses?",
+      "query_parse": {
+        "parsed_query": "Morning Glory syndrome affects which sense vision optic disc",
+        "parsed_query_reason": "Added 'vision optic disc'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid. HyDE can identify vision.",
+        "hyde_text": "Morning Glory syndrome, also known as Morning Glory disc anomaly (MGDA), primarily affects the sense of vision (sight). It is a rare congenital malformation of the optic nerve characterized by an enlarged, funnel-shaped, excavated optic disc surrounded by a ring of chorioretinal pigment, resembling the morning glory flower. This structural anomaly leads to visual impairment, strabismus, and an increased risk of retinal detachment."
+      }
+    },
+    {
+      "id": "69cd748b85870e396d0000ec",
+      "type": "summary",
+      "body": "What effect does botulinum toxin (botox) have on human neurons?",
+      "query_parse": {
+        "parsed_query": "effect of botulinum toxin botox on human neurons mechanism SNARE proteins acetylcholine",
+        "parsed_query_reason": "Added mechanism keywords.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary. HyDE can explain SNARE cleavage.",
+        "hyde_text": "Botulinum toxin (Botox) exerts its profound neuroparalytic effect on human neurons by blocking the release of the neurotransmitter acetylcholine at the neuromuscular junction. The toxin is endocytosed into presynaptic cholinergic nerve terminals, where its light chain acts as a zinc-dependent endopeptidase. It specifically cleaves SNARE complex proteins (such as SNAP-25, VAMP/synaptobrevin, or syntaxin), which are essential for synaptic vesicle fusion with the presynaptic membrane, thereby causing flaccid paralysis."
+      }
+    },
+    {
+      "id": "69ac481285870e396d00005e",
+      "type": "list",
+      "body": "What are the symptoms of glucocorticoid withdrawal syndrome after surgical remission of Cushing Syndrome?",
+      "query_parse": {
+        "parsed_query": "symptoms of glucocorticoid withdrawal syndrome after surgical remission of Cushing Syndrome",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "List. HyDE can list joint pain, fatigue, nausea.",
+        "hyde_text": "Glucocorticoid withdrawal syndrome (GWS) commonly occurs following the surgical remission of Cushing's syndrome as the body adjusts to physiological or lower levels of cortisol after chronic hypercortisolism. Symptoms include profound fatigue, generalized weakness, severe arthralgias (joint pain), myalgias, anorexia, nausea, weight loss, mood changes such as depression, and skin desquamation, all occurring despite biochemically adequate glucocorticoid replacement."
+      }
+    },
+    {
+      "id": "69a5d79985870e396d00000e",
+      "type": "summary",
+      "body": "What is MicroCT?",
+      "query_parse": {
+        "parsed_query": "MicroCT micro-computed tomography definition application",
+        "parsed_query_reason": "Expanded MicroCT.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary. HyDE can define it.",
+        "hyde_text": "Micro-computed tomography (MicroCT or µCT) is a non-destructive 3D imaging technique utilizing X-rays to create cross-sections of a physical object, which are then used to recreate a virtual 3D model without destroying the original sample. Operating on the same physical principles as medical clinical CT scanners, MicroCT provides much higher spatial resolution, reaching into the sub-micron range, making it highly valuable in biomedical research for scanning bone trabecular microarchitecture, teeth, biomaterials, and small animal models."
+      }
+    },
+    {
+      "id": "69cd790d85870e396d0000f2",
+      "type": "factoid",
+      "body": "Which human organ is capable of regeneration?",
+      "query_parse": {
+        "parsed_query": "human organ capable of regeneration liver",
+        "parsed_query_reason": "Added 'liver' for specificity.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid. HyDE can mention the liver.",
+        "hyde_text": "The human liver is the only solid internal organ capable of substantial natural regeneration. Even after surgical removal or toxic injury of up to 70% of its mass (partial hepatectomy), the remaining mature hepatocytes and biliary epithelial cells can rapidly proliferate to restore the liver to its original volume and function. The skin and intestinal epithelium also exhibit high regenerative capacity through adult stem cell pools."
+      }
+    },
+    {
+      "id": "69c41e4e85870e396d0000d4",
+      "type": "summary",
+      "body": "What are the challenges associated with treating Cushing's Syndrome in the elderly?",
+      "query_parse": {
+        "parsed_query": "challenges associated with treating Cushing's Syndrome in elderly older adults",
+        "parsed_query_reason": "Added 'older adults'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary. HyDE can mention comorbidities, surgical risks, frailty.",
+        "hyde_text": "Treating Cushing's syndrome in the elderly presents unique clinical challenges primarily due to the presence of age-related comorbidities, increased frailty, and delayed diagnosis. Elderly patients are highly susceptible to the severe complications of hypercortisolism, such as osteoporotic fractures, severe myopathy, cardiovascular events, and cognitive decline. Transsphenoidal surgery or adrenalectomy carries a higher perioperative risk. Furthermore, medical therapy targeting cortisol synthesis requires careful dose titration to avoid adrenal insufficiency in a fragile population."
+      }
+    },
+    {
+      "id": "69d2706b85870e396d00010b",
+      "type": "factoid",
+      "body": "What is the source of Volvatoxin A2?",
+      "query_parse": {
+        "parsed_query": "source organism of Volvatoxin A2 Volvariella volvacea",
+        "parsed_query_reason": "Added the known source.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid. HyDE can mention the paddy straw mushroom.",
+        "hyde_text": "Volvatoxin A2 (VVA2) is a cardiotoxic and pore-forming protein isolated from the edible paddy straw mushroom, Volvariella volvacea. Volvatoxin A is composed of two distinct components, volvatoxin A1 and volvatoxin A2, which can cause hemolysis and cardiac toxicity by disrupting cell membranes and causing calcium influx in mammalian models."
+      }
+    },
+    {
+      "id": "69cd73a685870e396d0000ea",
+      "type": "summary",
+      "body": "What are the consequences of decreased endorphin production in an organism?",
+      "query_parse": {
+        "parsed_query": "consequences physiological effects of decreased endorphin production deficiency",
+        "parsed_query_reason": "Added 'deficiency' and 'effects'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary. HyDE can list pain sensitivity, depression.",
+        "hyde_text": "Endorphins are endogenous opioid neuropeptides that act primarily as natural analgesics and mood enhancers. Decreased endorphin production or an endorphin deficiency in an organism can lead to heightened pain sensitivity (hyperalgesia), increased susceptibility to stress, mood disorders such as depression and anxiety, sleep disturbances, and altered reward processing. It may also contribute to the pathogenesis of chronic pain syndromes and anhedonia."
+      }
+    },
+    {
+      "id": "69c41edd85870e396d0000d5",
+      "type": "yesno",
+      "body": "Can chronic stress trigger the development of Alzheimer Disease?",
+      "query_parse": {
+        "parsed_query": "chronic stress triggers development of Alzheimer's Disease AD",
+        "parsed_query_reason": "Removed 'Can', added 'AD'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Yes/no. HyDE can discuss glucocorticoids, neuroinflammation, and amyloid beta.",
+        "hyde_text": "Accumulating epidemiological and experimental evidence suggests that chronic psychosocial stress can be a significant environmental risk factor that triggers or accelerates the development of Alzheimer's disease (AD). Prolonged activation of the hypothalamic-pituitary-adrenal (HPA) axis and chronic elevations in glucocorticoids can cause hippocampal atrophy, promote neuroinflammation, and exacerbate the accumulation of amyloid-beta (Aβ) plaques and hyperphosphorylated tau tangles, driving AD pathogenesis."
+      }
+    },
+    {
+      "id": "69bb3b4685870e396d000093",
+      "type": "factoid",
+      "body": "is a colloid cyst usually mlignant or benign?",
+      "query_parse": {
+        "parsed_query": "colloid cyst usually malignant or benign",
+        "parsed_query_reason": "Corrected 'mlignant'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Yes/no or choice. HyDE can state it is benign.",
+        "hyde_text": "A colloid cyst is almost exclusively a benign (non-cancerous), slow-growing tumor typically located in the third ventricle of the brain, near the foramen of Monro. While histologically benign and lacking malignant potential, a colloid cyst can be clinically dangerous if it obstructs cerebrospinal fluid (CSF) flow, leading to acute hydrocephalus, severe headaches, and potentially sudden death."
+      }
+    },
+    {
+      "id": "69cd744185870e396d0000eb",
+      "type": "list",
+      "body": "What are the main molecular chaperones involved in protein folding within the cell?",
+      "query_parse": {
+        "parsed_query": "main molecular chaperones involved in protein folding within the cell HSP70 HSP90",
+        "parsed_query_reason": "Added HSPs for context.",
+        "hyde_enabled": true,
+        "hyde_reason": "List. HyDE can list HSP70, HSP90, GroEL/ES, etc.",
+        "hyde_text": "The main molecular chaperones involved in facilitating proper protein folding and preventing protein aggregation within the cell belong to the heat shock protein (HSP) families. Key systems include the Hsp70 system (e.g., DnaK/DnaJ in bacteria), the chaperonin family (Hsp60/Hsp10, such as GroEL/GroES), and Hsp90, which specializes in the late-stage folding of signaling proteins. Small heat shock proteins (sHSPs) also act as holdases under stress conditions."
+      }
+    },
+    {
+      "id": "69bee7d785870e396d0000b7",
+      "type": "factoid",
+      "body": "What is the standard mortality ratio (SMR) for patients with adrenal Cushing's Syndrome?",
+      "query_parse": {
+        "parsed_query": "standard mortality ratio SMR for patients with adrenal Cushing's Syndrome",
+        "parsed_query_reason": "No normalization needed.",
+        "hyde_enabled": true,
+        "hyde_reason": "Factoid. HyDE can provide the SMR range.",
+        "hyde_text": "The standard mortality ratio (SMR) for patients with adrenal Cushing's syndrome is generally elevated compared to the healthy background population, primarily due to cardiovascular and infectious complications of hypercortisolism. Studies indicate that while surgical cure normalizes mortality in some cohorts, patients with Cushing's syndrome, including benign adrenal adenomas, often present with an SMR ranging from 2.0 to 3.0, with mortality risks remaining slightly elevated even after successful remission due to long-term cardiovascular remodeling."
+      }
+    },
+    {
+      "id": "69d2702285870e396d00010a",
+      "type": "summary",
+      "body": "What is tracheomalacia?",
+      "query_parse": {
+        "parsed_query": "tracheomalacia definition pathophysiology",
+        "parsed_query_reason": "Added keywords for a definition.",
+        "hyde_enabled": true,
+        "hyde_reason": "Summary. HyDE can describe tracheal collapse.",
+        "hyde_text": "Tracheomalacia is a structural abnormality of the trachea characterized by flaccidity and weakness of the tracheal cartilage and/or hypotonia of the myoelastic elements. This weakness causes dynamic collapse of the airway, particularly during expiration, leading to airway obstruction, stridor, a barking cough, and respiratory distress. It can be congenital (primary) or acquired (secondary to prolonged intubation, trauma, or vascular rings)."
+      }
+    },
+    {
+      "id": "69bede4285870e396d0000b3",
+      "type": "yesno",
+      "body": "Do extracellular vesicles play a role in the progression of amyloidosis?",
+      "query_parse": {
+        "parsed_query": "role of extracellular vesicles EVs exosomes in progression of amyloidosis",
+        "parsed_query_reason": "Added 'EVs' and 'exosomes'.",
+        "hyde_enabled": true,
+        "hyde_reason": "Yes/no. HyDE can describe EV-mediated spread of amyloid.",
+        "hyde_text": "Extracellular vesicles (EVs), including exosomes and microvesicles, play a significant role in the progression of various forms of amyloidosis, such as Alzheimer's disease (Aβ), Parkinson's disease (alpha-synuclein), and systemic amyloidosis. EVs can package and transport misfolded, toxic amyloidogenic proteins between cells in a prion-like manner, facilitating the seeding and intercellular dissemination of amyloid aggregates throughout tissues, while also modulating neuroinflammation and immune responses."
+      }
+    }
+  ]
+}
