@@ -162,11 +162,13 @@ def format_evidence_block(
     return "\n\n".join(lines)
 
 def fill_user_prompt(question: str, evidence_block: str, qtype: str, schema_block: str) -> str:
-    """Fill the user_base template with SCHEMA_BLOCK, QTYPE, QUESTION, EVIDENCE_BLOCK."""
+    """Fill the user_base template (must match generate_answers.format_user_prompt)."""
+    raw = (qtype or "").strip().lower()
+    schema_prefix = (schema_block.strip() + "\n\n") if schema_block.strip() else ""
+    question_header = (f"Question (type={raw}):\n" if raw else "Question:\n")
     return (
-        user_base_text
-        .replace("{SCHEMA_BLOCK}", schema_block)
-        .replace("{QTYPE}", qtype)
+        user_base_text.replace("{SCHEMA_BLOCK}", schema_prefix)
+        .replace("{QUESTION_HEADER}", question_header)
         .replace("{QUESTION}", question)
         .replace("{EVIDENCE_BLOCK}", evidence_block)
     )
