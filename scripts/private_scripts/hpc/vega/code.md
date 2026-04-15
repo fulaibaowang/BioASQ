@@ -10,6 +10,7 @@ srun -p dev \
 CONTAINER_IMG="/ceph/hpc/data/s25t12-03-users/apptainer/bioasq_08.03.26b200.sif"
 PUBMED_HOST="/ceph/hpc/data/s25t12-03-users/pubmed"
 HOME_HOST="/ceph/hpc/home/wangy"
+WORKDIR="${PWD}"
 
 singularity shell --nv \
   -B "${WORKDIR}:/work" \
