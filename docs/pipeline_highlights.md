@@ -55,7 +55,7 @@ Your second point, that rerankers help early precision, is one of the strongest 
 
 I would say “consistently improved MAP@10 / MRR@10 over the stage-1 hybrid” rather than “always help,” because “always” is easy for a reviewer to challenge.
 
-The third point about snippet fusion is scientifically interesting, and the script actually supports your intuition. The snippet route is not a fresh retrieval branch from the full corpus; it is a late branch from the document route, using rerank_hybrid_200 as input, then extracting windows, reranking them, and finally fusing document and snippet signals with default weights of 0.8 for docs and 0.2 for snippets.
+The third point about snippet fusion is scientifically interesting, and the script actually supports your intuition. The snippet route is not a fresh retrieval branch from the full corpus; it is a late branch from the document route, using `rerank/post_rerank_fusion_snippet` (wide-pool post-rerank fusion) as input, then extracting windows, reranking them, and finally fusing document and snippet signals with default weights of 0.8 for docs and 0.2 for snippets.
 
 Because of that design, large MAP@10 gains are naturally hard to get: the snippet branch mostly rearranges evidence inside an already strong shortlisted document set. That makes your interpretation strong: snippet routing is better presented as evidence refinement / compression than as a major document-retrieval improvement.
 
@@ -85,7 +85,7 @@ That sounds much more balanced.
 
 Two extra scientific points jumped out from the script that are worth being explicit about in the report.
 
-First, the snippet route and baseline route are not compared under identical upstream settings by default. The script uses a pool-50 post-rerank fusion for the baseline rerank_hybrid, but a pool-200 branch for snippet processing via rerank_hybrid_200.
+First, the snippet route and baseline route are not compared under identical upstream settings by default. The script uses a pool-50 post-rerank fusion for the baseline (`rerank/post_rerank_fusion`), but a pool-200 branch for snippet processing (`rerank/post_rerank_fusion_snippet`).
 
 run_retrieval_rerank_pipeline
 

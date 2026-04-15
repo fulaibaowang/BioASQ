@@ -122,14 +122,14 @@ Metrics from `report/both_route/baseline/phaseB_report.tsv` and `report/both_rou
 
 | Method            | metrics path |
 |------------------|--------------|
-| Bm25             | `output/workflow_baseline_full_run_both_routes/bm25/metrics.csv` |
-| Dense            | `output/workflow_baseline_full_run_both_routes/dense/metrics.csv` |
-| Hybrid           | `output/workflow_baseline_full_run_both_routes/hybrid/metrics.csv` |
-| Rerank           | `output/workflow_baseline_full_run_both_routes/rerank/metrics.csv` |
-| Rerank_hybrid    | `output/workflow_baseline_full_run_both_routes/rerank_hybrid/metrics.csv` |
-| Rerank_hybrid_200| `output/workflow_baseline_full_run_both_routes/rerank_hybrid_200/metrics.csv` |
-| snippet_rerank   | `output/workflow_baseline_full_run_both_routes/snippet_rerank/metrics.csv` |
-| Snippet_rrf      | `output/workflow_baseline_full_run_both_routes/snippet_rrf/metrics.csv` |
+| Bm25             | `output/workflow_baseline_full_run_both_routes/retrieval/bm25/metrics.csv` |
+| Dense            | `output/workflow_baseline_full_run_both_routes/retrieval/dense/metrics.csv` |
+| Retrieval fusion | `output/workflow_baseline_full_run_both_routes/retrieval/fusion/metrics.csv` |
+| Rerank (cross-encoder) | `output/workflow_baseline_full_run_both_routes/rerank/cross_encoder/metrics.csv` |
+| Post_rerank_fusion | `output/workflow_baseline_full_run_both_routes/rerank/post_rerank_fusion/metrics.csv` |
+| Post_rerank_fusion_snippet | `output/workflow_baseline_full_run_both_routes/rerank/post_rerank_fusion_snippet/metrics.csv` |
+| snippet_rerank   | `output/workflow_baseline_full_run_both_routes/snippet/snippet_rerank/metrics.csv` |
+| Snippet_doc_fusion | `output/workflow_baseline_full_run_both_routes/snippet/snippet_doc_fusion/metrics.csv` |
 
 # retrieval
 

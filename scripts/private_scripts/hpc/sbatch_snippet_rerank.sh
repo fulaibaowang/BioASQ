@@ -22,7 +22,7 @@ PUBMED_HOST="/shared/workspace/biolab/pubmed"
 yun="/shared/workspace/biolab/yun"
 
 # Input: hybrid rerank runs
-RUNS_DIR="/yun/output/workflow_local_10pct_hpc_bge/rerank_hybrid/runs"
+RUNS_DIR="/yun/output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion_snippet/runs"
 RUN_GLOB="best_rrf_*_top*.tsv"
 
 # Corpus

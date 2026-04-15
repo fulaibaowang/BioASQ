@@ -16,7 +16,7 @@
 # # Listwise Reranking on Snippets (RankZephyr 7B V1 Full)
 #
 # This notebook:
-# 1. Loads top-k docs from `rerank_hybrid_200/runs` and top-1 snippet per doc from `snippet_rerank/windows`
+# 1. Loads top-k docs from `rerank/post_rerank_fusion_snippet/runs` and top-1 snippet per doc from `snippet/snippet_rerank/windows`
 # 2. Plots a token-length histogram to help choose k (number of docs/snippets for listwise reranking)
 # 3. Runs a listwise reranker (RankLLM + RankZephyr 7B V1 Full) on the snippets
 # 4. Evaluates MAP@10 and compares with the baseline per split
@@ -73,8 +73,8 @@ from retrieval_eval.common import (
 
 # %%
 WORKFLOW_OUTPUT = _REPO_ROOT / "output" / "workflow_baseline_full_run_both_routes_gemma"
-RERANK_HYBRID_200_RUNS = WORKFLOW_OUTPUT / "rerank_hybrid_200" / "runs"
-SNIPPET_WINDOWS_DIR = WORKFLOW_OUTPUT / "snippet_rerank" / "windows"
+POST_RERANK_FUSION_SNIPPET_RUNS = WORKFLOW_OUTPUT / "rerank" / "post_rerank_fusion_snippet" / "runs"
+SNIPPET_WINDOWS_DIR = WORKFLOW_OUTPUT / "snippet" / "snippet_rerank" / "windows"
 
 # Output root for this listwise experiment (designed for non-interactive HPC runs)
 LISTWISE_OUT = WORKFLOW_OUTPUT / "listwise_rankzephyr_test"
@@ -120,7 +120,7 @@ print(f"  VLLM_WORKER_MULTIPROC_METHOD={os.environ.get('VLLM_WORKER_MULTIPROC_ME
 print(f"  TOKENIZERS_PARALLELISM={os.environ.get('TOKENIZERS_PARALLELISM')}")
 print("Paths configured:")
 print(f"  REPO_ROOT:              {_REPO_ROOT}")
-print(f"  RERANK_HYBRID_200_RUNS: {RERANK_HYBRID_200_RUNS.resolve()}")
+print(f"  POST_RERANK_FUSION_SNIPPET_RUNS: {POST_RERANK_FUSION_SNIPPET_RUNS.resolve()}")
 print(f"  SNIPPET_WINDOWS_DIR:    {SNIPPET_WINDOWS_DIR.resolve()}")
 print(f"  TRAIN_JSON exists:      {TRAIN_JSON.exists()} ({TRAIN_JSON})")
 print(f"  TEST_JSONS exist:       {[p.exists() for p in TEST_JSONS]}")
@@ -189,8 +189,8 @@ def load_windows_jsonl(path: Path) -> Dict[Tuple[str, str], Tuple[str, float]]:
 
 
 # %%
-run_files = sorted(RERANK_HYBRID_200_RUNS.glob("*.tsv"))
-print(f"Found {len(run_files)} run files in {RERANK_HYBRID_200_RUNS}")
+run_files = sorted(POST_RERANK_FUSION_SNIPPET_RUNS.glob("*.tsv"))
+print(f"Found {len(run_files)} run files in {POST_RERANK_FUSION_SNIPPET_RUNS}")
 
 splits_data: Dict[str, dict] = {}
 
@@ -768,7 +768,7 @@ if len(results_df) > 0:
 # ## Summary
 #
 # This notebook:
-# 1. Loaded top-50 docs per query from `rerank_hybrid_200/runs`
+# 1. Loaded top-50 docs per query from `rerank/post_rerank_fusion_snippet/runs`
 # 2. Retrieved top-1 snippet per doc from `snippet_rerank/windows`
 # 3. Plotted token length histogram to analyze token distribution
 # 4. Ran two RankZephyr 7B reranking approaches:
@@ -784,8 +784,8 @@ if len(results_df) > 0:
 # ## 8) RRF sweep: snippet RRF + listwise runs (single/sliding)
 #
 # Standalone sweep block:
-# 1. `snippet_rrf` + `runs_single_window`
-# 2. `snippet_rrf` + `runs_sliding_window`
+# 1. `snippet_doc_fusion` + `runs_single_window`
+# 2. `snippet_doc_fusion` + `runs_sliding_window`
 #
 # For each pair, it sweeps weighted RRF and plots MAP@K curves per split.
 
@@ -809,7 +809,7 @@ def _resolve_repo_root() -> Path:
 REPO_ROOT_SWEEP = _resolve_repo_root()
 WORKFLOW_BASE_SWEEP = REPO_ROOT_SWEEP / "output" / "workflow_baseline_full_run_both_routes_gemma"
 
-SNIPPET_RRF_RUNS = WORKFLOW_BASE_SWEEP / "snippet_rrf" / "runs"
+SNIPPET_DOC_FUSION_RUNS = WORKFLOW_BASE_SWEEP / "snippet" / "snippet_doc_fusion" / "runs"
 
 
 def _first_existing_dir(*candidates: Path) -> Path:
@@ -836,7 +836,7 @@ SWEEP_OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 print("RRF sweep paths:")
 print(f"  WORKFLOW_BASE_SWEEP:    {WORKFLOW_BASE_SWEEP}")
-print(f"  SNIPPET_RRF_RUNS:       {SNIPPET_RRF_RUNS} (exists={SNIPPET_RRF_RUNS.exists()})")
+print(f"  SNIPPET_DOC_FUSION_RUNS: {SNIPPET_DOC_FUSION_RUNS} (exists={SNIPPET_DOC_FUSION_RUNS.exists()})")
 print(f"  LISTWISE_SINGLE_RUNS:   {LISTWISE_SINGLE_RUNS} (exists={LISTWISE_SINGLE_RUNS.exists()})")
 print(f"  LISTWISE_SLIDING_RUNS:  {LISTWISE_SLIDING_RUNS} (exists={LISTWISE_SLIDING_RUNS.exists()})")
 print(f"  SWEEP_OUT_DIR:          {SWEEP_OUT_DIR} (exists={SWEEP_OUT_DIR.exists()})")
@@ -863,7 +863,7 @@ TEST_SPLITS_SWEEP = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
 
 MAP_KS_SWEEP = [1, 3, 5, 10, 15]
 
-# Sweep weights: w(snippet_rrf) and w(listwise)
+# Sweep weights: w(snippet_doc_fusion) and w(listwise)
 #W_SNIPPET_GRID = [0.0, 0.1 ,0.2, 0.3, 0.4, 0.5, 0.6, 0.7,0.8,0.9,1]
 W_SNIPPET_GRID = [0.0,0.5 ,1]
 
@@ -952,13 +952,13 @@ def _map_at_ks_for_run_sweep(run_df: pd.DataFrame, qrels: dict[str, set[str]], k
     return {k: (float(np.mean(v)) if v else 0.0) for k, v in per_q.items()}
 
 
-def _find_snippet_rrf_run(split: str) -> Path | None:
+def _find_snippet_doc_fusion_run(split: str) -> Path | None:
     # Support both current and legacy train naming conventions.
     stems = [split]
     if split == "training14b_10pct_sample":
         stems = ["train_subset", split]
     for stem in stems:
-        cands = sorted(SNIPPET_RRF_RUNS.glob(f"best_rrf_{stem}_top*.tsv"))
+        cands = sorted(SNIPPET_DOC_FUSION_RUNS.glob(f"best_rrf_{stem}_top*.tsv"))
         if cands:
             return cands[0]
     return None
@@ -1013,7 +1013,7 @@ def run_rrf_weight_sweep(
     if weight_pairs is None:
         weight_pairs = DEFAULT_WEIGHT_PAIRS
 
-    print(f"\n=== Route pair: snippet_rrf + {route_name} ===")
+    print(f"\n=== Route pair: snippet_doc_fusion + {route_name} ===")
     print(f"  fusion_pool_top={fusion_pool_top}")
     if not listwise_runs_dir.exists():
         print(f"  Listwise runs dir not found: {listwise_runs_dir}")
@@ -1031,7 +1031,7 @@ def run_rrf_weight_sweep(
             print(f"  {split}: missing qrels, skipped")
             continue
 
-        snippet_path = _find_snippet_rrf_run(split)
+        snippet_path = _find_snippet_doc_fusion_run(split)
         # Prefer exact "<split>.tsv", but allow any "*<split>*.tsv" to be robust.
         listwise_path = listwise_runs_dir / f"{split}.tsv"
         if not listwise_path.exists():
@@ -1223,7 +1223,7 @@ def plot_rrf_sweep_curves(
         fontsize=10,
     )
     fig.suptitle(
-        f"RRF Weight Sweep: snippet_rrf + {route_name} (MAP@K, k_rrf={RRF_K_SWEEP})",
+        f"RRF Weight Sweep: snippet_doc_fusion + {route_name} (MAP@K, k_rrf={RRF_K_SWEEP})",
         fontsize=14,
         fontweight="bold",
         y=1.02,
@@ -1383,7 +1383,7 @@ def plot_map10_vs_weight_config(
         bbox_to_anchor=(1.0, 0.02),
         fontsize=11,
     )
-    plt.suptitle("MAP@10 vs RRF Weight Config: snippet_rrf + listwise routes", y=1.02, fontsize=14)
+    plt.suptitle("MAP@10 vs RRF Weight Config: snippet_doc_fusion + listwise routes", y=1.02, fontsize=14)
     plt.tight_layout(rect=[0, 0.05, 1, 0.95])
     out_png = SWEEP_OUT_DIR / "rrf_sweep_map10_vs_weight_single_vs_sliding.png"
     plt.savefig(out_png, dpi=150, bbox_inches="tight")

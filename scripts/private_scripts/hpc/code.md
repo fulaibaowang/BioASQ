@@ -117,10 +117,10 @@ srun -p dev --time=8:00:00 -c 4 --mem=32G --gres=gpu:A100:1 \
 
 #test stage3 (deprecated; scripts moved to scripts/deprecated/)
 python scripts/deprecated/rerank_stage3_sentence.py \
-  --runs-dir /yun/output/workflow_local_3pct_hpc_bge/hybrid/runs \
+  --runs-dir /yun/output/workflow_local_3pct_hpc_bge/retrieval/fusion/runs \
   --run-files \
-    /yun/output/workflow_local_3pct_hpc_bge/hybrid/runs/best_rrf_13b_golden_50q_sample_top5000.tsv \
-    /yun/output/workflow_local_3pct_hpc_bge/hybrid/runs/best_rrf_training14b_3pct_sample_top5000.tsv \
+    /yun/output/workflow_local_3pct_hpc_bge/retrieval/fusion/runs/best_rrf_13b_golden_50q_sample_top5000.tsv \
+    /yun/output/workflow_local_3pct_hpc_bge/retrieval/fusion/runs/best_rrf_training14b_3pct_sample_top5000.tsv \
   --docs-jsonl /yun/output/subset_pubmed.jsonl \
   --train-json example/training14b_3pct_sample.json \
   --test-batch-jsons example/13b_golden_50q_sample.json \
@@ -134,10 +134,10 @@ python scripts/deprecated/rerank_stage3_sentence.py \
 
 
 python scripts/deprecated/rerank_stage3_merged.py \
-  --runs-dir /yun/output/workflow_local_3pct_hpc_bge/hybrid/runs \
+  --runs-dir /yun/output/workflow_local_3pct_hpc_bge/retrieval/fusion/runs \
   --run-files \
-    /yun/output/workflow_local_3pct_hpc_bge/hybrid/runs/best_rrf_13b_golden_50q_sample_top5000.tsv \
-    /yun/output/workflow_local_3pct_hpc_bge/hybrid/runs/best_rrf_training14b_3pct_sample_top5000.tsv \
+    /yun/output/workflow_local_3pct_hpc_bge/retrieval/fusion/runs/best_rrf_13b_golden_50q_sample_top5000.tsv \
+    /yun/output/workflow_local_3pct_hpc_bge/retrieval/fusion/runs/best_rrf_training14b_3pct_sample_top5000.tsv \
   --docs-jsonl /yun/output/subset_pubmed.jsonl \
   --train-json example/training14b_3pct_sample.json \
   --test-batch-jsons example/13b_golden_50q_sample.json \
@@ -152,29 +152,29 @@ python scripts/deprecated/rerank_stage3_merged.py \
 
 # Run RRF fusion (Hybrid + Rerank) offline on finished workflows:
 python scripts/public/shared_scripts/rerank/rerank_rrf_hybrid.py \
-  --hybrid-runs-dir /yun/output/workflow_local_10pct_hpc_bge/hybrid/runs \
-  --rerank-runs-dir /yun/output/workflow_local_10pct_hpc_bge/rerank/runs \
-  --output-dir /yun/output/workflow_local_10pct_hpc_bge/rerank_hybrid \
+  --hybrid-runs-dir /yun/output/workflow_local_10pct_hpc_bge/retrieval/fusion/runs \
+  --rerank-runs-dir /yun/output/workflow_local_10pct_hpc_bge/rerank/cross_encoder/runs \
+  --output-dir /yun/output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion \
   --train-json example/training14b_10pct_sample.json \
   --test-batch-jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
   --pool-top 50 --k-rrf 60 --w-bge 0.8 --w-hybrid 0.2
 
 python scripts/public/shared_scripts/rerank/rerank_rrf_hybrid.py \
-  --hybrid-runs-dir /yun/output/workflow_local_3pct_hpc_bge/hybrid/runs \
-  --rerank-runs-dir /yun/output/workflow_local_3pct_hpc_bge/rerank/runs \
-  --output-dir /yun/output/workflow_local_3pct_hpc_bge/rerank_hybrid \
+  --hybrid-runs-dir /yun/output/workflow_local_3pct_hpc_bge/retrieval/fusion/runs \
+  --rerank-runs-dir /yun/output/workflow_local_3pct_hpc_bge/rerank/cross_encoder/runs \
+  --output-dir /yun/output/workflow_local_3pct_hpc_bge/rerank/post_rerank_fusion \
   --train-json example/training14b_3pct_sample.json \
   --test-batch-jsons example/13b_golden_50q_sample.json \
   --pool-top 50 --k-rrf 60 --w-bge 0.8 --w-hybrid 0.2
 
 python scripts/public/shared_scripts/compare_result_dirs.py \
-  --dirs /yun/output/workflow_local_10pct_hpc_bge/rerank /yun/output/workflow_local_10pct_hpc_bge/rerank_hybrid \
+  --dirs /yun/output/workflow_local_10pct_hpc_bge/rerank/cross_encoder /yun/output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion \
   --labels "rerank" "rerank_rrf_hybrid" \
   --plot both \
   --map-ks 10 \
   --train-json example/training14b_10pct_sample.json \
   --test-batch-jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
   --log-x --plots-by-split \
-  --output-dir /yun/output/workflow_local_10pct_hpc_bge/rerank_hybrid/compare_plots
+  --output-dir /yun/output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion/compare_plots
 
 scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config scripts/private_scripts/hpc/config_10pct_sbatch_test.env

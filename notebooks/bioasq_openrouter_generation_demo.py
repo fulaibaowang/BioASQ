@@ -15,7 +15,7 @@
 # %% [markdown]
 # # OpenRouter — four experiments (snippet file: first three + facet→answer)
 #
-# 1. **Baseline contexts** — first question only in `evidence_baseline/..._contexts.json`; full BioASQ answer JSON via `build_full_prompt_for_record` (same as [`generate_answers.py`](../scripts/public/shared_scripts/generation/generate_answers.py)).
+# 1. **Baseline contexts** — first question only in `evidence/evidence_baseline/..._contexts.json`; full BioASQ answer JSON via `build_full_prompt_for_record` (same as [`generate_answers.py`](../scripts/public/shared_scripts/generation/generate_answers.py)).
 # 2. **Snippet-route contexts** — questions at **indices 0, 1, 2** in `evidence_snippet/..._contexts.json` (each up to 30×960 passages); same answer path, stress test.
 # 3. **Evidence planner** — same three snippet questions; facet-plan JSON only (no BioASQ answer schema).
 # 4. **Answer from facet plan** — **first snippet question only**: run planner once, drop `unused_evidence`, then same pipeline [`system.txt`](../scripts/public/shared_scripts/prompts/system.txt) + schema + [`user_base.txt`](../scripts/public/shared_scripts/prompts/user_base.txt) with **`{EVIDENCE_BLOCK}`** = JSON `{{"facets": [...]}}` (not raw passages). System message gets a short clarification that input is structured facets, not raw text.
@@ -53,6 +53,7 @@ CONTEXTS_JSON = (
     REPO_ROOT
     / "bioasq14_output"
     / "batch_1"
+    / "evidence"
     / "evidence_baseline"
     / "BioASQ-task14bPhaseB-testset1_contexts.json"
 )

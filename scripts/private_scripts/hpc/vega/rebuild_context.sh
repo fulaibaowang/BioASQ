@@ -15,7 +15,7 @@ export SNIPPET_CONTEXT_TOP_WINDOWS=2
 
 SCRIPT=scripts/public/shared_scripts/evidence
 
-for TSV in "$WF/snippet_rrf/runs/"*.tsv; do
+for TSV in "$WF/snippet/snippet_doc_fusion/runs/"*.tsv; do
   [ -f "$TSV" ] || continue
   stem=$(basename "$TSV" .tsv)
   split=${stem#best_rrf_}
@@ -39,8 +39,8 @@ for TSV in "$WF/snippet_rrf/runs/"*.tsv; do
     continue
   fi
 
-  post_json="$WF/snippet_rrf/post_rerank_${split}.json"
-  ctx_json="$WF/evidence_snippet/${split}_contexts.json"
+  post_json="$WF/snippet/snippet_doc_fusion/post_rerank_${split}.json"
+  ctx_json="$WF/evidence/evidence_snippet/${split}_contexts.json"
 
   echo "=== $split | top-k=$TOP_K ==="
 
@@ -52,7 +52,7 @@ for TSV in "$WF/snippet_rrf/runs/"*.tsv; do
 
   python3 "$SCRIPT/build_contexts_from_snippets.py" \
     --post-rerank-json "$post_json" \
-    --snippet-windows-dir "$WF/snippet_rerank/windows" \
+    --snippet-windows-dir "$WF/snippet/snippet_rerank/windows" \
     --split-name "$split" \
     --corpus-path "$DOCS_JSONL" \
     --output-path "$ctx_json" \

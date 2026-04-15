@@ -18,7 +18,7 @@ from pathlib import Path
 
 base = Path("..")
 
-metrics_path = base / "output/workflow_local_10pct_hpc_bge/rerank_hybrid/metrics.csv"
+metrics_path = base / "output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion/metrics.csv"
 official_agg_path = base / "report/phaseA_report.tsv"
 official_perq_path = base / "report/phaseA_report_perq.tsv"
 

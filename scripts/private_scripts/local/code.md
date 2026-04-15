@@ -87,23 +87,23 @@ python scripts/public/shared_scripts/compare_result_dirs.py \
   --output-dir output/workflow_local_3pct_hpc_bge/compare_plots_mergedtest
 
 python scripts/public/shared_scripts/rerank/rerank_rrf_hybrid.py \
-  --hybrid-runs-dir output/workflow_local_10pct_hpc_bge/hybrid/runs \
-  --rerank-runs-dir output/workflow_local_10pct_hpc_bge/rerank/runs \
-  --output-dir output/workflow_local_10pct_hpc_bge/rerank_hybrid \
+  --hybrid-runs-dir output/workflow_local_10pct_hpc_bge/retrieval/fusion/runs \
+  --rerank-runs-dir output/workflow_local_10pct_hpc_bge/rerank/cross_encoder/runs \
+  --output-dir output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion \
   --train-json example/training14b_10pct_sample.json \
   --test-batch-jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
   --pool-top 50 --k-rrf 60 --w-bge 0.8 --w-hybrid 0.2
 
 python scripts/public/shared_scripts/compare_result_dirs.py \
-  --dirs output/workflow_local_10pct_hpc_bge/rerank output/workflow_local_10pct_hpc_bge/rerank_hybrid \
+  --dirs output/workflow_local_10pct_hpc_bge/rerank/cross_encoder output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion \
   --labels "rerank" "rerank_rrf_hybrid" \
-  --output-dir output/workflow_local_10pct_hpc_bge/rerank_hybrid \
+  --output-dir output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion \
   --train-json example/training14b_10pct_sample.json \
   --test_batch_jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json 
 
 #evidence
 python3 "scripts/public/shared_scripts/evidence/post_rerank_json.py" \
-  --run-path "output/workflow_local_10pct_hpc_bge/rerank_hybrid/runs/best_rrf_training14b_10pct_sample_top5000_rrf_pool50_k60.tsv" \
+  --run-path "output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion/runs/best_rrf_training14b_10pct_sample_top5000_rrf_pool50_k60.tsv" \
   --query-json example/training14b_10pct_sample.json \
   --output-path "output/workflow_local_10pct_hpc_bge/post_rerank_training14b_10pct_sample.json" \
   --top-k 10
@@ -116,7 +116,7 @@ python3 "scripts/public/shared_scripts/evidence/build_contexts_from_documents.py
 #rewriting is depracted
 #after query rewriting
 python scripts/public/shared_scripts/compare_result_dirs.py \
-  --dirs output/workflow_local_10pct_hpc_bge/rerank output/workflow_local_10pct_hpc_bge/rerank_body_rewrite_A output/workflow_local_10pct_hpc_bge/rerank_body_rewrite_B \
+  --dirs output/workflow_local_10pct_hpc_bge/rerank/cross_encoder output/workflow_local_10pct_hpc_bge/rerank_body_rewrite_A output/workflow_local_10pct_hpc_bge/rerank_body_rewrite_B \
   --labels "rerank" "rewrite A" "rewrite B"\
   --plot both \
   --map-ks 10,20,50,100,200 \

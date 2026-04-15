@@ -35,10 +35,10 @@ from compare_result_dirs import compute_map_at_ks, _load_run_tsv
 
 # %matplotlib inline
 
-HYBRID_DIR = REPO_ROOT / "output" / "workflow_baseline_full_run_both_routes_MedCPT" / "rerank_hybrid"
+DOC_FUSION_DIR = REPO_ROOT / "output" / "workflow_baseline_full_run_both_routes_MedCPT" / "rerank" / "post_rerank_fusion"
 SNIPPET_DIRS = [
-    ("MedCPT", REPO_ROOT / "output" / "workflow_baseline_full_run_both_routes_MedCPT" / "snippet_rerank"),
-    ("MedCPT_bge-m3", REPO_ROOT / "output" / "workflow_baseline_full_run_both_routes_MedCPT_bge-m3" / "snippet_rerank"),
+    ("MedCPT", REPO_ROOT / "output" / "workflow_baseline_full_run_both_routes_MedCPT" / "snippet" / "snippet_rerank"),
+    ("MedCPT_bge-m3", REPO_ROOT / "output" / "workflow_baseline_full_run_both_routes_MedCPT_bge-m3" / "snippet" / "snippet_rerank"),
 ]
 SNIPPET_LABELS = [label for label, _ in SNIPPET_DIRS]
 
@@ -50,7 +50,7 @@ TEST_JSONS = [
     REPO_ROOT / "bioasq_data" / "Task13BGoldenEnriched" / "13B4_golden.json",
 ]
 
-# Run stems differ: rerank_hybrid uses poolR50_poolH50, snippet_rerank uses poolR200_poolH200
+# Run stems differ: post_rerank_fusion uses poolR50_poolH50, snippet_rerank uses poolR200_poolH200
 HYBRID_SPLITS = [
     ("training14b_10pct_sample", "best_rrf_training14b_10pct_sample_top5000_rrf_poolR50_poolH50_k60"),
     ("13B1_golden", "best_rrf_13B1_golden_top5000_rrf_poolR50_poolH50_k60"),
@@ -69,11 +69,11 @@ SPLITS = HYBRID_SPLITS  # (split_label, run_stem) for iteration
 
 KS = list(range(10, 101, 10))
 
-# RRF fusion: rerank_hybrid + snippet_rerank (top-50 union -> weighted RRF -> top-10)
+# RRF fusion: post_rerank_fusion + snippet_rerank (top-50 union -> weighted RRF -> top-10)
 RUN_TOP = 100
 OUTPUT_TOP = 10
 RRF_KS = [(60)]
-RRF_WEIGHTS = [(1, 0),(0.9, 0.1),(0.8, 0.2),  (0.7, 0.3), (0.6, 0.4), (0.5, 0.5),(0.4, 0.6),(0.3, 0.7),(0.2, 0.8),(0.1, 0.9),(0, 1),]  # (w_rerank_hybrid, w_snippet_rerank)
+RRF_WEIGHTS = [(1, 0),(0.9, 0.1),(0.8, 0.2),  (0.7, 0.3), (0.6, 0.4), (0.5, 0.5),(0.4, 0.6),(0.3, 0.7),(0.2, 0.8),(0.1, 0.9),(0, 1),]  # (w_doc_fusion, w_snippet_rerank)
 
 # %%
 # Load gold maps per batch, with training dedup
@@ -117,7 +117,7 @@ def load_run_maps(result_dir, splits):
         out[split_label] = rm
     return out
 
-hybrid_runs = load_run_maps(HYBRID_DIR, HYBRID_SPLITS)
+hybrid_runs = load_run_maps(DOC_FUSION_DIR, HYBRID_SPLITS)
 snippet_runs = {label: load_run_maps(path, SNIPPET_SPLITS) for label, path in SNIPPET_DIRS}
 
 for split_label in hybrid_runs:
@@ -195,7 +195,7 @@ for ax, (split_label, _) in zip(axes, SPLITS):
 
 axes[0].set_ylabel("MAP@k")
 axes[-1].legend(loc="lower right", fontsize=8)
-fig.suptitle("MAP@k: rerank_hybrid vs snippet_rerank (MedCPT, MedCPT_bge-m3)", fontsize=12)
+fig.suptitle("MAP@k: post_rerank_fusion vs snippet_rerank (MedCPT, MedCPT_bge-m3)", fontsize=12)
 fig.tight_layout()
 plt.show()
 
@@ -234,7 +234,7 @@ for ax, (split_label, _) in zip(axes, SPLITS):
 
 axes[0].set_ylabel("Mean Recall@k")
 axes[-1].legend(loc="lower right", fontsize=8)
-fig.suptitle("Recall@k: rerank_hybrid vs snippet_rerank (MedCPT, MedCPT_bge-m3)", fontsize=12)
+fig.suptitle("Recall@k: post_rerank_fusion vs snippet_rerank (MedCPT, MedCPT_bge-m3)", fontsize=12)
 fig.tight_layout()
 plt.show()
 
@@ -403,7 +403,7 @@ for ax, (split_label, grp) in zip(axes, rrf_results.groupby("split", sort=False)
     ax.grid(True, alpha=0.3)
 for j in range(n_splits, len(axes)):
     axes[j].set_visible(False)
-plt.suptitle("RRF fusion: MAP@10 vs weight (rerank_hybrid vs snippet MedCPT/MedCPT_bge-m3), by k", y=1.02)
+plt.suptitle("RRF fusion: MAP@10 vs weight (post_rerank_fusion vs snippet MedCPT/MedCPT_bge-m3), by k", y=1.02)
 plt.tight_layout()
 plt.show()
 

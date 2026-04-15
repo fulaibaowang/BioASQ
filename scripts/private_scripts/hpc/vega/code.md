@@ -19,7 +19,7 @@ singularity shell --nv \
   "$CONTAINER_IMG"
 
 python3 scripts/public/evidence/contexts_json_to_bioasq_snippets.py \
-  --contexts-json /home/wangy/bioasq14_output/batch_1/evidence_snippet/BioASQ-task14bPhaseB-testset1_contexts.json \
+  --contexts-json /home/wangy/bioasq14_output/batch_1/evidence/evidence_snippet/BioASQ-task14bPhaseB-testset1_contexts.json \
   --corpus-path "/pubmed/jsonl_2026/*.jsonl" \
   --allow-fallback-offsets \
-  --output-json /home/wangy/bioasq14_output/batch_1/evidence_snippet/BioASQ-task14bPhaseB-testset1_bioasq_snippets.json
+  --output-json /home/wangy/bioasq14_output/batch_1/evidence/evidence_snippet/BioASQ-task14bPhaseB-testset1_bioasq_snippets.json

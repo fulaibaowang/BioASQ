@@ -226,7 +226,7 @@ plt.show()
 # %%
 hybrid_stage1 = hybrid_metrics.copy()
 rerank_metrics = pd.read_csv(workflow_dir / "rerank" / "metrics.csv")
-rerank_fusion_metrics = pd.read_csv(workflow_dir / "rerank_hybrid_200" / "metrics.csv")
+rerank_fusion_metrics = pd.read_csv(workflow_dir / "rerank/post_rerank_fusion_snippet" / "metrics.csv")
 
 # Rerank uses 'label' for split name
 rerank_metrics = rerank_metrics.rename(columns={"label": "split"})
@@ -570,7 +570,7 @@ qrels_by_split = {s: _load_qrels(p) for s, p in qrels_paths.items()}
 run_dirs = {
     "Hybrid (retrieval)": workflow_dir / "hybrid" / "runs",
     "Rerank": workflow_dir / "rerank" / "runs",
-    "Post-rerank fusion": workflow_dir / "rerank_hybrid_200" / "runs",
+    "Post-rerank fusion": workflow_dir / "rerank/post_rerank_fusion_snippet" / "runs",
 }
 
 map_curves: dict[str, dict[str, dict[int, float]]] = defaultdict(dict)
@@ -1138,14 +1138,14 @@ print("Saved:", fig_path)
 plt.show()
 
 # %% [markdown]
-# ## 10. MedCPT – MAP@K Curves: `rerank_hybrid_200` vs `snippet_rerank`
+# ## 10. MedCPT – MAP@K Curves: `rerank/post_rerank_fusion_snippet` vs `snippet_rerank`
 
 # %%
 medcpt_dir = base_dir / "output" / "workflow_baseline_full_run_both_routes_MedCPT"
 
 medcpt_run_dirs = {
-    "docs (full abstracts)": medcpt_dir / "rerank_hybrid_200" / "runs",
-    "snippets": medcpt_dir / "snippet_rerank" / "runs",
+    "docs (full abstracts)": medcpt_dir / "rerank/post_rerank_fusion_snippet" / "runs",
+    "snippets": medcpt_dir / "snippet" / "snippet_rerank" / "runs",
 }
 
 medcpt_map_ks = list(range(10, 101, 10))
@@ -1236,7 +1236,7 @@ fig.suptitle(
     y=0.98,
 )
 plt.tight_layout(rect=[0, 0, 1, 0.95])
-fig_path = output_dir / "08_medcpt_rerank_hybrid200_vs_snippet_mapk.png"
+fig_path = output_dir / "08_medcpt_post_rerank_fusion_snippet_vs_snippet_mapk.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
@@ -1287,13 +1287,13 @@ fig.suptitle(
     y=0.98,
 )
 plt.tight_layout(rect=[0, 0, 1, 0.95])
-fig_path = output_dir / "08b_medcpt_rerank_hybrid200_vs_snippet_mapk_dev_vs_test_merged.png"
+fig_path = output_dir / "08b_medcpt_post_rerank_fusion_snippet_vs_snippet_mapk_dev_vs_test_merged.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
 
 # %% [markdown]
-# ## 11. MedCPT – RRF Fusion Sweep: MAP@10 vs Weight (rerank_hybrid_200 + snippet_rerank)
+# ## 11. MedCPT – RRF Fusion Sweep: MAP@10 vs Weight (rerank/post_rerank_fusion_snippet + snippet_rerank)
 
 # %%
 # We reproduce the "MAP@10 vs weight config" line plots from `snippet_extraction_MedCPT.py`,
@@ -1403,12 +1403,12 @@ hybrid_run_maps: dict[str, dict[str, list[str]]] = {}
 snippet_run_maps: dict[str, dict[str, list[str]]] = {}
 
 for split in splits_rerank:
-    # hybrid (rerank_hybrid_200 uses poolR200_poolH200)
+    # hybrid (rerank/post_rerank_fusion_snippet uses poolR200_poolH200)
     stem_h = f"best_rrf_{split}_top5000_rrf_poolR200_poolH200_k60"
-    path_h = (medcpt_dir / "rerank_hybrid_200" / "runs" / f"{stem_h}.tsv")
+    path_h = (medcpt_dir / "rerank/post_rerank_fusion_snippet" / "runs" / f"{stem_h}.tsv")
     # snippet_rerank (same stem/pool config)
     stem_s = f"best_rrf_{split}_top5000_rrf_poolR200_poolH200_k60"
-    path_s = (medcpt_dir / "snippet_rerank" / "runs" / f"{stem_s}.tsv")
+    path_s = (medcpt_dir / "snippet" / "snippet_rerank" / "runs" / f"{stem_s}.tsv")
 
     if not path_h.exists() or not path_s.exists():
         continue

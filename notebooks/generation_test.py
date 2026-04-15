@@ -473,8 +473,8 @@ try:
 except ImportError:
     sm = None
 
-# Retrieval Success@10 from rerank_hybrid per-query CSVs
-retrieval_perq_dir = base / "output/workflow_local_10pct_hpc_bge/rerank_hybrid/per_query"
+# Retrieval Success@10 from post_rerank_fusion per-query CSVs
+retrieval_perq_dir = base / "output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion/per_query"
 retrieval_perq_frames = []
 for csv_path in sorted(retrieval_perq_dir.glob("*.csv")):
     df_r = pd.read_csv(csv_path)
