@@ -23,7 +23,7 @@ END_STAGE="${END_STAGE:-3}"
 # -----------------------------
 # Main pipeline image (non-b200 build; mirror Frida bioasq_08.03.26.sqfs)
 MAIN_CONTAINER="/ceph/hpc/data/s25t12-03-users/apptainer/bioasq_08.03.26.sif"
-LISTWISE_CONTAINER="/ceph/hpc/data/s25t12-03-users/apptainer/bioasqlistwisereranker_16.03.26v3.sif"
+LISTWISE_CONTAINER="/ceph/hpc/data/s25t12-03-users/apptainer/bioasqlistwisereranker_16.03.26v3b200.sif"
 WORKDIR="${PWD}"
 PUBMED_HOST="/ceph/hpc/data/s25t12-03-users/pubmed"
 YUN_HOST="/ceph/hpc/data/s25t12-03-users/"
