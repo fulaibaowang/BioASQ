@@ -82,7 +82,7 @@ flowchart TD
 
 - Baseline evidence uses document-level contexts built from title and abstract text (truncated to a fixed character budget per passage).
 - Snippet evidence uses title plus the highest-scoring sliding windows from the snippet reranking stage as compact contexts.
-- **OpenAI-compatible LLM:** Set `GENERATION_BACKEND=openai_compat`, non-secret `GEN_API_BASE` (and `GENERATION_MODEL` for the provider model id) in your run-sourced env; put `GEN_API_KEY` in secrets only (gitignored `.env`, exports, or scheduler secrets). Same prompts and answer JSON schema as the default path in [generate_answers.py](scripts/public/shared_scripts/generation/generate_answers.py). Defaults and the other backend are documented in that script and in [workflow_config_full.env](scripts/public/shared_scripts/workflow_config_full.env).
+- **OpenAI-compatible LLM:** Set `GENERATION_BACKEND=openai_compat`, `GEN_API_BASE`, and `GENERATION_MODEL` (or pass `--model`) in your run-sourced config or exports. Put `GEN_API_KEY` in secrets; [generate_answers.py](scripts/public/shared_scripts/generation/generate_answers.py) may read **only** `GEN_API_KEY` from gitignored repo-root `.env` if the variable is not already set. Same prompts and answer JSON schema as the default path. Defaults and the Ollama backend are documented in that script and in [workflow_config_full.env](scripts/public/shared_scripts/workflow_config_full.env).
 - This step can be skipped via `--no-generation` without affecting retrieval and reranking reproducibility.
 
 Scripts, configs, and detailed usage: [scripts/public/README.md](scripts/public/README.md).
