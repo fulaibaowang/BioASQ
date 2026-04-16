@@ -16,3 +16,17 @@ python3 scripts/public/shared_scripts/generation/generate_answers.py \
 
 python3 scripts/public/shared_scripts/generation/rescue_failed_generation.py \
   --input bioasq14_output/batch_2_B/BioASQ-task14bPhaseB-testset2_answers.json
+
+python scripts/public/query_parsing/prepare_query.py \
+  bioasq_data/14b/BioASQ-task14bPhaseA-testset3-rewrite \
+  -o bioasq_data/14b/BioASQ-task14bPhaseA-testset3-rewrite-ready.json --no-fallback
+
+python3 scripts/public/shared_scripts/generation/generate_answers.py \
+  --input-path bioasq_data/14b/BioASQ-task14bPhaseB-testset3 \
+  --output-dir bioasq14_output/batch_3_B_ \
+  --evidence-source snippets --max-contexts 13
+
+python3 scripts/public/shared_scripts/generation/generate_answers.py \
+  --input-path bioasq_data/14b/BioASQ-task14bPhaseB-testset3 \
+  --output-dir bioasq14_output/batch_3_B_18 \
+  --evidence-source snippets --max-contexts 18
