@@ -1,105 +1,27 @@
-# BioASQ: retrieval + reranking + generation experiments
+# BioASQ 14b (2026): retrieval, reranking, and generation
 
-This repo collects data prep, retrieval, and evaluation code for BioASQ Phase-A style document retrieval.
+This repository supports **BioASQ Task 14b** (2026) **Phase A–style** document retrieval: a **RAG-style** stack that retrieves biomedical literature, optionally reranks with a cross-encoder and snippet windows, and generates answers from evidence.
 
-**Quickstart (Docker, local venv, output folders):** [scripts/public/shared_scripts/README.md#first-time-on-a-new-machine](scripts/public/shared_scripts/README.md#first-time-on-a-new-machine)
+**Where to read next**
 
-## Plan and Goals
+- **Pipeline overview and flowchart:** [RAG-scripts README](https://github.com/fulaibaowang/RAG-scripts/blob/main/README.md) (vendored as `scripts/public/shared_scripts/`)
+- **Docker, indexes, and BioASQ-oriented commands:** [docs/USAGE.md](docs/USAGE.md) (new to the repo or using official-style paths → start here)
+- **Generic per-stage CLI examples (placeholder paths):** [RAG-scripts docs/USAGE.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/docs/USAGE.md)
+- **Adapt-in / adapt-out and public script layout:** [scripts/public/README.md](scripts/public/README.md)
+- **Tuning, cap chains, and env parity:** [RAG-scripts docs/PARAMETERS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/docs/PARAMETERS.md) and [workflow_config_full.env](https://github.com/fulaibaowang/RAG-scripts/blob/main/workflow_config_full.env)
 
-- Stage 1: hybrid retrieval (BM25+RM3, dense, retrieval fusion), fetch ~500-2000 docs per query.
-- Stage 2: document-level reranking with a cross-encoder 
-- Stage 2b: Post-rerank fusion at the top ranks (focus on MAP@10).
-- Stage 3: (optional): Snippet-aware evidence reranking
-- Stage 3b (optional): Evidence (document and snippet) fusion
-- Stage 4: LLM answer generation from baseline or snippet-based evidence.
-- Metrics: use MeanR@K for stages 1-2; MAP@10 at the top ranks for rerank + downstream routes.
+At a high level: **hybrid retrieval** (BM25 + RM3 and dense HNSW with fusion), **document reranking** and post-rerank fusion, an **optional snippet-RRF** branch for snippet-style evidence, and **LLM generation** with **different prompts per `query_type`** (factoid, list, yesno, summary). Generation behaviour and backends are implemented in [`generate_answers.py`](https://github.com/fulaibaowang/RAG-scripts/blob/main/generation/generate_answers.py) and commented in `workflow_config_full.env`.
 
-## Methods
+## Usage (Docker)
 
-### Index preparation (before running the pipeline)
-
-The pipeline expects a **BM25 (Terrier) index** and a **Dense (HNSW) index**. Build them once from JSONL document shards (e.g. PubMed baseline):
-
-- **BM25:** [scripts/public/shared_scripts/index/build_bm25_index_from_jsonl_shards.py](scripts/public/shared_scripts/index/build_bm25_index_from_jsonl_shards.py)
-- **Dense:** [scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_shards.py](scripts/public/shared_scripts/index/build_dense_hnsw_index_from_jsonl_shards.py)
-
-Point `BM25_INDEX_PATH` and `DENSE_INDEX_DIR` in your pipeline config to these outputs. For data prep (parse XML to JSONL, subset) and full indexing commands see [scripts/public/shared_scripts/docs/USAGE.md](scripts/public/shared_scripts/docs/USAGE.md).
-
-### Run the full pipeline (recommended)
-
-The easiest way to run retrieval and reranking is the pipeline script with a config file. It runs BM25 → Dense → retrieval fusion (BM25 + dense) → Reranker, skips stages whose output already exists, and uses one config for all options.
-
-- **Script:** [scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh](scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh)
-- **Example configs:** [workflow_config_baseline.env](scripts/public/shared_scripts/workflow_config_baseline.env) (baseline defaults), [workflow_config_snippet.env](scripts/public/shared_scripts/workflow_config_snippet.env) (snippet-RRF route example), [workflow_config_full.env](scripts/public/shared_scripts/workflow_config_full.env) (full options)
-- **Run (from repo root):** `./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config scripts/public/shared_scripts/workflow_config_baseline.env`  
-  Use `--no-rerank` to run only BM25, Dense, and retrieval fusion; use `--no-generation` to skip LLM answer generation while still building evidence.
-
-Pipeline config and env→script mapping: [scripts/public/README.md](scripts/public/README.md).
-
-### Pipeline routes (baseline vs snippet-RRF)
-
-The pipeline has a baseline document-evidence route and an optional snippet-RRF route (for snippet-style contexts).
-
-```mermaid
-flowchart TD
-  BM25[BM25 + RM3] --> Dense[Dense]
-  Dense --> Hybrid["Retrieval fusion (BM25 + dense)"]
-  Hybrid --> Rerank["Cross-encoder rerank"]
-  Rerank --> RH["Post-rerank fusion"]
-
-  RH --> EB[Baseline evidence]
-  EB --> GB[Baseline generation]
-
-  RH --> SR["Snippet rerank"]
-  SR --> RRF2["Evidence fusion"]
-  RRF2 --> ES[Snippet evidence]
-  ES --> GS[Snippet generation]
-```
-
-- For a detailed map of pipeline outputs (including baseline and snippet-RRF routes), see [scripts/public/shared_scripts/docs/output.md](scripts/public/shared_scripts/docs/output.md).
-
-### First Stage Retrieval
-
-- **BM25 + RM3**
-  - Keyword retrieval with RM3 query expansion.
-
-- **Dense Retrieval**
-  - SentenceTransformer embeddings + HNSW index.
-  - Default model: MedEmbed-small-v0.1.
-
-- **Retrieval fusion**: reciprocal Rank Fusion combining BM25 and dense runs.
-
-### Second Stage Reranking
-
-- Cross-encoder reranker that re-scores stage-1 candidates using (query, title+abstract) pairs.
-- Typical flow: take top ~200-2000 per query, re-rank.
-- Post-rerank fusion combining reranker scores and retrieval fusion (stage 1) results.
-
-### Snippet Reranking (optional)
-
-- Sliding-window extraction over top documents from Second Stage Reranking: each abstract is split into overlapping sentence windows, scored by a two-stage dense + cross-encoder pipeline, then the best window score becomes the document's snippet score.
-- Final RRF fusion blends document-level and snippet-level rankings into a single ranking used for snippet-based evidence.
-
-### Answer Generation
-
-- Baseline evidence uses document-level contexts built from title and abstract text (truncated to a fixed character budget per passage).
-- Snippet evidence uses title plus the highest-scoring sliding windows from the snippet reranking stage as compact contexts.
-- **OpenAI-compatible LLM:** Set `GENERATION_BACKEND=openai_compat`, `GEN_API_BASE`, and `GENERATION_MODEL` (or pass `--model`) in your run-sourced config or exports. Put `GEN_API_KEY` in secrets; [generate_answers.py](scripts/public/shared_scripts/generation/generate_answers.py) may read **only** `GEN_API_KEY` from gitignored repo-root `.env` if the variable is not already set. Same prompts and answer JSON schema as the default path. Defaults and the Ollama backend are documented in that script and in [workflow_config_full.env](scripts/public/shared_scripts/workflow_config_full.env).
-- This step can be skipped via `--no-generation` without affecting retrieval and reranking reproducibility.
-
-Scripts, configs, and detailed usage: [scripts/public/README.md](scripts/public/README.md).
+Build the image, build indexes, and run the orchestrator with a config file: [docs/USAGE.md](docs/USAGE.md).
 
 ## Results
 
-Full results are in [docs/RESULTS.md](docs/RESULTS.md).
+Full results: [docs/RESULTS.md](docs/RESULTS.md).
 
-## Detailed commands
+## Environment and CI
 
-See [scripts/public/shared_scripts/docs/USAGE.md](scripts/public/shared_scripts/docs/USAGE.md) for detailed setup and evaluation commands.
+Reproducible runtime: [Dockerfile](Dockerfile). Python stacks: [requirements-docker-pytorch.txt](requirements-docker-pytorch.txt) (CUDA 12.8 PyTorch wheels) and [requirements-docker.txt](requirements-docker.txt).
 
-## Environment
-
-For a reproducible environment see [Dockerfile](Dockerfile). Python packages for that image live in [requirements-docker-pytorch.txt](requirements-docker-pytorch.txt) (CUDA 12.8 PyTorch wheels) and [requirements-docker.txt](requirements-docker.txt) (rest of the stack).
-
-CI runs a small **smoke** workflow (Python `compileall` + pipeline `--help`) on changes under `scripts/public/shared_scripts/`; see [.github/workflows/pipeline-smoke.yml](.github/workflows/pipeline-smoke.yml).
-
+CI runs a small smoke workflow (`compileall` + pipeline `--help`) on changes under the vendored copy of [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts/tree/main) at `scripts/public/shared_scripts/`; see [.github/workflows/pipeline-smoke.yml](.github/workflows/pipeline-smoke.yml).
