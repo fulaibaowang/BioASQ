@@ -4,11 +4,11 @@ This repository supports **BioASQ Task 14b** (2026) **Phase A/A+**: a **RAG-styl
 
 **Where to read next**
 
-- **Pipeline overview and flowchart:** [RAG-scripts README](https://github.com/fulaibaowang/RAG-scripts/blob/main/README.md)
-- **Docker, indexes, and BioASQ-oriented commands:** [docs/USAGE.md](docs/USAGE.md) (new to the repo or using official-style paths → start here)
-- **Generic per-stage CLI examples (placeholder paths):** [RAG-scripts docs/USAGE.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/docs/USAGE.md)
+- Use [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts/blob/main/README.md) as backbone:
+  - there you can read **Pipeline overview and flowchart:** as well as detailed parameters setting
 - **input and output conversion for BioASQ format, and script layout:** [scripts/public/README.md](scripts/public/README.md)
-- **setting different parameters:** [RAG-scripts docs/PARAMETERS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/docs/PARAMETERS.md) and [workflow_config_full.env](https://github.com/fulaibaowang/RAG-scripts/blob/main/workflow_config_full.env)
+- **Docker, indexes, and BioASQ-oriented commands:** [docs/USAGE.md](docs/USAGE.md) (new to the repo or using official-style paths → start here)
+
 
 At a high level: **hybrid retrieval** (BM25 + RM3 and dense HNSW with fusion), **document reranking** and post-rerank fusion, an **optional snippet ranking and snippet-document-fusion** branch for snippet-style evidence, and **LLM generation** with **different prompts per `query_type`** (factoid, list, yesno, summary). Generation behaviour and backends are implemented in [`generate_answers.py`](https://github.com/fulaibaowang/RAG-scripts/blob/main/generation/generate_answers.py) and commented in `workflow_config_full.env`.
 
