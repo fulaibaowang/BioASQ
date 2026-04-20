@@ -2,8 +2,9 @@ REPO_ROOT=/work
 
 # Workflow root (snippet route)
 WF=/home/wangy/output/workflow_baseline_full_run_both_routes_gemma
-# Cap on docs per question in post-rerank JSONL
-TOP_K=30   # or whatever you want instead of EVIDENCE_TOP_K
+# Docs written to post_rerank JSONL from TSV (pool); contexts use EVIDENCE_TOP_K via --evidence-top-k
+POST_RERANK_DOC_POOL=30
+EVIDENCE_TOP_K=10
 # Corpus for context building (glob or file)
 export DOCS_JSONL="/pubmed/jsonl_2026/*.jsonl"   # same as DOCS_JSONL for that run
 # Same query JSONLs as the pipeline (source your real config, or paste paths)
@@ -44,13 +45,24 @@ for TSV in "$WF/snippet/snippet_doc_fusion/runs/"*.tsv; do
   post_jsonl="$WF/snippet/snippet_doc_fusion/post_rerank_${split}.jsonl"
   ctx_jsonl="$WF/evidence/evidence_snippet/${split}_contexts.jsonl"
 
-  echo "=== $split | top-k=$TOP_K ==="
+  echo "=== $split | post_rerank_pool=$POST_RERANK_DOC_POOL evidence_top_k=$EVIDENCE_TOP_K ==="
 
-  python3 "$SCRIPT/post_rerank_json.py" \
-    --run-path "$TSV" \
-    --query-jsonl "$query_jsonl" \
-    --output-path "$post_jsonl" \
-    --top-k "$TOP_K"
+  _win="$WF/snippet/snippet_rerank/windows/${split}.jsonl"
+  if [ -f "$_win" ]; then
+    python3 "$SCRIPT/post_rerank_jsonl.py" \
+      --run-path "$TSV" \
+      --query-jsonl "$query_jsonl" \
+      --output-path "$post_jsonl" \
+      --top-k "$POST_RERANK_DOC_POOL" \
+      --windows-jsonl "$_win"
+  else
+    echo "Warning: windows not found at $_win; post_rerank without merge" >&2
+    python3 "$SCRIPT/post_rerank_jsonl.py" \
+      --run-path "$TSV" \
+      --query-jsonl "$query_jsonl" \
+      --output-path "$post_jsonl" \
+      --top-k "$POST_RERANK_DOC_POOL"
+  fi
 
   python3 "$SCRIPT/build_contexts_from_snippets.py" \
     --post-rerank-jsonl "$post_jsonl" \
@@ -59,5 +71,6 @@ for TSV in "$WF/snippet/snippet_doc_fusion/runs/"*.tsv; do
     --corpus-path "$DOCS_JSONL" \
     --output-path "$ctx_jsonl" \
     --window-size "${SNIPPET_WINDOW_SIZE:-3}" \
-    --top-windows "${SNIPPET_CONTEXT_TOP_WINDOWS:-2}"
+    --top-windows "${SNIPPET_CONTEXT_TOP_WINDOWS:-2}" \
+    --evidence-top-k "$EVIDENCE_TOP_K"
 done

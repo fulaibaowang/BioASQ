@@ -102,7 +102,7 @@ python scripts/public/shared_scripts/analysis/compare_result_dirs.py \
   --test_batch_jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json 
 
 #evidence
-python3 "scripts/public/shared_scripts/evidence/post_rerank_json.py" \
+python3 "scripts/public/shared_scripts/evidence/post_rerank_jsonl.py" \
   --run-path "output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion/runs/best_rrf_training14b_10pct_sample_top5000_rrf_pool50_k60.tsv" \
   --query-json example/training14b_10pct_sample.json \
   --output-path "output/workflow_local_10pct_hpc_bge/post_rerank_training14b_10pct_sample.json" \
