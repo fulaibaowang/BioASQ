@@ -7,7 +7,7 @@ This repository supports **BioASQ Task 14b** (2026) **Phase A/A+**: a **RAG-styl
 - Use [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts/blob/main/README.md) as backbone:
   - there you can read **Pipeline overview and flowchart** as well as detailed commands and parameters setting
 - **input and output conversion for BioASQ format, and script layout:** [scripts/public/README.md](scripts/public/README.md)
-- **Docker, indexes, and BioASQ-oriented commands:** [docs/USAGE.md](docs/USAGE.md) (new to the repo or using official-style paths → start here)
+- **indexes, and BioASQ-oriented commands:** [docs/USAGE.md](docs/USAGE.md)
 
 
 At a high level: **hybrid retrieval** (BM25 + RM3 and dense HNSW with fusion), **document reranking** and post-rerank fusion, an **optional snippet ranking and snippet-document-fusion** branch for snippet-style evidence, and **LLM generation** with **different prompts per `query_type`** (factoid, list, yesno, summary). 
