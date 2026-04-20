@@ -19,7 +19,7 @@ Build the image, build indexes, and run the orchestrator with a config file: [do
 
 Some results: [docs/RESULTS.md](docs/RESULTS.md).
 
-## Environment and CI
+## Environment
 
-Reproducible runtime: [Dockerfile](Dockerfile) at the repository root (it copies Python requirements from the [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts/tree/main) subtree). Canonical copies of the image recipe and pins: [`Dockerfile`](https://github.com/fulaibaowang/RAG-scripts/blob/main/Dockerfile), [`requirements-docker-pytorch.txt`](https://github.com/fulaibaowang/RAG-scripts/blob/main/requirements-docker-pytorch.txt), [`requirements-docker.txt`](https://github.com/fulaibaowang/RAG-scripts/blob/main/requirements-docker.txt) under `scripts/public/shared_scripts/` in this repo.
+Container image and Python pins live only under the vendored [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts/tree/main) tree: [Dockerfile](scripts/public/shared_scripts/Dockerfile), [requirements-docker-pytorch.txt](scripts/public/shared_scripts/requirements-docker-pytorch.txt), [requirements-docker.txt](scripts/public/shared_scripts/requirements-docker.txt). Build from the repo root: `docker build -t bioasq-pipeline -f scripts/public/shared_scripts/Dockerfile scripts/public/shared_scripts` (see [docs/USAGE.md](docs/USAGE.md)).
 

@@ -7,16 +7,10 @@ on:
     paths:
       - "scripts/public/shared_scripts/**"
       - ".github/workflows/pipeline-smoke.yml"
-      - "Dockerfile"
-      - "requirements-docker.txt"
-      - "requirements-docker-pytorch.txt"
   pull_request:
     paths:
       - "scripts/public/shared_scripts/**"
       - ".github/workflows/pipeline-smoke.yml"
-      - "Dockerfile"
-      - "requirements-docker.txt"
-      - "requirements-docker-pytorch.txt"
 
 jobs:
   python-syntax:

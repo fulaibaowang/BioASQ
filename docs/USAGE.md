@@ -11,10 +11,10 @@ The retrieval pipeline is vendored from upstream **[fulaibaowang/RAG-scripts](ht
 From the **repository root** (clone with `.git` present, or use absolute paths in your config):
 
 ```bash
-docker build -t bioasq-pipeline -f Dockerfile .
+docker build -t bioasq-pipeline -f scripts/public/shared_scripts/Dockerfile scripts/public/shared_scripts
 ```
 
-Python dependencies for a **local venv** (optional) are listed at the repo root in [requirements-docker-pytorch.txt](../requirements-docker-pytorch.txt) and [requirements-docker.txt](../requirements-docker.txt). Install a matching `torch` for your platform from [pytorch.org](https://pytorch.org), then `pip install -r requirements-docker.txt`. You still need Java and the system libraries the [Dockerfile](../Dockerfile) installs.
+Python pins for a **local venv** (optional) are only under the pipeline tree: [requirements-docker-pytorch.txt](../scripts/public/shared_scripts/requirements-docker-pytorch.txt) and [requirements-docker.txt](../scripts/public/shared_scripts/requirements-docker.txt). Install a matching `torch` from [pytorch.org](https://pytorch.org), then `pip install -r scripts/public/shared_scripts/requirements-docker-pytorch.txt` and `pip install -r scripts/public/shared_scripts/requirements-docker.txt`. You still need Java and the system packages described in [Dockerfile](../scripts/public/shared_scripts/Dockerfile).
 
 ---
 
