@@ -7,7 +7,7 @@ These scripts are **not used in production**. They are kept for reference or one
 - **`rerank_stage3_merged.py`** — Stage-3 variant: one CE call per doc on (query, title + top-3 sentences merged).
 - **`query_rewrite_llm.py`** — LLM-based query rewrite (A: normalize_only, B: normalize_and_enrich) for BioASQ JSONs. Two rewrite trials (A/B) did not improve MAP over the baseline queries in our experiments, so this script is deprecated and kept only for reference.
 
-(Result-dir comparison and plotting is in shared scripts: `scripts/public/shared_scripts/compare_result_dirs.py`.)
+(Result-dir comparison and plotting is in shared scripts: `scripts/public/shared_scripts/analysis/compare_result_dirs.py`.)
 
 Internal experiments showed that these sentence-level reranking variants did not improve over stage-2 (full-document CE); they are preserved here in case the idea is revisited (e.g. with differently trained cross-encoders). See [docs/RESULTS.md](../../docs/RESULTS.md) for a short note.
 

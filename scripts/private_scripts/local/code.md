@@ -77,7 +77,7 @@ python scripts/public/shared_scripts/rerank/rerank_stage2.py \
   --model-batch 16 \
   --max-queries 5 
 
-python scripts/public/shared_scripts/compare_result_dirs.py \
+python scripts/public/shared_scripts/analysis/compare_result_dirs.py \
   --dirs output/workflow_local_3pct_hpc_bge/rerank_merged output/workflow_local_3pct_hpc_bge/rerank_sentence \
   --labels "Stage 3 merged" "Stage 3 sentence" \
   --plot both \
@@ -94,7 +94,7 @@ python scripts/public/shared_scripts/rerank/rerank_rrf_hybrid.py \
   --test-batch-jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
   --pool-top 50 --k-rrf 60 --w-bge 0.8 --w-hybrid 0.2
 
-python scripts/public/shared_scripts/compare_result_dirs.py \
+python scripts/public/shared_scripts/analysis/compare_result_dirs.py \
   --dirs output/workflow_local_10pct_hpc_bge/rerank/cross_encoder output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion \
   --labels "rerank" "rerank_rrf_hybrid" \
   --output-dir output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion \
@@ -115,7 +115,7 @@ python3 "scripts/public/shared_scripts/evidence/build_contexts_from_documents.py
 
 #rewriting is depracted
 #after query rewriting
-python scripts/public/shared_scripts/compare_result_dirs.py \
+python scripts/public/shared_scripts/analysis/compare_result_dirs.py \
   --dirs output/workflow_local_10pct_hpc_bge/rerank/cross_encoder output/workflow_local_10pct_hpc_bge/rerank_body_rewrite_A output/workflow_local_10pct_hpc_bge/rerank_body_rewrite_B \
   --labels "rerank" "rewrite A" "rewrite B"\
   --plot both \

@@ -167,7 +167,7 @@ python scripts/public/shared_scripts/rerank/rerank_rrf_hybrid.py \
   --test-batch-jsons example/13b_golden_50q_sample.json \
   --pool-top 50 --k-rrf 60 --w-bge 0.8 --w-hybrid 0.2
 
-python scripts/public/shared_scripts/compare_result_dirs.py \
+python scripts/public/shared_scripts/analysis/compare_result_dirs.py \
   --dirs /yun/output/workflow_local_10pct_hpc_bge/rerank/cross_encoder /yun/output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion \
   --labels "rerank" "rerank_rrf_hybrid" \
   --plot both \
