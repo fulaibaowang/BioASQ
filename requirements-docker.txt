@@ -1,7 +1,8 @@
-# Python dependencies for the main BioASQ Dockerfile (after PyTorch from
-# requirements-docker-pytorch.txt). Docker remains the gold path; for a local
-# venv, install a matching torch stack from https://pytorch.org then:
-#   pip install -r requirements-docker.txt
+# Python dependencies for the BioASQ Dockerfile (after PyTorch from
+# requirements-docker-pytorch.txt). Canonical copy (RAG-scripts): see
+# scripts/public/shared_scripts/requirements-docker.txt
+# Docker build copies from that path. For a local venv, matching torch from
+# https://pytorch.org then: pip install -r requirements-docker.txt
 
 nltk
 rank_bm25

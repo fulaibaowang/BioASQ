@@ -10,6 +10,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 WORKDIR /app
 
+# Python stack files live in scripts/public/shared_scripts/ (RAG-scripts subtree).
+# Standalone build from that tree: docker build -t rag-scripts -f Dockerfile path/to/shared_scripts
+
 # -----
 # System packages
 # -----
@@ -41,7 +44,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN ln -sf /usr/bin/python3 /usr/bin/python && \
     python -m pip install --upgrade pip setuptools wheel
 
-COPY requirements-docker-pytorch.txt requirements-docker.txt ./
+COPY scripts/public/shared_scripts/requirements-docker-pytorch.txt scripts/public/shared_scripts/requirements-docker.txt ./
 
 # -----
 # PyTorch (CUDA 12.8 wheels) then pinned Python deps (see requirements-docker*.txt)

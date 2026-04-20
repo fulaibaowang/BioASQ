@@ -21,5 +21,5 @@ Some results: [docs/RESULTS.md](docs/RESULTS.md).
 
 ## Environment and CI
 
-Reproducible runtime: [Dockerfile](Dockerfile). Python stacks: [requirements-docker-pytorch.txt](requirements-docker-pytorch.txt) (CUDA 12.8 PyTorch wheels) and [requirements-docker.txt](requirements-docker.txt).
+Reproducible runtime: [Dockerfile](Dockerfile) at the repository root (it copies Python requirements from the [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts/tree/main) subtree). Canonical copies of the image recipe and pins: [`Dockerfile`](https://github.com/fulaibaowang/RAG-scripts/blob/main/Dockerfile), [`requirements-docker-pytorch.txt`](https://github.com/fulaibaowang/RAG-scripts/blob/main/requirements-docker-pytorch.txt), [`requirements-docker.txt`](https://github.com/fulaibaowang/RAG-scripts/blob/main/requirements-docker.txt) under `scripts/public/shared_scripts/` in this repo.
 
