@@ -1,8 +1,8 @@
 # Public scripts
 
-**Which usage doc?
+**Which usage doc?** 
 
-** Use **[docs/USAGE.md](../../docs/USAGE.md)** for BioASQ-oriented examples and codes including indexing, bioASQ format conversion. 
+Use **[docs/USAGE.md](../../docs/USAGE.md)** for BioASQ-oriented examples and codes including indexing, bioASQ format conversion. 
 
 Use **[shared_scripts/docs/USAGE.md](shared_scripts/docs/USAGE.md)** for generic indexing and per-stage CLI commands with placeholder paths.
 
