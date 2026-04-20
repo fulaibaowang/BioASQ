@@ -79,7 +79,7 @@ HF_CACHE_SETUP='
 if (( START_STAGE <= 1 && END_STAGE >= 1 )); then
 echo ""
 echo "========== Stage 1: Main Pipeline =========="
-srun singularity exec \
+srun --mpi=none singularity exec \
   --cleanenv \
   "${APPTAINER_GPU_ARGS[@]}" \
   "${SING_BINDS[@]}" \
@@ -112,7 +112,7 @@ fi
 if (( START_STAGE <= 2 && END_STAGE >= 2 )); then
 echo ""
 echo "========== Stage 2: Listwise Reranking =========="
-srun singularity exec \
+srun --mpi=none singularity exec \
   --cleanenv \
   "${APPTAINER_GPU_ARGS[@]}" \
   "${SING_BINDS[@]}" \
@@ -141,7 +141,7 @@ fi
 if (( START_STAGE <= 3 && END_STAGE >= 3 )); then
 echo ""
 echo "========== Stage 3: Listwise Evidence + Generation =========="
-srun singularity exec \
+srun --mpi=none singularity exec \
   --cleanenv \
   "${APPTAINER_GPU_ARGS[@]}" \
   "${SING_BINDS[@]}" \
