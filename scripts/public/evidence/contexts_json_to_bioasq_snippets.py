@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert pipeline *_contexts.json to BioASQ-style question JSON (documents + snippets).
+Convert pipeline *_contexts.jsonl (or legacy *_contexts.json) to BioASQ-style question JSON (documents + snippets).
 
 - Keeps the first 10 document URLs per question (rerank / post-rerank order).
 - For each kept document with a matching context entry:
@@ -35,10 +35,12 @@ DOC_CAP = 10
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
+        "--contexts-jsonl",
         "--contexts-json",
         type=Path,
         required=True,
-        help="Path to contexts JSON (e.g. .../BioASQ-task14bPhaseB-testset1_contexts.json).",
+        dest="contexts_path",
+        help="Path to contexts .jsonl (one question dict per line) or legacy wrapped .json with a questions array.",
     )
     p.add_argument(
         "--corpus-path",
@@ -357,6 +359,27 @@ def convert_question(
     }
 
 
+def load_contexts_questions(path: Path) -> List[dict]:
+    """Load question dicts from JSONL (preferred) or legacy JSON ``{\"questions\": [...]}``."""
+    if path.suffix.lower() == ".jsonl":
+        out: List[dict] = []
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                rec = json.loads(line)
+                if isinstance(rec, dict):
+                    out.append(rec)
+        return out
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    questions = data.get("questions") or []
+    if not isinstance(questions, list):
+        return []
+    return [q for q in questions if isinstance(q, dict)]
+
+
 def collect_pmids(questions: List[dict]) -> Set[str]:
     s: Set[str] = set()
     for q in questions:
@@ -384,14 +407,12 @@ def main() -> int:
             e,
         )
         return 1
-    if not args.contexts_json.is_file():
-        logger.error("Contexts JSON not found: %s", args.contexts_json)
+    if not args.contexts_path.is_file():
+        logger.error("Contexts file not found: %s", args.contexts_path)
         return 1
-    with open(args.contexts_json, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    questions = data.get("questions") or []
-    if not isinstance(questions, list):
-        logger.error("Input must contain a questions array")
+    questions = load_contexts_questions(args.contexts_path)
+    if not questions:
+        logger.error("No question records found in %s", args.contexts_path)
         return 1
 
     needed = collect_pmids(questions)

@@ -29,12 +29,13 @@ RUN_GLOB="best_rrf_*_top*.tsv"
 DOCS_JSONL="/yun/output/subset_pubmed.jsonl"
 
 # Gold: training + test batches
-TRAIN_JSON="example/training14b_10pct_sample.json"
-TEST_BATCH_JSONS=(
-  "bioasq_data/Task13BGoldenEnriched/13B1_golden.json"
-  "bioasq_data/Task13BGoldenEnriched/13B2_golden.json"
-  "bioasq_data/Task13BGoldenEnriched/13B3_golden.json"
-  "bioasq_data/Task13BGoldenEnriched/13B4_golden.json"
+INPUT_JSONL="example/training14b_10pct_sample.jsonl"
+
+INPUT_BATCH_JSONLS=(
+  "bioasq_data/Task13BGoldenEnriched/13B1_golden.jsonl"
+  "bioasq_data/Task13BGoldenEnriched/13B2_golden.jsonl"
+  "bioasq_data/Task13BGoldenEnriched/13B3_golden.jsonl"
+  "bioasq_data/Task13BGoldenEnriched/13B4_golden.jsonl"
 )
 
 # Output
@@ -79,11 +80,11 @@ srun \
     printf '[debug] CUDA_VISIBLE_DEVICES=%s\n' \"\${CUDA_VISIBLE_DEVICES:-<unset>}\"
     nvidia-smi -L || true
 
-    TEST_BATCH_JSONS=(
-      'bioasq_data/Task13BGoldenEnriched/13B1_golden.json'
-      'bioasq_data/Task13BGoldenEnriched/13B2_golden.json'
-      'bioasq_data/Task13BGoldenEnriched/13B3_golden.json'
-      'bioasq_data/Task13BGoldenEnriched/13B4_golden.json'
+    INPUT_BATCH_JSONLS=(
+      'bioasq_data/Task13BGoldenEnriched/13B1_golden.jsonl'
+      'bioasq_data/Task13BGoldenEnriched/13B2_golden.jsonl'
+      'bioasq_data/Task13BGoldenEnriched/13B3_golden.jsonl'
+      'bioasq_data/Task13BGoldenEnriched/13B4_golden.jsonl'
     )
 
     echo '[run] Starting snippet rerank'
@@ -91,8 +92,8 @@ srun \
       --runs-dir '${RUNS_DIR}' \
       --run-glob '${RUN_GLOB}' \
       --docs-jsonl '${DOCS_JSONL}' \
-      --train-json '${TRAIN_JSON}' \
-      --test-batch-jsons \${TEST_BATCH_JSONS[@]} \
+      --train-jsonl '${INPUT_JSONL}' \
+      --test-batch-jsonls \${INPUT_BATCH_JSONLS[@]} \
       --n-docs ${N_DOCS} \
       --window-size ${WINDOW_SIZE} \
       --window-stride ${WINDOW_STRIDE} \

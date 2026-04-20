@@ -29,13 +29,13 @@ RUN_GLOB="best_rrf_*_top2000.tsv"
 # Input: PubMed subset texts
 DOCS_JSONL="/yun/output/subset_pubmed.jsonl"
 
-# Gold: training subset + test batches
-TRAIN_SUBSET_JSON="example/training14b_10pct_sample.json"
-TEST_BATCH_JSONS=(
-  "bioasq_data/Task13BGoldenEnriched/13B1_golden.json"
-  "bioasq_data/Task13BGoldenEnriched/13B2_golden.json"
-  "bioasq_data/Task13BGoldenEnriched/13B3_golden.json"
-  "bioasq_data/Task13BGoldenEnriched/13B4_golden.json"
+# Gold: training subset + test batches (.jsonl)
+INPUT_JSONL="example/training14b_10pct_sample.jsonl"
+INPUT_BATCH_JSONLS=(
+  "bioasq_data/Task13BGoldenEnriched/13B1_golden.jsonl"
+  "bioasq_data/Task13BGoldenEnriched/13B2_golden.jsonl"
+  "bioasq_data/Task13BGoldenEnriched/13B3_golden.jsonl"
+  "bioasq_data/Task13BGoldenEnriched/13B4_golden.jsonl"
 )
 
 # Output location (inside container)
@@ -78,11 +78,11 @@ srun \
     export OMP_NUM_THREADS=8
     export PYTHONUNBUFFERED=1
 
-    TEST_BATCH_JSONS=(
-      "bioasq_data/Task13BGoldenEnriched/13B1_golden.json"
-      "bioasq_data/Task13BGoldenEnriched/13B2_golden.json"
-      "bioasq_data/Task13BGoldenEnriched/13B3_golden.json"
-      "bioasq_data/Task13BGoldenEnriched/13B4_golden.json"
+    INPUT_BATCH_JSONLS=(
+      'bioasq_data/Task13BGoldenEnriched/13B1_golden.jsonl'
+      'bioasq_data/Task13BGoldenEnriched/13B2_golden.jsonl'
+      'bioasq_data/Task13BGoldenEnriched/13B3_golden.jsonl'
+      'bioasq_data/Task13BGoldenEnriched/13B4_golden.jsonl'
     )
 
     printf '[debug] CUDA_VISIBLE_DEVICES=%s\n' "${CUDA_VISIBLE_DEVICES:-<unset>}"
@@ -95,8 +95,8 @@ srun \
       --runs-dir '${RUNS_DIR}' \
       --run-glob '${RUN_GLOB}' \
       --docs-jsonl '${DOCS_JSONL}' \
-      --train-json '${TRAIN_SUBSET_JSON}' \
-      --test-batch-jsons \${TEST_BATCH_JSONS[@]} \
+      --train-jsonl '${INPUT_JSONL}' \
+      --test-batch-jsonls \${INPUT_BATCH_JSONLS[@]} \
       --candidate-limit ${CANDIDATE_LIMIT} \
       --model '${MODEL_NAME}' \
       --model-batch ${BATCH_SIZE} \
