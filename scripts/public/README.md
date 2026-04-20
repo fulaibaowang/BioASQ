@@ -1,11 +1,5 @@
 # Public scripts
 
-**Which usage doc?** 
-
-Use **[docs/USAGE.md](../../docs/USAGE.md)** for BioASQ-oriented examples and codes including indexing, bioASQ format conversion. 
-
-Use **[shared_scripts/docs/USAGE.md](shared_scripts/docs/USAGE.md)** for generic indexing and per-stage CLI commands with placeholder paths.
-
 ## Overview
 
 - **[shared_scripts/](shared_scripts/)** — Retrieval pipeline shared across tasks: orchestration, indexes, retrieval, rerank, optional snippet-RRF, evidence, generation. Narrative and diagram: [shared_scripts/README.md](shared_scripts/README.md).
