@@ -30,3 +30,7 @@ python3 scripts/public/shared_scripts/generation/generate_answers.py \
   --input-path bioasq_data/14b/BioASQ-task14bPhaseB-testset3 \
   --output-dir bioasq14_output/batch_3_B_18 \
   --evidence-source snippets --max-contexts 18
+
+python3 scripts/public/format/bioasq_json_to_queries_jsonl.py \
+  --input bioasq_data/14b/BioASQ-task14bPhaseA-testset3 \
+  --output bioasq_data/14b/BioASQ-task14bPhaseA-testset3.jsonl
