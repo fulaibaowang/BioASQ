@@ -82,9 +82,9 @@ See the notebook section **Build 10% Subset with Gold + zero recall ids + Retrie
 
 ---
 
-### Retrieval fusion, rerank, and full pipeline
+### Retrieval, rerank, and full pipeline
 
-For hybrid fusion, rerank, and the **single-config orchestrator**, use the generic examples in [RAG-scripts docs/USAGE.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/docs/USAGE.md) and swap in your paths. Full pipeline:
+For running the pipeline, use the generic examples in [RAG-scripts docs/USAGE.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/docs/USAGE.md) and swap in your paths. Full pipeline:
 
 ```bash
 ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh \
