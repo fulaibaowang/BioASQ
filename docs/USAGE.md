@@ -88,13 +88,13 @@ For running the pipeline, use the generic examples in [RAG-scripts docs/USAGE.md
 
 ```bash
 ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh \
-  --config scripts/public/shared_scripts/workflow_config_baseline.env
+  --config /path/to/config.env
 ```
 
-Config templates: [workflow_config_baseline.env](https://github.com/fulaibaowang/RAG-scripts/blob/main/workflow_config_baseline.env), [workflow_config_snippet.env](https://github.com/fulaibaowang/RAG-scripts/blob/main/workflow_config_snippet.env), [workflow_config_full.env](https://github.com/fulaibaowang/RAG-scripts/blob/main/workflow_config_full.env). Parameter tuning: [PARAMETERS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/docs/PARAMETERS.md).
+Config templates: [config.env](bioasq_data/14b/workflow_config_14b_example.env), [workflow_config_full.env](https://github.com/fulaibaowang/RAG-scripts/blob/main/workflow_config_full.env). Parameter tuning: [PARAMETERS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/docs/PARAMETERS.md).
 
 
-Copy [workflow_config_baseline.env](https://github.com/fulaibaowang/RAG-scripts/blob/main/workflow_config_baseline.env) (from `scripts/public/shared_scripts/workflow_config_baseline.env` in this repo) to a private file and set at least: `WORKFLOW_OUTPUT_DIR`, `INPUT_JSONL` and/or `INPUT_BATCH_JSONLS` (`.jsonl` query streams), `BM25_INDEX_PATH`, `DENSE_INDEX_DIR`, and for rerank and downstream steps `DOCS_JSONL`. Use `HAVE_GROUND_TRUTH=0` when you have no qrels.
+Copy [config.env](bioasq_data/14b/workflow_config_14b_example.env) to a private file and set at least: `WORKFLOW_OUTPUT_DIR`, `INPUT_JSONL` and/or `INPUT_BATCH_JSONLS` (`.jsonl` query streams), `BM25_INDEX_PATH`, `DENSE_INDEX_DIR`, and for rerank and downstream steps `DOCS_JSONL`. Use `HAVE_GROUND_TRUTH=0` when you have no documents/snippets.
 
 ---
 
