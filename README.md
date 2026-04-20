@@ -6,7 +6,6 @@ This repository supports **BioASQ Task 14b** (2026) **Phase A/A+**: a **RAG-styl
 
 - Use [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts/blob/main/README.md) as backbone:
   - there you can read **Pipeline overview and flowchart** as well as detailed commands and parameters setting
-- **input and output conversion for BioASQ format, and script layout:** [scripts/public/README.md](scripts/public/README.md)
 - **indexes, and BioASQ-oriented commands, e.g input and output conversion for BioASQ format** [docs/USAGE.md](docs/USAGE.md)
 
 
