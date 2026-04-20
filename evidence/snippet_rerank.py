@@ -2,7 +2,7 @@
 """
 Snippet (window) extraction and CE reranking.
 
-For each query, takes top-N docs from a rerank_hybrid run, generates overlapping
+For each query, takes top-N docs from a post_rerank_fusion (or snippet-route) run, generates overlapping
 sentence windows from each abstract, applies two-stage selection:
   Stage A  – BM25 + dense hybrid (RRF) to keep top-W windows per doc
   Stage B  – Cross-encoder rerank on the kept windows
@@ -51,6 +51,9 @@ from retrieval_eval.common import (
     RECALL_KS,
     run_df_to_run_map,
 )
+
+# FlagLLMReranker is imported lazily when --ce-reranker-type llm is used.
+FlagLLMReranker = None
 
 # ---------------------------------------------------------------------------
 # NLTK sentence tokenizer
@@ -274,6 +277,47 @@ def select_top_windows(
 
 
 # ---------------------------------------------------------------------------
+# LLM reranker helpers (FlagLLMReranker)
+# ---------------------------------------------------------------------------
+def _ensure_flag_llm_reranker():
+    global FlagLLMReranker
+    if FlagLLMReranker is not None:
+        return FlagLLMReranker
+    try:
+        from FlagEmbedding import FlagLLMReranker as _Cls
+        FlagLLMReranker = _Cls
+        return FlagLLMReranker
+    except ImportError as e:
+        raise ImportError(
+            "LLM reranker requires FlagEmbedding. Run: pip install FlagEmbedding"
+        ) from e
+
+
+def _llm_score_pairs(model, pairs: List[Tuple[str, str]], batch_size: int) -> List[float]:
+    """Score (query, passage) pairs with FlagLLMReranker in batches."""
+    pair_list = [[q, p] for q, p in pairs]
+    scores: List[float] = []
+    for i in range(0, len(pair_list), batch_size):
+        batch = pair_list[i : i + batch_size]
+        batch_scores = model.compute_score(batch)
+        if isinstance(batch_scores, (int, float)):
+            scores.append(float(batch_scores))
+        else:
+            scores.extend(float(s) for s in batch_scores)
+    return scores
+
+
+def _visible_gpu_physical_ids(n: int) -> List[int]:
+    visible = os.environ.get("CUDA_VISIBLE_DEVICES", "").strip()
+    if visible:
+        physical = [int(x.strip()) for x in visible.split(",") if x.strip()]
+        return [physical[i] for i in range(min(n, len(physical)))]
+    if torch and torch.cuda.is_available():
+        return list(range(min(n, torch.cuda.device_count())))
+    return list(range(n))
+
+
+# ---------------------------------------------------------------------------
 # Stage B multi-GPU helpers
 # ---------------------------------------------------------------------------
 def _chunk_ce_items(
@@ -329,6 +373,45 @@ def _ce_worker(
         if idx == 1 or idx % 10 == 0 or idx == total:
             elapsed = max(1e-9, time() - t0)
             print(f"[Stage B gpu {gpu_id}] {idx}/{total} queries | {idx/elapsed:.2f} q/s")
+    return_dict[gpu_id] = local_out
+
+
+def _llm_ce_worker(
+    gpu_id: int,
+    physical_id: int,
+    items: List[Tuple[str, List[Tuple[str, int, str]]]],
+    topics: Dict[str, str],
+    model_name: str,
+    batch_size: int,
+    llm_use_fp16: bool,
+    llm_use_bf16: bool,
+    return_dict,
+) -> None:
+    """Run LLM rerank (FlagLLMReranker) on a chunk of (qid, win_list) on one GPU."""
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(physical_id)
+    _ensure_flag_llm_reranker()
+    model = FlagLLMReranker(model_name, use_fp16=llm_use_fp16, use_bf16=llm_use_bf16)
+    device = "cuda:0"
+    print(f"[Stage B gpu {gpu_id}] LLM model loaded on {device}, reranking {len(items)} queries", flush=True)
+    local_out: Dict[str, List[Tuple[str, int, str, float]]] = {}
+    total = len(items)
+    t0 = time()
+    for idx, (qid, win_list) in enumerate(items, 1):
+        query = topics.get(qid, "").strip()
+        if not win_list or not query:
+            local_out[qid] = [(d, wi, wt, 0.0) for d, wi, wt in win_list]
+            continue
+        pairs = [(query, wt) for _, _, wt in win_list]
+        scores = _llm_score_pairs(model, pairs, batch_size)
+        scored = [
+            (docno, wi, wt, float(sc))
+            for (docno, wi, wt), sc in zip(win_list, scores)
+        ]
+        scored.sort(key=lambda x: x[3], reverse=True)
+        local_out[qid] = scored
+        if idx == 1 or idx % 10 == 0 or idx == total:
+            elapsed = max(1e-9, time() - t0)
+            print(f"[Stage B gpu {gpu_id}] {idx}/{total} queries | {idx/elapsed:.2f} q/s", flush=True)
     return_dict[gpu_id] = local_out
 
 
@@ -394,13 +477,27 @@ def parse_args() -> argparse.Namespace:
     )
 
     inp = p.add_argument_group("inputs")
-    inp.add_argument("--runs-dir", type=Path, default=None, help="Dir with rerank_hybrid run TSVs.")
+    inp.add_argument("--runs-dir", type=Path, default=None, help="Dir with post_rerank_fusion (or snippet pool) run TSVs.")
     inp.add_argument("--run-files", type=Path, nargs="*", default=None, help="Explicit run TSV files.")
     inp.add_argument("--run-glob", type=str, default="*.tsv", help="Glob under --runs-dir.")
     inp.add_argument("--docs-jsonl", type=str, required=True, help="JSONL corpus path or glob.")
-    inp.add_argument("--train-json", type=Path, default=None)
-    inp.add_argument("--test-batch-jsons", "--test_batch_jsons", type=Path, nargs="*", default=None)
+    inp.add_argument("--train-jsonl", "--train-json", type=Path, default=None, dest="train_jsonl")
+    inp.add_argument(
+        "--test-batch-jsonls",
+        "--test-batch-jsons",
+        "--test_batch_jsons",
+        type=Path,
+        nargs="*",
+        default=None,
+        dest="test_batch_jsonls",
+    )
     inp.add_argument("--query-field", type=str, default="body")
+    inp.add_argument(
+        "--skip-empty-query-field",
+        action="store_true",
+        help="Skip questions where --query-field is empty/null instead of raising an error, "
+        "and omit those qids from the output. Used by multi-query fusion sub-runs.",
+    )
     inp.add_argument("--n-docs", type=int, default=100, help="Top docs per query from input run.")
 
     win = p.add_argument_group("windows")
@@ -418,9 +515,28 @@ def parse_args() -> argparse.Namespace:
 
     stageB = p.add_argument_group("stage-B (CE rerank)")
     stageB.add_argument("--ce-model", type=str, default="BAAI/bge-reranker-v2-m3")
+    stageB.add_argument(
+        "--ce-reranker-type",
+        type=str,
+        choices=("cross_encoder", "llm"),
+        default="cross_encoder",
+        help="Backend: cross_encoder (CrossEncoder) or llm (FlagLLMReranker for e.g. bge-reranker-v2-gemma).",
+    )
     stageB.add_argument("--ce-device", type=str, default="cuda")
     stageB.add_argument("--ce-batch", type=int, default=84)
     stageB.add_argument("--ce-max-length", type=int, default=512)
+    stageB.add_argument(
+        "--ce-llm-use-fp16", action="store_true", default=True,
+        help="Use FP16 for LLM reranker (default True). Ignored when --ce-reranker-type cross_encoder.",
+    )
+    stageB.add_argument(
+        "--no-ce-llm-use-fp16", action="store_false", dest="ce_llm_use_fp16",
+        help="Disable FP16 for LLM reranker.",
+    )
+    stageB.add_argument(
+        "--ce-llm-use-bf16", action="store_true", default=False,
+        help="Use BF16 for LLM reranker. Ignored when --ce-reranker-type cross_encoder.",
+    )
     stageB.add_argument("--ce-use-multi-gpu", action="store_true", help="Enable multi-GPU for Stage B CE rerank.")
     stageB.add_argument("--ce-num-gpus", type=int, default=0, help="Max GPUs for CE (0 = all).")
 
@@ -459,13 +575,15 @@ def main() -> None:
         if not json_path or not json_path.exists():
             return
         qs = load_questions(json_path)
-        tdf, gm = build_topics_and_gold(qs, query_field=args.query_field)
+        tdf, gm = build_topics_and_gold(
+            qs, query_field=args.query_field, skip_empty=args.skip_empty_query_field,
+        )
         topics.update(dict(zip(tdf["qid"].astype(str), tdf["query"].astype(str))))
         for qid, docs in gm.items():
             gold_all[qid] = docs
 
-    _add_questions(args.train_json)
-    for p in args.test_batch_jsons or []:
+    _add_questions(args.train_jsonl)
+    for p in args.test_batch_jsonls or []:
         _add_questions(Path(p))
     print(f"[init] {len(topics)} queries loaded")
 
@@ -475,22 +593,33 @@ def main() -> None:
     normalize_emb = True
     print(f"[init] dense model loaded: {args.dense_model} on {args.dense_device}")
 
-    # --- load CE model (Stage B); skip when multi-GPU (each worker loads its own) ---
-    from sentence_transformers import CrossEncoder
+    # --- load Stage B model; skip when multi-GPU (each worker loads its own) ---
+    use_llm_ce = args.ce_reranker_type == "llm"
+    if use_llm_ce:
+        _ensure_flag_llm_reranker()
 
     ce_model = None
     if not args.ce_use_multi_gpu:
-        ce_device = args.ce_device
-        if ce_device == "auto":
-            if torch and torch.cuda.is_available():
-                ce_device = "cuda"
-            else:
-                ce_device = "cpu"
-        ce_model = CrossEncoder(
-            args.ce_model, device=ce_device,
-            max_length=None if args.ce_max_length <= 0 else args.ce_max_length,
-        )
-        print(f"[init] CE model loaded: {args.ce_model} on {ce_device}")
+        if use_llm_ce:
+            ce_model = FlagLLMReranker(
+                args.ce_model,
+                use_fp16=args.ce_llm_use_fp16,
+                use_bf16=args.ce_llm_use_bf16,
+            )
+            print(f"[init] LLM reranker loaded: {args.ce_model}")
+        else:
+            from sentence_transformers import CrossEncoder
+            ce_device = args.ce_device
+            if ce_device == "auto":
+                if torch and torch.cuda.is_available():
+                    ce_device = "cuda"
+                else:
+                    ce_device = "cpu"
+            ce_model = CrossEncoder(
+                args.ce_model, device=ce_device,
+                max_length=None if args.ce_max_length <= 0 else args.ce_max_length,
+            )
+            print(f"[init] CE model loaded: {args.ce_model} on {ce_device}")
     else:
         if not torch or not torch.cuda.is_available():
             raise RuntimeError("CE multi-GPU requested but CUDA is not available.")
@@ -498,7 +627,8 @@ def main() -> None:
         if n_dev < 2:
             raise RuntimeError("CE multi-GPU requested but fewer than 2 CUDA devices found.")
         use_n = n_dev if not args.ce_num_gpus or args.ce_num_gpus < 1 else min(args.ce_num_gpus, n_dev)
-        print(f"[init] CE multi-GPU: {use_n} GPUs (model loaded per worker)")
+        _type_label = "LLM" if use_llm_ce else "CE"
+        print(f"[init] {_type_label} multi-GPU: {use_n} GPUs (model loaded per worker)")
 
     from rank_bm25 import BM25Okapi
 
@@ -519,7 +649,7 @@ def main() -> None:
 
     summary_rows: List[dict] = []
     split_to_role, split_to_label = _build_split_to_role_and_label(
-        args.train_json, [Path(p) for p in (args.test_batch_jsons or [])],
+        args.train_jsonl, [Path(p) for p in (args.test_batch_jsonls or [])],
     )
 
     # --- process each run split ---
@@ -547,9 +677,13 @@ def main() -> None:
         # ----------------------------------------------------------------
         # kept_windows[qid] = [(docno, window_idx, window_text), ...]
         kept_windows: Dict[str, List[Tuple[str, int, str]]] = {}
+        _n_skipped_stage_a = 0
         t0 = time()
         for qi, (qid, docnos) in enumerate(run_map.items(), 1):
             query = topics.get(qid, "").strip()
+            if not query and args.skip_empty_query_field:
+                _n_skipped_stage_a += 1
+                continue
             qid_windows: List[Tuple[str, int, str]] = []
             for docno in docnos:
                 title, sents = doc_data.get(docno, ("", []))
@@ -575,30 +709,50 @@ def main() -> None:
                 )
 
         total_kept = sum(len(v) for v in kept_windows.values())
-        print(f"[{split_name}][Stage A] done – {total_kept} windows across {n_queries} queries")
+        if _n_skipped_stage_a:
+            print(
+                f"[{split_name}][Stage A] skipped {_n_skipped_stage_a}/{n_queries} "
+                f"qids with empty query (--skip-empty-query-field)"
+            )
+        print(f"[{split_name}][Stage A] done – {total_kept} windows across {len(kept_windows)} queries")
 
         # ----------------------------------------------------------------
-        # Stage B: CE rerank windows (single- or multi-GPU)
+        # Stage B: CE/LLM rerank windows (single- or multi-GPU)
         # ----------------------------------------------------------------
-        # ce_results[qid] = [(docno, window_idx, window_text, ce_score), ...]
+        # ce_results[qid] = [(docno, window_idx, window_text, score), ...]
         ce_results: Dict[str, List[Tuple[str, int, str, float]]] = {}
         items = list(kept_windows.items())
         if args.ce_use_multi_gpu:
             use_n = torch.cuda.device_count() if not args.ce_num_gpus or args.ce_num_gpus < 1 else min(args.ce_num_gpus, torch.cuda.device_count())
             chunks = _chunk_ce_items(items, use_n)
+            physical_ids = _visible_gpu_physical_ids(use_n)
             ctx = torch.multiprocessing.get_context("spawn")
             manager = ctx.Manager()
             return_dict = manager.dict()
             procs = []
             for gpu_id, chunk in enumerate(chunks):
-                p = ctx.Process(
-                    target=_ce_worker,
-                    args=(gpu_id, chunk, topics, args.ce_model, args.ce_batch, args.ce_max_length, return_dict),
-                )
+                physical_id = physical_ids[gpu_id] if gpu_id < len(physical_ids) else gpu_id
+                if use_llm_ce:
+                    p = ctx.Process(
+                        target=_llm_ce_worker,
+                        args=(gpu_id, physical_id, chunk, topics, args.ce_model,
+                              args.ce_batch, args.ce_llm_use_fp16, args.ce_llm_use_bf16, return_dict),
+                    )
+                else:
+                    p = ctx.Process(
+                        target=_ce_worker,
+                        args=(gpu_id, chunk, topics, args.ce_model, args.ce_batch, args.ce_max_length, return_dict),
+                    )
                 p.start()
                 procs.append(p)
             for p in procs:
                 p.join()
+            for gpu_id, p in enumerate(procs):
+                if p.exitcode != 0:
+                    raise RuntimeError(
+                        f"Stage B worker on GPU {gpu_id} exited with code {p.exitcode}. "
+                        "Check logs for the actual error."
+                    )
             for part in return_dict.values():
                 ce_results.update(part)
         else:
@@ -609,8 +763,12 @@ def main() -> None:
                     ce_results[qid] = [(d, wi, wt, 0.0) for d, wi, wt in win_list]
                     continue
                 pairs = [(query, wt) for _, _, wt in win_list]
-                scores = ce_model.predict(pairs, batch_size=args.ce_batch, show_progress_bar=False)
-                scores = np.asarray(scores, dtype=np.float64)
+                if use_llm_ce:
+                    scores_list = _llm_score_pairs(ce_model, pairs, args.ce_batch)
+                    scores = np.asarray(scores_list, dtype=np.float64)
+                else:
+                    scores = ce_model.predict(pairs, batch_size=args.ce_batch, show_progress_bar=False)
+                    scores = np.asarray(scores, dtype=np.float64)
                 scored = [
                     (docno, wi, wt, float(sc))
                     for (docno, wi, wt), sc in zip(win_list, scores)
@@ -637,6 +795,7 @@ def main() -> None:
                     wf.write(json.dumps({
                         "qid": qid, "docno": docno,
                         "window_idx": wi, "window_text": wt, "ce_score": sc,
+                        "query_field": args.query_field,
                     }, ensure_ascii=False) + "\n")
         print(f"[{split_name}] saved window results -> {win_path}")
 

@@ -5,6 +5,8 @@ import argparse
 import glob
 import json
 import os
+import sys
+import time
 from typing import Dict, Iterable
 
 import pyterrier as pt
@@ -42,7 +44,7 @@ def augment_text_for_codes(text: str) -> str:
         return text + "\n\n" + " ".join(sorted(set(extras)))
     return text
 
-def iter_docs(jsonl_glob: str) -> Iterable[Dict]:
+def iter_docs(jsonl_glob: str, include_keywords: bool) -> Iterable[Dict]:
     """
     Stream documents from many JSONL shards.
 
@@ -50,9 +52,13 @@ def iter_docs(jsonl_glob: str) -> Iterable[Dict]:
       - Only valid PMID required
 
     Yields:
-      {"docno": pmid, "text": title + "\\n\\n" + abstract}
+      {"docno": pmid, "text": title + "\\n\\n" + abstract, "keywords": "..."}  (keywords optional)
     """
+    count = 0
+    skipped = 0
+    t0 = time.time()
     for fp in sorted(glob.glob(jsonl_glob)):
+        print(f"[iter_docs] reading {fp}", flush=True)
         with open(fp, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
@@ -62,34 +68,62 @@ def iter_docs(jsonl_glob: str) -> Iterable[Dict]:
 
                 pmid = (d.get("pmid") or d.get("docno") or "").strip()
                 if not pmid:
+                    skipped += 1
                     continue
 
                 title = (d.get("title") or "").strip()
                 abstract = (d.get("abstract") or "").strip()
                 text = (title + "\n\n" + abstract).strip()
                 
-                # Skip if both title and abstract are empty
                 if not text:
+                    skipped += 1
                     continue
                 text = augment_text_for_codes(text)
     
-                yield {"docno": pmid, "text": text}
+                out = {"docno": pmid, "text": text}
+                if include_keywords:
+                    kw = d.get("keywords")
+                    if isinstance(kw, list):
+                        keywords = " ".join(str(x).strip() for x in kw if str(x).strip())
+                    else:
+                        keywords = (kw or "").strip()
+                    out["keywords"] = keywords
+
+                count += 1
+                if count % 500_000 == 0:
+                    elapsed = time.time() - t0
+                    rate = count / elapsed if elapsed > 0 else 0
+                    print(
+                        f"[iter_docs] yielded {count:,} docs, skipped {skipped:,} "
+                        f"({elapsed:.0f}s, {rate:,.0f} docs/s)",
+                        file=sys.stderr, flush=True,
+                    )
+                yield out
+
+    elapsed = time.time() - t0
+    print(
+        f"[iter_docs] FINISHED: {count:,} docs yielded, {skipped:,} skipped in {elapsed:.1f}s",
+        flush=True,
+    )
 
 
-def build_index(index_path: str, jsonl_glob: str, overwrite: bool, threads: int):
+def build_index(index_path: str, jsonl_glob: str, overwrite: bool, threads: int, include_keywords: bool):
     os.makedirs(index_path, exist_ok=True)
 
     # Meta sizes are fixed-width in Terrier. Keep them small.
     # We only need docno; text is stored in the direct index, not meta.
+    text_attrs = ["text"]
+    if include_keywords:
+        text_attrs.append("keywords")
     indexer = pt.IterDictIndexer(
         index_path,
-        text_attrs=["text"],
+        text_attrs=text_attrs,
         meta={"docno": 32},  # PMID fits easily
         overwrite=overwrite,
         threads=threads,
     )
 
-    indexref = indexer.index(iter_docs(jsonl_glob))
+    indexref = indexer.index(iter_docs(jsonl_glob, include_keywords=include_keywords))
     return indexref
 
 
@@ -99,6 +133,11 @@ def main():
     ap.add_argument("--index_path", required=True, help='e.g. "/data/terrier_indexes/pubmed_baseline_bm25"')
     ap.add_argument("--threads", type=int, default=1)
     ap.add_argument("--overwrite", action="store_true")
+    ap.add_argument(
+        "--include_keywords",
+        action="store_true",
+        help='Also index the JSONL "keywords" field (off by default).',
+    )
     args = ap.parse_args()
 
     if not pt.started():
@@ -109,6 +148,7 @@ def main():
         jsonl_glob=args.jsonl_glob,
         overwrite=args.overwrite,
         threads=args.threads,
+        include_keywords=args.include_keywords,
     )
 
     print("DONE")

@@ -29,7 +29,7 @@ def _parse_split_from_run_stem(run_stem: str) -> Optional[str]:
     Supports:
       - best_rrf_<split>_top5000
       - best_rrf_<split>_top5000_rrf_pool50_k60
-      - best_rrf_<split>_top5000_rrf_poolR200_poolH200_k60  (rerank_hybrid / snippet_rerank output)
+      - best_rrf_<split>_top5000_rrf_poolR200_poolH200_k60  (post_rerank_fusion / snippet_rerank output)
     """
     # Optional suffix: _rrf_pool50_k60 (legacy) or _rrf_poolR\d+_poolH\d+_k\d+
     m = re.fullmatch(
@@ -147,18 +147,22 @@ def parse_args() -> argparse.Namespace:
         help="Weight for Hybrid scores in RRF (default: 1 - w_bge when not set).",
     )
     p.add_argument(
+        "--train-jsonl",
         "--train-json",
         type=Path,
         default=None,
-        help="Training questions JSON (BioASQ format) for metrics (optional).",
+        dest="train_jsonl",
+        help="Training queries .jsonl for metrics (optional).",
     )
     p.add_argument(
+        "--test-batch-jsonls",
         "--test-batch-jsons",
         "--test_batch_jsons",
         type=Path,
         nargs="*",
         default=None,
-        help="BioASQ test batch JSONs for metrics (optional).",
+        dest="test_batch_jsonls",
+        help="Test batch .jsonl for metrics (optional).",
     )
     p.add_argument(
         "--ks-recall",
@@ -264,8 +268,8 @@ def main() -> None:
         return
 
     # Build gold and evaluate, if questions are provided
-    train_json: Optional[Path] = args.train_json
-    test_batch_jsons: Optional[Sequence[Path]] = args.test_batch_jsons
+    train_json: Optional[Path] = args.train_jsonl
+    test_batch_jsons: Optional[Sequence[Path]] = args.test_batch_jsonls
 
     all_questions: List[dict] = []
     if train_json and train_json.exists():
@@ -276,7 +280,7 @@ def main() -> None:
                 all_questions.extend(load_questions(Path(p)))
 
     if not all_questions:
-        print("No questions JSONs provided; skipping metrics.")
+        print("No query .jsonl provided; skipping metrics.")
         return
 
     topics_df, gold_map = build_topics_and_gold(all_questions, query_field=None)

@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
 """
-Rescue failed questions from a generation output JSON.
+Rescue failed questions from a generation output JSONL.
 
-Loads an answers JSON file, finds records with an "error" field (optionally
-only 504 timeouts), re-runs generation with a longer client timeout and a
-lower max-chars-per-context (default 1100) to reduce JSON parse errors.
+Loads an answers .jsonl file, finds records with an "error" field (optionally
+only 504 timeouts), re-runs generation with a longer client timeout, optional --max-contexts
+(default 10), and a lower max-chars-per-context (default 1100) to reduce JSON parse errors.
 Note: 504 Gateway Time-out is set by the server/proxy, not by --timeout;
 retrying with concurrency 1 or during off-peak may help.
 By default overwrites the input file; use --output to write to a new file instead.
 
 Usage:
-  python rescue_failed_generation.py --input output/.../generation/13B3_golden_answers.json
-  python rescue_failed_generation.py --input 13B3_golden_answers.json --output rescued.json
-  python rescue_failed_generation.py --input 13B3_golden_answers.json --only-504 --timeout 300
+  python rescue_failed_generation.py --input output/.../generation/13B3_golden_answers.jsonl
+  python rescue_failed_generation.py --input 13B3_golden_answers.jsonl --output rescued.jsonl
+  python rescue_failed_generation.py --input 13B3_golden_answers.jsonl --only-504 --timeout 300
+  # With openai_compat: export GENERATION_MODEL (or pass --model); GEN_API_KEY may come from repo .env
+  # (generate_answers loads only that key from .env). Backend/base/model otherwise come from the shell.
+  # Schema snippets: export GENERATION_SCHEMAS_DIR (e.g. from pipeline config) or pass --schemas-dir;
+  # otherwise generate_answers uses shared_scripts/prompts/schemas.
 """
 
 from __future__ import annotations
@@ -20,11 +24,12 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # Import from sibling module for building prompts
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -44,7 +49,7 @@ def parse_args() -> argparse.Namespace:
         "--input",
         type=Path,
         required=True,
-        help="Path to generation output JSON (e.g. .../generation/13B3_golden_answers.json).",
+        help="Path to generation output .jsonl (e.g. .../generation/13B3_golden_answers.jsonl).",
     )
     parser.add_argument(
         "--output",
@@ -59,6 +64,12 @@ def parse_args() -> argparse.Namespace:
         help="Client-side seconds to wait per LLM response (default: 300). 504 is usually from the server/gateway timeout; increasing this only avoids us giving up before the server responds.",
     )
     parser.add_argument(
+        "--max-contexts",
+        type=int,
+        default=10,
+        help="Cap on contexts in evidence block for rescue run (default: 10, same as generate_answers.py).",
+    )
+    parser.add_argument(
         "--max-chars-per-context",
         type=int,
         default=1100,
@@ -69,6 +80,24 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=60,
         help="Seconds to sleep between retries after a failed LLM call (default: 60 = 1 min).",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help=(
+            "Model id passed to generate_answers.py (OpenRouter / openai_compat). "
+            "Default: GENERATION_MODEL env if set; otherwise generate_answers uses its own default."
+        ),
+    )
+    parser.add_argument(
+        "--schemas-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory of schema *.txt forwarded to generate_answers.py. "
+            "Default: GENERATION_SCHEMAS_DIR if set; else generate_answers resolves under --prompts-dir."
+        ),
     )
     parser.add_argument(
         "--only-504",
@@ -101,19 +130,27 @@ def main() -> int:
         format="%(levelname)s: %(message)s",
     )
 
+    schemas_path: Optional[Path] = None
+    if args.schemas_dir is not None:
+        schemas_path = args.schemas_dir.expanduser().resolve()
+    else:
+        _env_schemas = (os.getenv("GENERATION_SCHEMAS_DIR") or "").strip()
+        if _env_schemas:
+            schemas_path = Path(_env_schemas).expanduser().resolve()
+
     if not args.input.exists():
         logger.error("Input file not found: %s", args.input)
+        return 1
+    if args.input.suffix.lower() != ".jsonl":
+        logger.error("Input must be .jsonl, got %s", args.input)
         return 1
     if not GENERATE_ANSWERS.exists():
         logger.error("generate_answers.py not found: %s", GENERATE_ANSWERS)
         return 1
 
-    with open(args.input, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    records = data.get("questions", data) if isinstance(data, dict) else data
-    if not isinstance(records, list):
-        logger.error("Input JSON must be a list of records or {\"questions\": [...]}")
-        return 1
+    from retrieval_eval.common import iter_questions_jsonl, write_questions_jsonl
+
+    records = list(iter_questions_jsonl(args.input))
 
     # Find records with error; optionally only 504
     failed = [
@@ -135,23 +172,26 @@ def main() -> int:
         logger.info("Dry run: would retry %d question(s).", len(failed))
         return 0
 
-    # Build contexts-style input for failed questions (need id, body, type, documents, contexts)
+    # Build contexts-style input for failed questions (doc_ids or legacy documents + contexts)
     failed_questions = []
     for r in failed:
-        q = {
+        q: Dict[str, Any] = {
             "id": r.get("id"),
             "body": r.get("body"),
-            "type": r.get("type", "summary"),
-            "documents": r.get("documents", []),
+            "type": r.get("type") or "",
             "contexts": r.get("contexts", []),
         }
+        _ids = r.get("doc_ids") or r.get("docnos")
+        if isinstance(_ids, list) and _ids:
+            q["doc_ids"] = list(_ids)
+        else:
+            q["documents"] = r.get("documents", [])
         failed_questions.append(q)
 
     with tempfile.TemporaryDirectory(prefix="rescue_gen_") as tmpdir:
         tmpdir = Path(tmpdir)
-        contexts_path = tmpdir / "rescue_contexts.json"
-        with open(contexts_path, "w", encoding="utf-8") as f:
-            json.dump({"questions": failed_questions}, f, ensure_ascii=False, indent=2)
+        contexts_path = tmpdir / "rescue_contexts.jsonl"
+        write_questions_jsonl(contexts_path, failed_questions)
 
         out_dir = tmpdir / "out"
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -162,24 +202,29 @@ def main() -> int:
             "--output-dir", str(out_dir),
             "--timeout", str(args.timeout),
             "--retry-sleep", str(args.retry_sleep),
+            "--max-contexts", str(args.max_contexts),
             "--max-chars-per-context", str(args.max_chars_per_context),
             "--concurrency", "1",
         ]
         if args.verbose:
             cmd.append("--verbose")
+        # Match pipeline: forward provider model id when using openai_compat (generate_answers default is Ollama).
+        _gen_model = (args.model or os.getenv("GENERATION_MODEL") or "").strip()
+        if _gen_model:
+            cmd.extend(["--model", _gen_model])
+        if schemas_path is not None:
+            cmd.extend(["--schemas-dir", str(schemas_path)])
         logger.info("Running: %s", " ".join(cmd))
         result = subprocess.run(cmd, check=False)
         if result.returncode != 0:
             logger.error("generate_answers.py exited with code %s", result.returncode)
             return result.returncode
 
-        rescued_path = out_dir / "rescue_answers.json"
+        rescued_path = out_dir / "rescue_contexts_answers.jsonl"
         if not rescued_path.exists():
             logger.error("Expected output not found: %s", rescued_path)
             return 1
-        with open(rescued_path, "r", encoding="utf-8") as f:
-            rescued_data = json.load(f)
-        rescued_list = rescued_data.get("questions", rescued_data) if isinstance(rescued_data, dict) else rescued_data
+        rescued_list = list(iter_questions_jsonl(rescued_path))
 
     # Merge: build id -> rescued record, then replace in original list
     rescued_by_id = {r.get("id"): r for r in rescued_list if r.get("id") is not None}
@@ -195,9 +240,11 @@ def main() -> int:
     logger.info("Replaced %d record(s) with rescued results.", replaced)
 
     out_path = args.output if args.output is not None else args.input
+    if out_path.suffix.lower() != ".jsonl":
+        logger.error("Output path must end with .jsonl, got %s", out_path)
+        return 1
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump({"questions": merged}, f, ensure_ascii=False, indent=2)
+    write_questions_jsonl(out_path, merged)
     logger.info("Wrote %d records to %s", len(merged), out_path)
 
     # For records that still have an error after rescue, save full prompt to {id}.txt in same folder
@@ -211,8 +258,9 @@ def main() -> int:
         full_prompt = build_full_prompt_for_record(
             rec,
             prompts_dir,
-            max_contexts=8,
+            max_contexts=args.max_contexts,
             max_chars_per_context=args.max_chars_per_context,
+            schemas_dir=schemas_path,
         )
         if full_prompt:
             prompt_path = out_path.parent / f"{safe_id}.txt"
