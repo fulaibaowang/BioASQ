@@ -18,10 +18,9 @@ Build the image, build indexes, and run the orchestrator with a config file: [do
 
 ## Results
 
-Full results: [docs/RESULTS.md](docs/RESULTS.md).
+Some results: [docs/RESULTS.md](docs/RESULTS.md).
 
 ## Environment and CI
 
 Reproducible runtime: [Dockerfile](Dockerfile). Python stacks: [requirements-docker-pytorch.txt](requirements-docker-pytorch.txt) (CUDA 12.8 PyTorch wheels) and [requirements-docker.txt](requirements-docker.txt).
 
-CI runs a small smoke workflow (`compileall` + pipeline `--help`) on changes under the vendored copy of [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts/tree/main) at `scripts/public/shared_scripts/`; see [.github/workflows/pipeline-smoke.yml](.github/workflows/pipeline-smoke.yml).
