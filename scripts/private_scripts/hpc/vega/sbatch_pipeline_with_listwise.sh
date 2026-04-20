@@ -126,7 +126,7 @@ srun singularity exec \
     nvidia-smi -L || true
 
     echo '[stage-2] Starting listwise reranking'
-    ./scripts/public/shared_scripts/run_listwise_rerank.sh \
+    ./scripts/public/shared_scripts/listwise_script/run_listwise_rerank.sh \
       --config '${PIPELINE_CONFIG}'
     echo '[stage-2] Done'
   "
@@ -152,7 +152,7 @@ srun singularity exec \
     ${HF_CACHE_SETUP}
 
     echo '[stage-3] Starting evidence + generation for listwise output'
-    ./scripts/public/shared_scripts/run_listwise_evidence_gen.sh \
+    ./scripts/public/shared_scripts/listwise_script/run_listwise_evidence_gen.sh \
       --config '${PIPELINE_CONFIG}'
     echo '[stage-3] Done'
   "
