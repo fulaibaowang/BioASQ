@@ -7,7 +7,23 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
+
+PUBMED_DOCUMENT_PREFIX = "http://www.ncbi.nlm.nih.gov/pubmed/"
+
+
+def doc_ids_to_bioasq_documents(doc_ids: List[Any]) -> List[str]:
+    """Turn internal doc ids into BioASQ ``documents`` URLs (numeric ids → PubMed URL)."""
+    out: List[str] = []
+    for x in doc_ids:
+        s = str(x).strip()
+        if not s:
+            continue
+        if s.isdigit():
+            out.append(f"{PUBMED_DOCUMENT_PREFIX}{s}")
+        else:
+            out.append(s)
+    return out
 
 
 def line_to_question(rec: Dict[str, Any]) -> dict:
@@ -24,6 +40,17 @@ def line_to_question(rec: Dict[str, Any]) -> dict:
     if qtype is not None:
         out["type"] = qtype
     return out
+
+
+def record_to_bioasq_question(rec: Dict[str, Any]) -> dict:
+    """Merge line_to_question with ``doc_ids`` / ``docnos`` → BioASQ ``documents`` URLs."""
+    q = line_to_question(rec)
+    doc_ids = rec.get("doc_ids") or rec.get("docnos")
+    if isinstance(doc_ids, list) and doc_ids:
+        q["documents"] = doc_ids_to_bioasq_documents(doc_ids)
+    q.pop("doc_ids", None)
+    q.pop("docnos", None)
+    return q
 
 
 def main() -> int:
@@ -50,7 +77,7 @@ def main() -> int:
             if not isinstance(rec, dict):
                 print(f"Skip non-object line: {line[:80]!r}", file=sys.stderr)
                 continue
-            questions.append(line_to_question(rec))
+            questions.append(record_to_bioasq_question(rec))
     out.parent.mkdir(parents=True, exist_ok=True)
     payload = {"questions": questions}
     if args.pretty:

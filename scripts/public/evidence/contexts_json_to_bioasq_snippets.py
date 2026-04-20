@@ -28,6 +28,12 @@ from typing import Dict, List, Optional, Set, Tuple
 logger = logging.getLogger(__name__)
 
 PUBMED_URL_PATTERN = re.compile(r"pubmed/(\d+)/?$", re.I)
+PUBMED_DOCUMENT_PREFIX = "http://www.ncbi.nlm.nih.gov/pubmed/"
+
+_SHARED_SCRIPTS = Path(__file__).resolve().parent.parent / "shared_scripts"
+if str(_SHARED_SCRIPTS).is_dir() and str(_SHARED_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SHARED_SCRIPTS))
+from retrieval_eval.doc_id_util import ranked_doc_ids_from_question  # noqa: E402
 _QF_TIE_SENTINEL = "\uffff"
 DOC_CAP = 10
 
@@ -265,12 +271,26 @@ def snippet_from_title(title: str) -> Tuple[str, str, str, int, int]:
     return ("title", "title", t_norm, 0, len(t_norm))
 
 
-def contexts_by_doc_url(contexts: List[dict]) -> Dict[str, dict]:
+def pubmed_document_url(doc_id: str) -> str:
+    s = str(doc_id).strip()
+    if s.isdigit():
+        return f"{PUBMED_DOCUMENT_PREFIX}{s}"
+    return s
+
+
+def contexts_by_doc_keys(contexts: List[dict]) -> Dict[str, dict]:
+    """Map doc_id string and/or legacy ``doc`` URL to context row."""
     m: Dict[str, dict] = {}
     for ctx in contexts:
-        doc = str(ctx.get("doc") or "").strip()
-        if doc:
-            m[doc] = ctx
+        did = str(ctx.get("doc_id") or "").strip()
+        if did:
+            m[did] = ctx
+        legacy = str(ctx.get("doc") or "").strip()
+        if legacy:
+            m[legacy] = ctx
+            p = pmid_from_url(legacy)
+            if p and p not in m:
+                m[p] = ctx
     return m
 
 
@@ -280,22 +300,24 @@ def convert_question(
     allow_fallback: bool,
 ) -> dict:
     qid = str(q.get("id", ""))
-    docs_in = [str(u).strip() for u in (q.get("documents") or []) if u]
-    docs_out = docs_in[:DOC_CAP]
+    doc_ids_in = ranked_doc_ids_from_question(q)[:DOC_CAP]
+    docs_out_urls = [pubmed_document_url(d) for d in doc_ids_in]
     ctx_list = q.get("contexts") or []
-    by_url = contexts_by_doc_url(ctx_list if isinstance(ctx_list, list) else [])
+    by_key = contexts_by_doc_keys(ctx_list if isinstance(ctx_list, list) else [])
 
     snippets: List[dict] = []
-    for url in docs_out:
-        pmid = pmid_from_url(url)
+    for doc_id in doc_ids_in:
+        doc_s = str(doc_id).strip()
+        pmid = doc_s if doc_s.isdigit() else (pmid_from_url(doc_s) or "")
         if not pmid:
             continue
+        url_out = pubmed_document_url(doc_s) if doc_s.isdigit() else doc_s
         ta = pmid_to_ta.get(pmid)
         if ta is None:
             logger.warning("Missing corpus row for PMID %s (question %s)", pmid, qid)
             continue
         title, abstract = ta
-        ctx = by_url.get(url)
+        ctx = by_key.get(doc_s) or by_key.get(pmid) or by_key.get(url_out)
         if ctx is None:
             continue
         sw = ctx.get("selected_windows") or []
@@ -308,7 +330,7 @@ def convert_question(
                     "beginSection": sec_b,
                     "endSection": sec_e,
                     "text": text,
-                    "document": url,
+                    "document": url_out,
                     "offsetInBeginSection": ob,
                     "offsetInEndSection": oe,
                 }
@@ -344,7 +366,7 @@ def convert_question(
                 "beginSection": sec_b,
                 "endSection": sec_e,
                 "text": text,
-                "document": url,
+                "document": url_out,
                 "offsetInBeginSection": ob,
                 "offsetInEndSection": oe,
             }
@@ -354,7 +376,7 @@ def convert_question(
         "id": q.get("id"),
         "type": q.get("type"),
         "body": q.get("body"),
-        "documents": docs_out,
+        "documents": docs_out_urls,
         "snippets": snippets,
     }
 
@@ -381,12 +403,17 @@ def load_contexts_questions(path: Path) -> List[dict]:
 
 
 def collect_pmids(questions: List[dict]) -> Set[str]:
+    """Corpus lookup keys (PubMed PMID strings) from ``doc_ids`` / legacy ``documents``."""
     s: Set[str] = set()
     for q in questions:
-        for url in (q.get("documents") or [])[:DOC_CAP]:
-            p = pmid_from_url(str(url))
-            if p:
-                s.add(p)
+        for d in ranked_doc_ids_from_question(q)[:DOC_CAP]:
+            ds = str(d).strip()
+            if ds.isdigit():
+                s.add(ds)
+            else:
+                p = pmid_from_url(ds)
+                if p:
+                    s.add(p)
     return s
 
 
