@@ -54,7 +54,9 @@ for TSV in "$WF/snippet/snippet_doc_fusion/runs/"*.tsv; do
       --query-jsonl "$query_jsonl" \
       --output-path "$post_jsonl" \
       --top-k "$POST_RERANK_DOC_POOL" \
-      --windows-jsonl "$_win"
+      --windows-jsonl "$_win" \
+      --window-size "${SNIPPET_WINDOW_SIZE:-3}" \
+      --top-windows "${SNIPPET_CONTEXT_TOP_WINDOWS:-2}"
   else
     echo "Warning: windows not found at $_win; post_rerank without merge" >&2
     python3 "$SCRIPT/post_rerank_jsonl.py" \
