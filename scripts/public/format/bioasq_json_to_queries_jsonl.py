@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Adapt-in: BioASQ wrapped JSON {"questions":[...]} -> strict JSONL (query_id, query_text, query_type; optional documents)."""
+"""Adapt-in: BioASQ wrapped JSON {"questions":[...]} -> strict JSONL (query_id, query_text; optional query_type, documents)."""
 
 from __future__ import annotations
 
@@ -12,13 +12,14 @@ from pathlib import Path
 def question_to_line(q: dict) -> dict:
     qid = q.get("id")
     body = q.get("body")
-    qtype = q.get("type")
-    # Strict pipeline query JSONL: core fields + optional gold/relevant ``documents`` (URLs or PMIDs).
+    # Strict pipeline query JSONL: required id + text; optional BioASQ ``type`` / ``documents``.
     out: dict = {
         "query_id": qid,
         "query_text": body,
-        "query_type": qtype,
     }
+    qt = q.get("type")
+    if qt is not None and str(qt).strip():
+        out["query_type"] = str(qt).strip()
     docs = q.get("documents")
     if isinstance(docs, list) and docs:
         out["documents"] = list(docs)

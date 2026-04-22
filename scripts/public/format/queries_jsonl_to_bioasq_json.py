@@ -37,8 +37,8 @@ def line_to_question(rec: Dict[str, Any]) -> dict:
         out["id"] = qid
     if body is not None:
         out["body"] = body
-    if qtype is not None:
-        out["type"] = qtype
+    if qtype is not None and str(qtype).strip():
+        out["type"] = str(qtype).strip()
     return out
 
 
