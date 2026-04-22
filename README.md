@@ -1,6 +1,6 @@
 # Public scripts (retrieval pipeline)
 
-This directory is the **[RAG-scripts](https://github.com/fulaibaowang/RAG-scripts)** hybrid retrieval and reranking stack: BM25 + RM3, dense HNSW retrieval, retrieval fusion (RRF), cross-encoder reranking, optional post-rerank fusion, optional snippet-RRF, evidence construction, and LLM generation. When embedded in the [BioASQ](https://github.com/fulaibaowang/BioASQ) repository, it appears as `scripts/public/shared_scripts/`.
+This directory is the **[RAG-scripts](https://github.com/fulaibaowang/RAG-scripts)** hybrid retrieval and reranking stack: BM25 + RM3, dense HNSW retrieval, retrieval fusion (RRF), cross-encoder reranking, optional post-rerank fusion, optional snippet-RRF, evidence construction, and LLM generation.
 
 ## What the pipeline does
 
@@ -27,17 +27,40 @@ Output layout (directories, fusion names, run format, logs): [docs/output.md](do
 
 ## Quickstart
 
-**Docker (recommended)** — from the **root of this tree** (the directory that contains this `README.md` and `Dockerfile`):
+### Try the demo (self-contained)
 
 ```bash
-docker build -t rag-scripts .
+git clone https://github.com/fulaibaowang/RAG-scripts.git
+git clone https://github.com/fulaibaowang/RAG-scripts-demo-data.git RAG-scripts/demo
+cd RAG-scripts
+docker run --rm \
+  -v "$PWD:/work" \
+  -e HF_HOME=/work/.hf_cache \
+  -e HF_HUB_CACHE=/work/.hf_cache/hub \
+  -e SENTENCE_TRANSFORMERS_HOME=/work/.hf_cache/sentence_transformers \
+  --workdir /work \
+  fulaibaowang/bioasq:08.03.26b200 \
+  bash -c "./run_retrieval_rerank_pipeline.sh --config demo/config.env"
 ```
 
-Python dependencies are pinned in [requirements-docker-pytorch.txt](requirements-docker-pytorch.txt) and [requirements-docker.txt](requirements-docker.txt).
+Outputs land in `demo/output/` (BM25 → dense → hybrid → rerank).
 
-**Local venv (optional):** install a matching `torch` for your OS/GPU from [pytorch.org](https://pytorch.org), then `pip install -r requirements-docker-pytorch.txt` and `pip install -r requirements-docker.txt`. You still need Java and the system packages installed in the [Dockerfile](Dockerfile).
+### Run on your own data
 
-**BioASQ** (Docker on host data, task JSON, adapt-in/out): [BioASQ docs/USAGE.md](https://github.com/fulaibaowang/BioASQ/blob/main/docs/USAGE.md).
+```bash
+git clone https://github.com/fulaibaowang/RAG-scripts.git
+cd RAG-scripts
+cp workflow_config_baseline.env my_run.env
+# edit my_run.env: set WORKFLOW_OUTPUT_DIR, TRAIN_JSON, TEST_BATCH_JSONS,
+#                  BM25_INDEX_PATH, DENSE_INDEX_DIR, DOCS_JSONL
+docker run --rm \
+  -v "$PWD:/work" \
+  -v "/path/to/your/data:/data" \
+  -e HF_HOME=/work/.hf_cache \
+  --workdir /work \
+  fulaibaowang/bioasq:08.03.26b200 \
+  bash -c "./run_retrieval_rerank_pipeline.sh --config my_run.env"
+```
 
 ## Running the pipeline (high level)
 
@@ -64,8 +87,87 @@ Stages whose key outputs already exist are skipped. Per-stage **standalone** com
 
 Other stage scripts are invoked by the orchestrator; see [docs/USAGE.md](docs/USAGE.md) for direct CLI examples.
 
+## Input and output schema (JSONL examples)
+
+The pipeline uses **one JSON object per line** (JSONL). **Wire format** for question identity is always **`query_id`**, **`query_text`**, **`query_type`** on read and write (nested **`bioasq`** and duplicate **`id` / `body` / `type`** fields are dropped when loading). Legacy lines that only have `id` / `body` / `type` are still accepted on read and normalized to `query_*`. For BioASQ submission JSON with `id` / `body` / `type`, run [`scripts/public/format/queries_jsonl_to_bioasq_json.py`](../format/queries_jsonl_to_bioasq_json.py).
+
+### Input query JSONL
+
+Each line is a single question. **`query_id`** is required (after normalization from legacy `id` / `qid` / `bioasq.id` if needed). **`query_text`** is the retrieval topic; **`query_type`** is the BioASQ task label (`summary`, `yesno`, `factoid`, `list`).
+
+```json
+{
+  "query_id": "67d723d918b1e36f2e000039",
+  "query_text": "Are there biomarkers of depression?",
+  "query_type": "summary"
+}
+```
+
+### Post-rerank JSONL output
+
+Carries **`query_*`** plus retrieved **`doc_ids`** in rank order (no PubMed URLs here).
+
+```json
+{
+  "query_id": "680fe1e3353a4a2e6b00000f",
+  "query_text": "Is a single-nucleotide polymorphism (SNP) the same as a mutation?",
+  "query_type": "yesno",
+  "doc_ids": ["26173390", "28431642", "21453671", "30498395", "12741168"]
+}
+```
+
+#### Snippet route (example outputs)
+
+```json
+{
+  "query_id": "680fe1e3353a4a2e6b00000f",
+  "query_text": "Is a single-nucleotide polymorphism (SNP) the same as a mutation?",
+  "query_type": "yesno",
+  "doc_ids": ["26173390", "28431642"],
+  "doc_snippet_windows": {
+    "26173390": [
+      { "window_idx": 2, "ce_score": 12.5 },
+      { "window_idx": 7, "ce_score": 9.1 }
+    ],
+    "28431642": [
+      { "window_idx": 0, "ce_score": 11.0 }
+    ]
+  }
+}
+```
+
+### Generation output JSONL (`*_answers.jsonl`)
+
+Written by `generation/generate_answers.py` from a **contexts** JSONL (e.g. output of `build_contexts_from_*.py`). Each output line is the input record **plus** model fields. On success: **`ideal_answer`** (string), **`evidence_ids`** (strings matching context `id` values, e.g. `PMID-1`), and for `yesno` / `factoid` / `list` also **`exact_answer`**. On failure, those may be null and an **`error`** string is set.
+
+```json
+{
+  "query_id": "680fe1e3353a4a2e6b00000f",
+  "query_text": "Is a single-nucleotide polymorphism (SNP) the same as a mutation?",
+  "query_type": "yesno",
+  "doc_ids": ["26173390", "28431642"],
+  "contexts": [
+    {
+      "id": "26173390-1",
+      "doc_id": "26173390",
+      "text": "Title: …\n\nAbstract: …"
+    }
+  ],
+  "ideal_answer": "No. SNPs are defined as common variants (often ≥1% frequency), whereas “mutation” often denotes rarer or pathogenic change; usage overlaps and context matters.",
+  "evidence_ids": ["26173390-1", "28431642-1"]
+}
+```
+
 ## Prerequisites
 
 - Python environment with pipeline dependencies (PyTerrier, hnswlib, sentence-transformers, pandas, …).
+
+Python dependencies are pinned in [requirements-docker-pytorch.txt](requirements-docker-pytorch.txt) and [requirements-docker.txt](requirements-docker.txt).
+
+**Local venv (optional):** install a matching `torch` for your OS/GPU from [pytorch.org](https://pytorch.org), then `pip install -r requirements-docker-pytorch.txt` and `pip install -r requirements-docker.txt`. You still need Java and the system packages installed in the [Dockerfile](Dockerfile).
+
 - Terrier BM25 index and dense HNSW index (see [docs/USAGE.md](docs/USAGE.md)).
-- Query streams as `.jsonl` (see [docs/PARAMETERS.md](docs/PARAMETERS.md)). 
+
+## related repo
+
+- [BioASQ](https://github.com/fulaibaowang/BioASQ/blob/main/README.md).
