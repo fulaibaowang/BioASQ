@@ -70,13 +70,13 @@ RRF_WEIGHTS = [(1, 0),(0.9, 0.1),(0.8, 0.2),  (0.7, 0.3), (0.6, 0.4), (0.5, 0.5)
 # %%
 # Load gold maps per batch, with training dedup
 train_qs = load_questions(TRAIN_JSON)
-_, train_gold_raw = build_topics_and_gold(train_qs, query_field="body")
+_, train_gold_raw = build_topics_and_gold(train_qs, query_field="query_text")
 
 test_golds = {}  # batch_stem -> gold_map
 test_qids_all = set()
 for p in TEST_JSONS:
     qs = load_questions(p)
-    _, gm = build_topics_and_gold(qs, query_field="body")
+    _, gm = build_topics_and_gold(qs, query_field="query_text")
     test_golds[p.stem] = gm
     test_qids_all.update(gm.keys())
     print(f"  {p.stem}: {len(gm)} queries")

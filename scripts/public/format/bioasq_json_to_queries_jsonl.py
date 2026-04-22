@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Adapt-in: BioASQ wrapped JSON {"questions":[...]} -> one JSONL line per question (lossless)."""
+"""Adapt-in: BioASQ wrapped JSON {"questions":[...]} -> strict JSONL (query_id, query_text, query_type; optional documents)."""
 
 from __future__ import annotations
 
@@ -13,12 +13,16 @@ def question_to_line(q: dict) -> dict:
     qid = q.get("id")
     body = q.get("body")
     qtype = q.get("type")
-    return {
+    # Strict pipeline query JSONL: core fields + optional gold/relevant ``documents`` (URLs or PMIDs).
+    out: dict = {
         "query_id": qid,
         "query_text": body,
         "query_type": qtype,
-        "bioasq": q,
     }
+    docs = q.get("documents")
+    if isinstance(docs, list) and docs:
+        out["documents"] = list(docs)
+    return out
 
 
 def main() -> int:

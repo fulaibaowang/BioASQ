@@ -398,7 +398,7 @@ def parse_args() -> argparse.Namespace:
     inp.add_argument("--docs-jsonl", type=str, required=True, help="JSONL corpus path or glob.")
     inp.add_argument("--train-json", type=Path, default=None)
     inp.add_argument("--test-batch-jsons", "--test_batch_jsons", type=Path, nargs="*", default=None)
-    inp.add_argument("--query-field", type=str, default="body")
+    inp.add_argument("--query-field", type=str, default="query_text")
     inp.add_argument("--n-docs", type=int, default=100, help="Top docs per query from input run.")
 
     win = p.add_argument_group("windows")

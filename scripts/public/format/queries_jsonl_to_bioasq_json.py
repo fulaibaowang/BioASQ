@@ -43,11 +43,14 @@ def line_to_question(rec: Dict[str, Any]) -> dict:
 
 
 def record_to_bioasq_question(rec: Dict[str, Any]) -> dict:
-    """Merge line_to_question with ``doc_ids`` / ``docnos`` → BioASQ ``documents`` URLs."""
+    """Merge line_to_question with ``documents`` / ``doc_ids`` / ``docnos`` → BioASQ ``documents`` URLs."""
     q = line_to_question(rec)
     doc_ids = rec.get("doc_ids") or rec.get("docnos")
     if isinstance(doc_ids, list) and doc_ids:
         q["documents"] = doc_ids_to_bioasq_documents(doc_ids)
+    elif isinstance(q.get("documents"), list) and q["documents"]:
+        # Strict query JSONL stores normalized PMIDs; BioASQ expects PubMed URLs.
+        q["documents"] = doc_ids_to_bioasq_documents(q["documents"])
     q.pop("doc_ids", None)
     q.pop("docnos", None)
     return q
