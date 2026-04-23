@@ -49,7 +49,7 @@ for TSV in "$WF/snippet/snippet_doc_fusion/runs/"*.tsv; do
 
   _win="$WF/snippet/snippet_rerank/windows/${split}.jsonl"
   if [ -f "$_win" ]; then
-    python3 "$SCRIPT/post_rerank_jsonl.py" \
+    python3 "$SCRIPT/build_retrieval_jsonl.py" \
       --run-path "$TSV" \
       --query-jsonl "$query_jsonl" \
       --output-path "$post_jsonl" \
@@ -59,14 +59,14 @@ for TSV in "$WF/snippet/snippet_doc_fusion/runs/"*.tsv; do
       --top-windows "${SNIPPET_CONTEXT_TOP_WINDOWS:-2}"
   else
     echo "Warning: windows not found at $_win; post_rerank without merge" >&2
-    python3 "$SCRIPT/post_rerank_jsonl.py" \
+    python3 "$SCRIPT/build_retrieval_jsonl.py" \
       --run-path "$TSV" \
       --query-jsonl "$query_jsonl" \
       --output-path "$post_jsonl" \
       --top-k "$POST_RERANK_DOC_POOL"
   fi
 
-  python3 "$SCRIPT/build_contexts_from_snippets.py" \
+  python3 "$SCRIPT/build_snippet_contexts.py" \
     --post-rerank-jsonl "$post_jsonl" \
     --snippet-windows-dir "$WF/snippet/snippet_rerank/windows" \
     --split-name "$split" \

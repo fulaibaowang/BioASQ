@@ -62,7 +62,7 @@ for RERANK_QUERY_FIELD in "${QUERY_FIELDS[@]}"; do
       export OMP_NUM_THREADS=8
       export PYTHONUNBUFFERED=1
 
-      python -u scripts/public/shared_scripts/rerank/rerank_stage2.py \
+      python -u scripts/public/shared_scripts/rerank/rerank_crossencoder.py \
         --runs-dir '${RUNS_DIR}' \
         --run-glob '${RUN_GLOB}' \
         --docs-jsonl '${DOCS_JSONL}' \

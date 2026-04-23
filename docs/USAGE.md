@@ -91,7 +91,7 @@ For running the pipeline, use the generic examples in [RAG-scripts docs/USAGE.md
   --config /path/to/config.env
 ```
 
-Config templates: [config.env](../bioasq_data/14b/workflow_config_14b_example.env), [workflow_config_full.env](https://github.com/fulaibaowang/RAG-scripts/blob/main/workflow_config_full.env). Parameter tuning: [PARAMETERS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/docs/PARAMETERS.md).
+Config templates: [config.env](../bioasq_data/14b/workflow_config_14b_example.env), [workflow_config_full.env](https://github.com/fulaibaowang/RAG-scripts/blob/main/conf/workflow_config_full.env). Parameter tuning: [PARAMETERS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/docs/PARAMETERS.md).
 
 
 Copy [config.env](bioasq_data/14b/workflow_config_14b_example.env) to a private file and set at least: `WORKFLOW_OUTPUT_DIR`, `INPUT_JSONL` and/or `INPUT_BATCH_JSONLS` (`.jsonl` query streams), `BM25_INDEX_PATH`, `DENSE_INDEX_DIR`, and for rerank and downstream steps `DOCS_JSONL`. Use `HAVE_GROUND_TRUTH=0` when you have no documents/snippets.

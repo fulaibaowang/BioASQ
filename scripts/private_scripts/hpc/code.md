@@ -60,10 +60,10 @@ srun -p dev --time=12:00:00 -c 4 --mem=64G\
   --container-workdir /work \
   --pty bash
 
-python scripts/public/shared_scripts/retrieval/eval_dense.py \
-  --train-json example/training14b_10pct_sample.json \
+python scripts/public/shared_scripts/retrieval/retrieve_dense.py \
+  --train-jsonl example/training14b_10pct_sample.jsonl \
   --index_dir /pubmed/pubmed_pubmedbert_2026_subset_index/pubmedbert_hnsw_69667 \
-  --test_batch_jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
+  --test-batch-jsonls bioasq_data/Task13BGoldenEnriched/13B1_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B2_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B3_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B4_golden.jsonl \
   --out_dir /yun/output/eval_dense_pubmedbert_small \
   --topk 5000 \
   --ef_cap 5000
@@ -84,16 +84,16 @@ srun -p dev --time=1:00:00 -c 4 --mem=32G --gres=gpu:1 \
   --container-workdir /work \
   --pty bash
   
-python scripts/public/shared_scripts/rerank/rerank_stage2.py \
+python scripts/public/shared_scripts/rerank/rerank_crossencoder.py \
   --output-dir /yun/output/eval_stage2_rerank_hpc_minitest \
-  --runs-dir /yun/output/eval_hybrid_production_test/runs \
+  --runs-dir /yun/output/fuse_retrieval/runs \
   --docs-jsonl /yun/output/subset_pubmed.jsonl \
-  --train-json example/training14b_10pct_sample.json \
-  --test_batch_jsons \
-    bioasq_data/Task13BGoldenEnriched/13B1_golden.json \
-    bioasq_data/Task13BGoldenEnriched/13B2_golden.json \
-    bioasq_data/Task13BGoldenEnriched/13B3_golden.json \
-    bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
+  --train-jsonl example/training14b_10pct_sample.jsonl \
+  --test-batch-jsonls \
+    bioasq_data/Task13BGoldenEnriched/13B1_golden.jsonl \
+    bioasq_data/Task13BGoldenEnriched/13B2_golden.jsonl \
+    bioasq_data/Task13BGoldenEnriched/13B3_golden.jsonl \
+    bioasq_data/Task13BGoldenEnriched/13B4_golden.jsonl \
   --model cross-encoder/ms-marco-MiniLM-L-12-v2 \
   --model-device cuda \
   --model-batch 32 
@@ -151,20 +151,20 @@ python scripts/deprecated/rerank_stage3_merged.py \
 
 
 # Run RRF fusion (Hybrid + Rerank) offline on finished workflows:
-python scripts/public/shared_scripts/rerank/rerank_rrf_hybrid.py \
+python scripts/public/shared_scripts/rerank/fuse_rerank.py \
   --hybrid-runs-dir /yun/output/workflow_local_10pct_hpc_bge/retrieval/fusion/runs \
   --rerank-runs-dir /yun/output/workflow_local_10pct_hpc_bge/rerank/cross_encoder/runs \
   --output-dir /yun/output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion \
-  --train-json example/training14b_10pct_sample.json \
-  --test-batch-jsons bioasq_data/Task13BGoldenEnriched/13B1_golden.json bioasq_data/Task13BGoldenEnriched/13B2_golden.json bioasq_data/Task13BGoldenEnriched/13B3_golden.json bioasq_data/Task13BGoldenEnriched/13B4_golden.json \
+  --train-jsonl example/training14b_10pct_sample.jsonl \
+  --test-batch-jsonls bioasq_data/Task13BGoldenEnriched/13B1_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B2_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B3_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B4_golden.jsonl \
   --pool-top 50 --k-rrf 60 --w-bge 0.8 --w-hybrid 0.2
 
-python scripts/public/shared_scripts/rerank/rerank_rrf_hybrid.py \
+python scripts/public/shared_scripts/rerank/fuse_rerank.py \
   --hybrid-runs-dir /yun/output/workflow_local_3pct_hpc_bge/retrieval/fusion/runs \
   --rerank-runs-dir /yun/output/workflow_local_3pct_hpc_bge/rerank/cross_encoder/runs \
   --output-dir /yun/output/workflow_local_3pct_hpc_bge/rerank/post_rerank_fusion \
-  --train-json example/training14b_3pct_sample.json \
-  --test-batch-jsons example/13b_golden_50q_sample.json \
+  --train-jsonl example/training14b_3pct_sample.jsonl \
+  --test-batch-jsonls example/13b_golden_50q_sample.jsonl \
   --pool-top 50 --k-rrf 60 --w-bge 0.8 --w-hybrid 0.2
 
 python scripts/public/shared_scripts/analysis/compare_result_dirs.py \

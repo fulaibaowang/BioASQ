@@ -53,7 +53,7 @@ ADAPTIVE_CAP=300
 KS_RECALL="50,100,200,300,400,500,1000,2000"
 
 echo "Starting job ${SLURM_JOB_ID} on $(hostname) at $(date)"
-echo "Running: scripts/public/shared_scripts/rerank/rerank_stage2.py"
+echo "Running: scripts/public/shared_scripts/rerank/rerank_crossencoder.py"
 
 # -----------------------------
 # Run inside container
@@ -91,7 +91,7 @@ srun \
     # --- Run reranker script with CLI flags ---
     echo '[run] Starting reranker (CLI config)'
     echo '[debug] use_multi_gpu flag: --use-multi-gpu --num-gpus ${NUM_GPUS}'
-    python -u scripts/public/shared_scripts/rerank/rerank_stage2.py \
+    python -u scripts/public/shared_scripts/rerank/rerank_crossencoder.py \
       --runs-dir '${RUNS_DIR}' \
       --run-glob '${RUN_GLOB}' \
       --docs-jsonl '${DOCS_JSONL}' \
