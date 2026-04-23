@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH -J pipeline_bioasq
-#SBATCH -p cpu
+#SBATCH -p gpu
 #SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=64G
+#SBATCH --mem=256G
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
-##SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:1
 
 set -euo pipefail
 
