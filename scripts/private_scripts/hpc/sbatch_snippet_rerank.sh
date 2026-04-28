@@ -92,8 +92,8 @@ srun \
       --runs-dir '${RUNS_DIR}' \
       --run-glob '${RUN_GLOB}' \
       --docs-jsonl '${DOCS_JSONL}' \
-      --train-jsonl '${INPUT_JSONL}' \
-      --test-batch-jsonls \${INPUT_BATCH_JSONLS[@]} \
+      --input-jsonl '${INPUT_JSONL}' \
+      --input-batch-jsonls \${INPUT_BATCH_JSONLS[@]} \
       --n-docs ${N_DOCS} \
       --window-size ${WINDOW_SIZE} \
       --window-stride ${WINDOW_STRIDE} \

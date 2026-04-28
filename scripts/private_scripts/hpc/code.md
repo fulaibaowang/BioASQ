@@ -61,9 +61,9 @@ srun -p dev --time=12:00:00 -c 4 --mem=64G\
   --pty bash
 
 python scripts/public/shared_scripts/retrieval/retrieve_dense.py \
-  --train-jsonl example/training14b_10pct_sample.jsonl \
+  --input-jsonl example/training14b_10pct_sample.jsonl \
   --index_dir /pubmed/pubmed_pubmedbert_2026_subset_index/pubmedbert_hnsw_69667 \
-  --test-batch-jsonls bioasq_data/Task13BGoldenEnriched/13B1_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B2_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B3_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B4_golden.jsonl \
+  --input-batch-jsonls bioasq_data/Task13BGoldenEnriched/13B1_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B2_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B3_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B4_golden.jsonl \
   --out_dir /yun/output/eval_dense_pubmedbert_small \
   --topk 5000 \
   --ef_cap 5000
@@ -88,8 +88,8 @@ python scripts/public/shared_scripts/rerank/rerank_crossencoder.py \
   --output-dir /yun/output/eval_stage2_rerank_hpc_minitest \
   --runs-dir /yun/output/fuse_retrieval/runs \
   --docs-jsonl /yun/output/subset_pubmed.jsonl \
-  --train-jsonl example/training14b_10pct_sample.jsonl \
-  --test-batch-jsonls \
+  --input-jsonl example/training14b_10pct_sample.jsonl \
+  --input-batch-jsonls \
     bioasq_data/Task13BGoldenEnriched/13B1_golden.jsonl \
     bioasq_data/Task13BGoldenEnriched/13B2_golden.jsonl \
     bioasq_data/Task13BGoldenEnriched/13B3_golden.jsonl \
@@ -155,16 +155,16 @@ python scripts/public/shared_scripts/rerank/fuse_rerank.py \
   --hybrid-runs-dir /yun/output/workflow_local_10pct_hpc_bge/retrieval/fusion/runs \
   --rerank-runs-dir /yun/output/workflow_local_10pct_hpc_bge/rerank/cross_encoder/runs \
   --output-dir /yun/output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion \
-  --train-jsonl example/training14b_10pct_sample.jsonl \
-  --test-batch-jsonls bioasq_data/Task13BGoldenEnriched/13B1_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B2_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B3_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B4_golden.jsonl \
+  --input-jsonl example/training14b_10pct_sample.jsonl \
+  --input-batch-jsonls bioasq_data/Task13BGoldenEnriched/13B1_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B2_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B3_golden.jsonl bioasq_data/Task13BGoldenEnriched/13B4_golden.jsonl \
   --pool-top 50 --k-rrf 60 --w-bge 0.8 --w-hybrid 0.2
 
 python scripts/public/shared_scripts/rerank/fuse_rerank.py \
   --hybrid-runs-dir /yun/output/workflow_local_3pct_hpc_bge/retrieval/fusion/runs \
   --rerank-runs-dir /yun/output/workflow_local_3pct_hpc_bge/rerank/cross_encoder/runs \
   --output-dir /yun/output/workflow_local_3pct_hpc_bge/rerank/post_rerank_fusion \
-  --train-jsonl example/training14b_3pct_sample.jsonl \
-  --test-batch-jsonls example/13b_golden_50q_sample.jsonl \
+  --input-jsonl example/training14b_3pct_sample.jsonl \
+  --input-batch-jsonls example/13b_golden_50q_sample.jsonl \
   --pool-top 50 --k-rrf 60 --w-bge 0.8 --w-hybrid 0.2
 
 python scripts/public/shared_scripts/analysis/compare_result_dirs.py \

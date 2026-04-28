@@ -66,8 +66,8 @@ for RERANK_QUERY_FIELD in "${QUERY_FIELDS[@]}"; do
         --runs-dir '${RUNS_DIR}' \
         --run-glob '${RUN_GLOB}' \
         --docs-jsonl '${DOCS_JSONL}' \
-        --train-jsonl '${INPUT_JSONL}' \
-        --test-batch-jsonls $INPUT_BATCH_JSONLS \
+        --input-jsonl '${INPUT_JSONL}' \
+        --input-batch-jsonls $INPUT_BATCH_JSONLS \
         --query-field '${RERANK_QUERY_FIELD}' \
         --candidate-limit ${RERANK_CANDIDATE_LIMIT} \
         --model '${RERANK_MODEL}' \
