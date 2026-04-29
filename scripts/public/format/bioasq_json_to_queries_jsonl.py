@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Adapt-in: BioASQ wrapped JSON {"questions":[...]} -> strict JSONL (query_id, query_text; optional query_type, documents)."""
+"""Adapt-in: BioASQ wrapped JSON {"questions":[...]} -> JSONL (query_id, query_text; optional query_type, documents).
+
+Passthrough: when a question includes ``query_parse`` (LLM normalization / HyDE metadata) or legacy ``hyde``,
+those objects are copied onto each JSONL line.
+
+When ``query_parse`` is complete (non-empty ``parsed_query``), the same rules as
+``scripts/public/query_parsing/prepare_query.py`` are applied in-process so each line also gets
+``query_text_normalized`` and ``query_text_hyde`` for ``--dense-query-field query_text,query_text_hyde``.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +15,12 @@ import argparse
 import json
 import sys
 from pathlib import Path
+
+_SCRIPT_PUBLIC = Path(__file__).resolve().parent.parent
+if str(_SCRIPT_PUBLIC) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_PUBLIC))
+
+from query_parsing.prepare_query import prepare
 
 
 def question_to_line(q: dict) -> dict:
@@ -23,6 +37,22 @@ def question_to_line(q: dict) -> dict:
     docs = q.get("documents")
     if isinstance(docs, list) and docs:
         out["documents"] = list(docs)
+    qp = q.get("query_parse")
+    if isinstance(qp, dict):
+        out["query_parse"] = dict(qp)
+        q_work = dict(q)
+        try:
+            prepare([q_work], "query_text_hyde", "query_text_normalized", no_fallback=False)
+        except ValueError:
+            pass
+        else:
+            if "query_text_normalized" in q_work:
+                out["query_text_normalized"] = q_work["query_text_normalized"]
+            if "query_text_hyde" in q_work:
+                out["query_text_hyde"] = q_work["query_text_hyde"]
+    hyde = q.get("hyde")
+    if isinstance(hyde, dict):
+        out["hyde"] = dict(hyde)
     return out
 
 

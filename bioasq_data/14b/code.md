@@ -38,3 +38,11 @@ python3 scripts/public/format/bioasq_json_to_queries_jsonl.py \
 python3 scripts/public/format/bioasq_json_to_queries_jsonl.py \
   --input bioasq_data/14b/BioASQ-task14bPhaseA-testset4 \
   --output bioasq_data/14b/BioASQ-task14bPhaseA-testset4.jsonl
+
+python scripts/public/query_parsing/prepare_query.py \
+  bioasq_data/14b/BioASQ-task14bPhaseA-testset4-rewrite \
+  -o bioasq_data/14b/BioASQ-task14bPhaseA-testset4-rewrite-ready.json --no-fallback
+
+python3 scripts/public/format/bioasq_json_to_queries_jsonl.py \
+  --input bioasq_data/14b/BioASQ-task14bPhaseA-testset4-rewrite \
+  --output bioasq_data/14b/BioASQ-task14bPhaseA-testset4-rewrite-ready.jsonl
