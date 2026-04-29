@@ -34,3 +34,7 @@ python3 scripts/public/shared_scripts/generation/generate_answers.py \
 python3 scripts/public/format/bioasq_json_to_queries_jsonl.py \
   --input bioasq_data/14b/BioASQ-task14bPhaseA-testset3 \
   --output bioasq_data/14b/BioASQ-task14bPhaseA-testset3.jsonl
+
+python3 scripts/public/format/bioasq_json_to_queries_jsonl.py \
+  --input bioasq_data/14b/BioASQ-task14bPhaseA-testset4 \
+  --output bioasq_data/14b/BioASQ-task14bPhaseA-testset4.jsonl

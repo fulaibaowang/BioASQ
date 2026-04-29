@@ -1,0 +1,304 @@
+{
+  "questions": [
+    {
+      "id": "69e8fc6c85870e396d000133",
+      "type": "list",
+      "body": "Which medications have proven effective in the management of status epilepticus?"
+    },
+    {
+      "id": "69d0415a85870e396d0000f9",
+      "type": "summary",
+      "body": "What is a MitraClip used for?"
+    },
+    {
+      "id": "69de6f6985870e396d00011b",
+      "type": "list",
+      "body": "Which modifications protect mRNAs from degradation by cytoplasmic RNases?"
+    },
+    {
+      "id": "69e6c44f85870e396d00012f",
+      "type": "summary",
+      "body": "How do super-enhancers differ from typical enhancers?"
+    },
+    {
+      "id": "69e3132985870e396d00011e",
+      "type": "yesno",
+      "body": "Are factor V Leiden carriers who use oral contraceptives at greater risk for venous thromboembolism?"
+    },
+    {
+      "id": "69e39a5485870e396d000124",
+      "type": "factoid",
+      "body": "Saccadic hypometria and mild smooth pursuit impairments are abmornal movements associated with what body part?"
+    },
+    {
+      "id": "69de65ab85870e396d000113",
+      "type": "yesno",
+      "body": "Is alcoholism considered a treatable disease?"
+    },
+    {
+      "id": "69e65d1d85870e396d00012d",
+      "type": "yesno",
+      "body": "Do glioblastoma stem cells (GSCs) contribute to therapeutic resistance and tumor recurrence after treatment?"
+    },
+    {
+      "id": "69e314bc85870e396d00011f",
+      "type": "summary",
+      "body": "What is the ethnic distribution of factor V Leiden mutation?"
+    },
+    {
+      "id": "69e39bd885870e396d000127",
+      "type": "summary",
+      "body": "Summarize Angiomyolipoma"
+    },
+    {
+      "id": "69de6a6585870e396d000117",
+      "type": "factoid",
+      "body": "Which kinase is activated downstream of active Ras?"
+    },
+    {
+      "id": "69e8f7ca85870e396d000130",
+      "type": "list",
+      "body": "What are the types of feline seizures based on their etiology?"
+    },
+    {
+      "id": "69e39c9285870e396d000129",
+      "type": "factoid",
+      "body": "What does the Edinburgh Handedness Inventory (EHI) measure?"
+    },
+    {
+      "id": "69de68c285870e396d000115",
+      "type": "yesno",
+      "body": "Can a woman develop an immune response against her partner\u0027s sperm?"
+    },
+    {
+      "id": "69e318b985870e396d000123",
+      "type": "factoid",
+      "body": "What is the median survival rate of ALS?"
+    },
+    {
+      "id": "69dd76cc85870e396d000111",
+      "type": "summary",
+      "body": "What is the relationshipe between cellular senescence and  age-related lung diseases like pulmonary fiibrosis?"
+    },
+    {
+      "id": "69de6c5885870e396d000118",
+      "type": "list",
+      "body": "Which mutations in the Ras gene family are most commonly found in cancer?"
+    },
+    {
+      "id": "69e27f5c85870e396d00011c",
+      "type": "list",
+      "body": "What are the key symptoms of Cushing Syndrome in children?"
+    },
+    {
+      "id": "69e39c4a85870e396d000128",
+      "type": "list",
+      "body": "Please list some types nontuberculous mycobacteria that cause Pulmonary infections."
+    },
+    {
+      "id": "69cd737a85870e396d0000e9",
+      "type": "summary",
+      "body": "What effect does heroin have on the production of endorphins in humans?"
+    },
+    {
+      "id": "69e8fd0085870e396d000134",
+      "type": "yesno",
+      "body": "Are oestrogens only produced in the ovaries?"
+    },
+    {
+      "id": "69e39d7385870e396d00012b",
+      "type": "yesno",
+      "body": "Is efferocytosis associated with inflammation?"
+    },
+    {
+      "id": "69de6ca985870e396d000119",
+      "type": "yesno",
+      "body": "Are transposable elements found exclusively in nuclear DNA?"
+    },
+    {
+      "id": "69beea8685870e396d0000b9",
+      "type": "factoid",
+      "body": "What is the Standardised Mortality Ratio (SMR)?"
+    },
+    {
+      "id": "69e39e0785870e396d00012c",
+      "type": "summary",
+      "body": "What do anorexigenic neuropeptides do?"
+    },
+    {
+      "id": "69a7fada85870e396d000028",
+      "type": "yesno",
+      "body": "Does X-chromosome inactivation occur in males?"
+    },
+    {
+      "id": "69e316d185870e396d000121",
+      "type": "list",
+      "body": "What are factor V Leiden mutation impacts to pregnancy?"
+    },
+    {
+      "id": "69d044f385870e396d0000fe",
+      "type": "factoid",
+      "body": "Does heparinoid promote or restrict blood circulation?"
+    },
+    {
+      "id": "69de668885870e396d000114",
+      "type": "list",
+      "body": "For which types of cancer have Drosophila melanogaster models (\"fly avatars\") been generated?"
+    },
+    {
+      "id": "69a3df5985870e396d000004",
+      "type": "list",
+      "body": "What are the common symptoms of Cushing\u0027s Syndrome?"
+    },
+    {
+      "id": "69c128c085870e396d0000ce",
+      "type": "yesno",
+      "body": "Can stress trigger flare ups of eczema?"
+    },
+    {
+      "id": "69de69e585870e396d000116",
+      "type": "list",
+      "body": "Which classes of antibiotics that target bacterial ribosomes may, upon overuse, lead to mitochondrial dysfunction in patients?"
+    },
+    {
+      "id": "69a88fa885870e396d000037",
+      "type": "summary",
+      "body": "How is cortisol secreation regulated in the human body?"
+    },
+    {
+      "id": "69d273f485870e396d00010d",
+      "type": "list",
+      "body": "People with prurigo nodularis have a higher risk for developing what cadiovascular events?"
+    },
+    {
+      "id": "69a7fde285870e396d00002e",
+      "type": "factoid",
+      "body": "Which class of endogenous molecules is responsible for most cytotoxic damage inside cells?"
+    },
+    {
+      "id": "69ac171985870e396d00005a",
+      "type": "yesno",
+      "body": "Is the incidence of Cushing\u0027s Syndrome less probable in women than men?"
+    },
+    {
+      "id": "69bb203e85870e396d00008b",
+      "type": "factoid",
+      "body": "What is the Common name for insect vectors in the Pentatomidae family?"
+    },
+    {
+      "id": "69b523f585870e396d00007c",
+      "type": "yesno",
+      "body": "Can the extracellular matrix influence the transformation of normal cells into cancer cells?"
+    },
+    {
+      "id": "69e3170385870e396d000122",
+      "type": "list",
+      "body": "What are common ocular manifestations of preeclampsia?"
+    },
+    {
+      "id": "69d2746e85870e396d00010e",
+      "type": "factoid",
+      "body": "Is glymphatic fluid transport suppressed or increased  in neurodegenerative diseases?"
+    },
+    {
+      "id": "69bedcb285870e396d0000af",
+      "type": "yesno",
+      "body": "Are mitochondria exclusively maternally inherited?"
+    },
+    {
+      "id": "69abcd1a85870e396d000058",
+      "type": "factoid",
+      "body": "What is the gender-related prevalence of Cushing\u0027s Disease?"
+    },
+    {
+      "id": "69e39d1e85870e396d00012a",
+      "type": "summary",
+      "body": "What is the relationship of Colchicine with respect to cardiovascular events?"
+    },
+    {
+      "id": "69cd7ab285870e396d0000f4",
+      "type": "yesno",
+      "body": "Are polytene chromosomes capable of upregulating the expression of the genes they contain?"
+    },
+    {
+      "id": "69c428a785870e396d0000dd",
+      "type": "list",
+      "body": "In which parts of the body can carotenoderma be typically observed?"
+    },
+    {
+      "id": "69bff3be85870e396d0000cc",
+      "type": "list",
+      "body": "What are the symptoms of trapped neutrophil syndrome in border collies?"
+    },
+    {
+      "id": "69de6d3a85870e396d00011a",
+      "type": "list",
+      "body": "Which mRNAs are maternally deposited in the human oocyte?"
+    },
+    {
+      "id": "69e3123585870e396d00011d",
+      "type": "list",
+      "body": "What are the common hereditary bleeding disorders?"
+    },
+    {
+      "id": "69d1ab2985870e396d000105",
+      "type": "yesno",
+      "body": "Can ferroptosis be used to treat breast cancer?"
+    },
+    {
+      "id": "69a7fb8485870e396d000029",
+      "type": "summary",
+      "body": "How do alterations in epigenetic modifications affect genome stability and gene expression?"
+    },
+    {
+      "id": "69c4198c85870e396d0000d0",
+      "type": "list",
+      "body": "What are the key outcomes of the dysfunction of the hypothalamic-pituitary axis in patients with anorexia rervosa?"
+    },
+    {
+      "id": "69d26d4285870e396d000109",
+      "type": "list",
+      "body": "Please list some types of glycosaminoglycans"
+    },
+    {
+      "id": "69a7ffd985870e396d000032",
+      "type": "summary",
+      "body": "How do cancer cells lose contact inhibition of proliferation?"
+    },
+    {
+      "id": "69ac7c5c85870e396d000068",
+      "type": "summary",
+      "body": "How long does it take for the adrenal function to recover after successful surgical remission of Cushing\u0027s Syndrome?"
+    },
+    {
+      "id": "69a5d6e885870e396d00000d",
+      "type": "yesno",
+      "body": "True or false, Chagas disease (CD), is a tropical viral  disease that poses a significant health threat to millions of people, primarily in Latin America?"
+    },
+    {
+      "id": "69b5301685870e396d000086",
+      "type": "list",
+      "body": "What are the major DNA repair mechanisms in human cells?"
+    },
+    {
+      "id": "69c4201e85870e396d0000d7",
+      "type": "list",
+      "body": "What are the effects of caffeine in human behavior?"
+    },
+    {
+      "id": "69d18dae85870e396d000100",
+      "type": "summary",
+      "body": "What does methylmalonic acid do in the body?"
+    },
+    {
+      "id": "69beda2685870e396d0000a8",
+      "type": "factoid",
+      "body": "Which is the most error-prone DNA repair mechanism?"
+    },
+    {
+      "id": "69e39b0285870e396d000125",
+      "type": "yesno",
+      "body": "Is fundus fluorescein angiography usually used to test for lung disease?"
+    }
+  ]
+}
