@@ -79,10 +79,14 @@ def parse_keywords(medline: etree._Element) -> List[str]:
     return kws
 
 
-def parse_title_abstract(medline: etree._Element) -> Dict[str, str]:
+def parse_title_text(medline: etree._Element) -> Dict[str, str]:
+    """Extract title and abstract body text from a MedlineCitation element.
+
+    The output key is 'text' (unified RAG-pipeline schema), not 'abstract'.
+    """
     article = medline.find("Article")
     if article is None:
-        return {"title": "", "abstract": ""}
+        return {"title": "", "text": ""}
 
     title = _stringify(article.find("ArticleTitle"))
 
@@ -95,13 +99,13 @@ def parse_title_abstract(medline: etree._Element) -> Dict[str, str]:
                 if label and label != "UNASSIGNED":
                     parts.append(label)
                 parts.append(_stringify(a))
-            abstract = "\n".join([p for p in parts if p]).strip()
+            text = "\n".join([p for p in parts if p]).strip()
         else:
-            abstract = _stringify(abs_texts[0])
+            text = _stringify(abs_texts[0])
     else:
-        abstract = _stringify(article.find("Abstract"))
+        text = _stringify(article.find("Abstract"))
 
-    return {"title": title, "abstract": abstract}
+    return {"title": title, "text": text}
 
 
 def parse_article_record(medline: etree._Element) -> Optional[Dict]:
@@ -109,12 +113,16 @@ def parse_article_record(medline: etree._Element) -> Optional[Dict]:
     if not pmid:
         return None
 
-    ta = parse_title_abstract(medline)
+    tt = parse_title_text(medline)
+    # Unified RAG-pipeline schema: docno, pmid, type, title, text + metadata.
+    # docno equals pmid for this abstracts-only corpus (no chunks); the
+    # type field parallels chunked corpora's "abstract"/"body"/"caption".
     return {
+        "docno": pmid,
         "pmid": pmid,
-        "docno": pmid,  # PyTerrier-friendly
-        "title": ta["title"],
-        "abstract": ta["abstract"],
+        "type": "abstract",
+        "title": tt["title"],
+        "text": tt["text"],
         "mesh_terms": parse_mesh_terms(medline),
         "keywords": parse_keywords(medline),
         "is_deleted": False,
@@ -152,10 +160,11 @@ def iter_records_from_xml_gz(gz_path: Path, dedup: bool = True) -> Iterable[Dict
                                 continue
                             seen.add(pmid)
                         yield {
-                            "pmid": pmid,
                             "docno": pmid,
+                            "pmid": pmid,
+                            "type": "abstract",
                             "title": "",
-                            "abstract": "",
+                            "text": "",
                             "mesh_terms": "",
                             "keywords": [],
                             "is_deleted": True,
