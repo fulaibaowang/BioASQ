@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Adapt-in: BioASQ wrapped JSON {"questions":[...]} -> JSONL (query_id, query_text; optional query_type, documents).
+"""Adapt-in: BioASQ wrapped JSON {"questions":[...]} -> JSONL (query_id, query_text; optional query_type, documents, snippets).
 
 Passthrough: when a question includes ``query_parse`` (LLM normalization / HyDE metadata) or legacy ``hyde``,
 those objects are copied onto each JSONL line.
@@ -26,7 +26,7 @@ from query_parsing.prepare_query import prepare
 def question_to_line(q: dict) -> dict:
     qid = q.get("id")
     body = q.get("body")
-    # Strict pipeline query JSONL: required id + text; optional BioASQ ``type`` / ``documents``.
+    # Strict pipeline query JSONL: required id + text; optional BioASQ ``type`` / ``documents`` / ``snippets``.
     out: dict = {
         "query_id": qid,
         "query_text": body,
@@ -37,6 +37,11 @@ def question_to_line(q: dict) -> dict:
     docs = q.get("documents")
     if isinstance(docs, list) and docs:
         out["documents"] = list(docs)
+    snips = q.get("snippets")
+    if isinstance(snips, list) and snips:
+        copied = [dict(s) for s in snips if isinstance(s, dict)]
+        if copied:
+            out["snippets"] = copied
     qp = q.get("query_parse")
     if isinstance(qp, dict):
         out["query_parse"] = dict(qp)
