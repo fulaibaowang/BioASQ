@@ -85,16 +85,16 @@ That sounds much more balanced.
 
 Two extra scientific points jumped out from the script that are worth being explicit about in the report.
 
-First, the snippet route and baseline route are not compared under identical upstream settings by default. The script uses a pool-50 post-rerank fusion for the baseline (`rerank/post_rerank_fusion`), but a pool-200 branch for snippet processing (`rerank/post_rerank_fusion_snippet`).
+First, the snippet route and document route (formerly "baseline"; one context per PubMed abstract) are not compared under identical upstream settings by default. The script uses a pool-50 post-rerank fusion for the document route (`rerank/post_rerank_fusion`), but a pool-200 branch for snippet processing (`rerank/post_rerank_fusion_snippet`).
 
 run_retrieval_rerank_pipeline
 
-So if you compare baseline vs snippet downstream, make clear whether the comparison is:
+So if you compare document vs snippet downstream, make clear whether the comparison is:
 
-- baseline route vs snippet route as actually used in the system, or
+- document route vs snippet route as actually used in the system, or
 - a controlled ablation with matched upstream pool size.
 
-Second, generation is also not identical by default between routes. The script gives different default context budgets to baseline and snippet generation: baseline defaults to 8 contexts and 1300 chars per context, while snippet defaults to 10 contexts and 960 chars per context.
+Second, generation is also not identical by default between routes. The script gives different default context budgets to document and snippet generation: document defaults to 8 contexts and 1300 chars per context, while snippet defaults to 10 contexts and 960 chars per context.
 
 run_retrieval_rerank_pipeline
 
