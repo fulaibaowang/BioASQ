@@ -78,14 +78,16 @@ RUN_FILES = {
 DOCS_JSONL = Path("../output/subset_pubmed.jsonl")
 
 # ---- selection ----
+# Local default: one golden split, CPU. Swap to the HPC preset below when running on GPU.
 SELECTED_RUNS = ["13B1_golden"]  # or ["train_subset"]
+# HPC preset: SELECTED_RUNS = ["train_subset", "13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
 MAX_QUERIES_PER_SPLIT = None  # e.g., 50 for a quick test
 CANDIDATE_LIMIT = 2000  # stage-1 top K
 
 # ---- reranker ----
 MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-12-v2"
-DEVICE = "cpu"  # "cuda", "mps", or "cpu"
-BATCH_SIZE = 16
+DEVICE = "cpu"  # "cuda", "mps", or "cpu"  (HPC: "cuda")
+BATCH_SIZE = 16  # (HPC: 64)
 
 # ---- adaptive cutoff ----
 P_TARGET = 0.95

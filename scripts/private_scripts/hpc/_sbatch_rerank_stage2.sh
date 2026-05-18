@@ -40,7 +40,8 @@ echo "Running: rerank_stage2_bge.py with multi-GPU reranking"
 
 # Generate Python script from notebook (if not using interactive)
 # Uncomment if you need to sync notebook to .py first:
-# jupytext --to py notebooks/rerank_stage2-hpc.ipynb --output notebooks/rerank_stage2_hpc.py
+# jupytext --to py notebooks/rerank_stage2.ipynb --output notebooks/rerank_stage2.py
+# Note: switch the in-notebook config block to the HPC preset (SELECTED_RUNS, DEVICE="cuda", BATCH_SIZE=64).
 
 # -----------------------------
 # Run inside container

@@ -953,7 +953,7 @@ def _map_at_ks_for_run_sweep(run_df: pd.DataFrame, qrels: dict[str, set[str]], k
     return {k: (float(np.mean(v)) if v else 0.0) for k, v in per_q.items()}
 
 
-def _find_snippet/snippet_doc_fusion_run(split: str) -> Path | None:
+def _find_snippet_doc_fusion_run(split: str) -> Path | None:
     # Support both current and legacy train naming conventions.
     stems = [split]
     if split == "training14b_10pct_sample":
@@ -1032,7 +1032,7 @@ def run_rrf_weight_sweep(
             print(f"  {split}: missing qrels, skipped")
             continue
 
-        snippet_path = _find_snippet/snippet_doc_fusion_run(split)
+        snippet_path = _find_snippet_doc_fusion_run(split)
         # Prefer exact "<split>.tsv", but allow any "*<split>*.tsv" to be robust.
         listwise_path = listwise_runs_dir / f"{split}.tsv"
         if not listwise_path.exists():

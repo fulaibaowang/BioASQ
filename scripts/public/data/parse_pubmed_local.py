@@ -1,4 +1,17 @@
 #!/usr/bin/env python3
+"""Parse PubMed XML.gz baseline files into pipeline JSONL shards.
+
+Iterates over each `pubmed*.xml.gz`, extracts {docno, pmid, type, title, text,
+mesh_terms, keywords, is_deleted} per article (descriptor-only MeSH terms,
+de-duplicated keywords), and writes one JSONL shard per input file. Used to
+build the canonical PubMed corpus consumed by BM25 and dense indexers under
+`shared_scripts/index/`.
+
+Usage:
+    python parse_pubmed_local.py \
+        --input-dir /data/pubmed_2026_xml \
+        --output-dir /data/pubmed_2026_jsonl
+"""
 from __future__ import annotations
 
 import argparse

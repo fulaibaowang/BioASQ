@@ -55,6 +55,18 @@ from retrieval_eval.common import recall_at_k
 output_dir = base_dir / "output" / "retrieval_test" / "dense_hyde_fusion_sweep"
 output_dir.mkdir(parents=True, exist_ok=True)
 
+# Same as notebooks/report.py — figure is copied to workingnotes/figures as 02_hyde_dense_recall.png.
+WORKINGNOTE_FIG_RC: dict[str, object] = {
+    "font.size": 12,
+    "axes.titlesize": 16,
+    "axes.labelsize": 14,
+    "xtick.labelsize": 13,
+    "ytick.labelsize": 13,
+    "xtick.major.size": 5,
+    "ytick.major.size": 5,
+    "legend.fontsize": 13,
+}
+
 print("base_dir:", base_dir)
 print("figures:", output_dir)
 
@@ -924,6 +936,8 @@ summary_tables["13b_golden_50q_sample"]
 
 # %%
 RECALL_CURVE_KS = [50, 100, 200, 300, 400, 500, 1000, 2000, 5000]
+# Fewer x tick labels than data points to avoid overlap (curves still use every K above).
+RECALL_CURVE_XTICKS = [k for k in (50, 500, 2000, 5000) if k in RECALL_CURVE_KS]
 
 
 def mean_recall_curve(
@@ -968,60 +982,66 @@ HYDE_ORIG_RECALL_SPECS = [
 ]
 
 n = len(HYDE_ORIG_RECALL_SPECS)
-fig, axes = plt.subplots(1, n, figsize=(5 * n, 4), sharey=True)
-if n == 1:
-    axes = [axes]
+with plt.rc_context(WORKINGNOTE_FIG_RC):
+    fig, axes = plt.subplots(1, n, figsize=(4.25 * n, 4.2), sharey=True, sharex=True)
+    if n == 1:
+        axes = [axes]
 
-for ax, spec in zip(axes, HYDE_ORIG_RECALL_SPECS):
-    split = spec["split"]
-    for path, label in [(spec["hyde_tsv"], "hyde"), (spec["orig_tsv"], "orig")]:
-        if not path.exists():
-            raise FileNotFoundError(f"Missing {label} run: {path}")
-    if not spec["qrels_path"].exists():
-        raise FileNotFoundError(f"Missing qrels: {spec['qrels_path']}")
+    for ax, spec in zip(axes, HYDE_ORIG_RECALL_SPECS):
+        split = spec["split"]
+        for path, label in [(spec["hyde_tsv"], "hyde"), (spec["orig_tsv"], "orig")]:
+            if not path.exists():
+                raise FileNotFoundError(f"Missing {label} run: {path}")
+        if not spec["qrels_path"].exists():
+            raise FileNotFoundError(f"Missing qrels: {spec['qrels_path']}")
 
-    gold = _load_qrels(spec["qrels_path"])
-    run_h = _build_run_map(_load_run(spec["hyde_tsv"]))
-    run_o = _build_run_map(_load_run(spec["orig_tsv"]))
+        gold = _load_qrels(spec["qrels_path"])
+        run_h = _build_run_map(_load_run(spec["hyde_tsv"]))
+        run_o = _build_run_map(_load_run(spec["orig_tsv"]))
 
-    # RRF fusion line (w_hyde=0.6, w_orig=0.4)
-    fused_map: dict[str, list[str]] = {}
-    qids = sorted(set(run_h.keys()) | set(run_o.keys()), key=str)
-    for qid in qids:
-        docs_h = run_h.get(qid, [])
-        docs_o = run_o.get(qid, [])
-        pool_h = min(RUN_POOL_TOP, len(docs_h)) if docs_h else 0
-        pool_o = min(RUN_POOL_TOP, len(docs_o)) if docs_o else 0
-        fused_map[qid] = _rrf_fuse_two_lists(
-            docs_h,
-            docs_o,
-            pool_h,
-            pool_o,
-            k_rrf=60,
-            w_a=0.6,
-            w_b=0.4,
-        )[:RUN_POOL_TOP]
+        # RRF fusion line (w_hyde=0.6, w_orig=0.4)
+        fused_map: dict[str, list[str]] = {}
+        qids = sorted(set(run_h.keys()) | set(run_o.keys()), key=str)
+        for qid in qids:
+            docs_h = run_h.get(qid, [])
+            docs_o = run_o.get(qid, [])
+            pool_h = min(RUN_POOL_TOP, len(docs_h)) if docs_h else 0
+            pool_o = min(RUN_POOL_TOP, len(docs_o)) if docs_o else 0
+            fused_map[qid] = _rrf_fuse_two_lists(
+                docs_h,
+                docs_o,
+                pool_h,
+                pool_o,
+                k_rrf=60,
+                w_a=0.6,
+                w_b=0.4,
+            )[:RUN_POOL_TOP]
 
-    c_h = mean_recall_curve(gold, run_h, RECALL_CURVE_KS)
-    c_o = mean_recall_curve(gold, run_o, RECALL_CURVE_KS)
-    c_f = mean_recall_curve(gold, fused_map, RECALL_CURVE_KS)
+        c_h = mean_recall_curve(gold, run_h, RECALL_CURVE_KS)
+        c_o = mean_recall_curve(gold, run_o, RECALL_CURVE_KS)
+        c_f = mean_recall_curve(gold, fused_map, RECALL_CURVE_KS)
 
-    xs = RECALL_CURVE_KS
-    ax.plot(xs, [c_h[k] for k in xs], marker='o', linewidth=1.6, label='HyDE')
-    ax.plot(xs, [c_o[k] for k in xs], marker='o', linewidth=1.6, label='Original')
-    # ax.plot(xs, [c_f[k] for k in xs], marker='o', linewidth=1.6, label='RRF w=(0.6,0.4)')
+        xs = RECALL_CURVE_KS
+        ax.plot(xs, [c_h[k] for k in xs], marker="o", markersize=6, linewidth=1.8, label="HyDE")
+        ax.plot(xs, [c_o[k] for k in xs], marker="o", markersize=6, linewidth=1.8, label="Original")
+        # ax.plot(xs, [c_f[k] for k in xs], marker='o', linewidth=1.6, label='RRF w=(0.6,0.4)')
 
-    title = split_labels.get(split, split)
-    ax.set_title(title, fontsize=12, fontweight='bold')
-    ax.set_xlabel('K')
-    ax.grid(True, axis='y')
+        title = split_labels.get(split, split)
+        ax.set_title(title, fontsize=16, fontweight="bold")
+        ax.set_xlabel("K")
+        ax.set_xticks(RECALL_CURVE_XTICKS)
+        ax.set_xticklabels([str(k) for k in RECALL_CURVE_XTICKS])
+        ax.grid(True, axis="y")
+        ax.grid(True, axis="x")
 
-axes[0].set_ylabel('Mean Recall@K')
-axes[-1].legend(loc='lower right', fontsize=14)
-plt.tight_layout()
-fig_path = output_dir / 'dense_hyde_vs_orig_recall_curves.png'
-plt.savefig(fig_path, dpi=150, bbox_inches='tight')
-print('Saved:', fig_path)
+    axes[0].set_ylabel("Mean Recall@K")
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.98, 0.18), fontsize=15)
+    plt.tight_layout()
+
+fig_path = output_dir / "dense_hyde_vs_orig_recall_curves.png"
+plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+print("Saved:", fig_path)
 plt.show()
 
 

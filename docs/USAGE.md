@@ -78,7 +78,7 @@ See [scripts/public/README.md](../scripts/public/README.md) for other format scr
 
 This is only related to BioASQ working note. For pipeline development and evaluaion we made a small subset from the whole training dataset. We ship an example subset at [example/training14b_10pct_sample.json](../example/training14b_10pct_sample.json). It is built from gold QAs, zero-recall IDs, and top-5000 retrieved PMIDs.
 
-See the notebook section **Build 10% Subset with Gold + zero recall ids + Retrieved PMIDs top 5000** in [notebooks/bm25_test.ipynb](../notebooks/bm25_test.ipynb) for the exact steps.
+See the notebook section **Build 10% Subset with Gold + zero recall ids + Retrieved PMIDs top 5000** in [notebooks/retrieval_bm25_baseline_and_subset.ipynb](../notebooks/retrieval_bm25_baseline_and_subset.ipynb) for the exact steps.
 
 ---
 

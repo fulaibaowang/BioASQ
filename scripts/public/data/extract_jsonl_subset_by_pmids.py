@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+"""Filter PubMed JSONL shards to rows whose PMID appears in a given allow-list.
+
+Used to materialise BioASQ subset corpora (e.g. the 3% / 10% training subsets):
+given a text file of PMIDs (one per line) and a glob of source JSONL shards,
+emit a single subset JSONL containing only the matching rows.
+
+Usage:
+    python extract_jsonl_subset_by_pmids.py \
+        --pmids subset_pmids.txt \
+        --jsonl-glob "/data/pubmed_2026/*.jsonl" \
+        --output subset.jsonl
+"""
 from __future__ import annotations
 
 import argparse
