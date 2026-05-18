@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.3
 #   kernelspec:
 #     display_name: dicty (Python 3.14 venv)
 #     language: python
@@ -1036,7 +1036,7 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
 
     axes[0].set_ylabel("Mean Recall@K")
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.98, 0.18), fontsize=15)
+    fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.97, 0.18), fontsize=15)
     plt.tight_layout()
 
 fig_path = output_dir / "dense_hyde_vs_orig_recall_curves.png"

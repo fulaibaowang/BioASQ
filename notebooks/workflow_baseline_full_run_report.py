@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.3
 #   kernelspec:
 #     display_name: dicty (Python 3.14 venv)
 #     language: python
@@ -255,7 +255,7 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
         ax.grid(True, axis="x")
 
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.98, 0.18), fontsize=15)
+    fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.98, 0.22), fontsize=15)
     plt.tight_layout()
 
 fig_path = output_dir / "01b_stage1_recall_dev_vs_test_merged.png"
@@ -373,6 +373,7 @@ plt.show()
 
 # %%
 _xt_02b = [k for k in (10, 100, 300) if k in tick_values_recall]
+_wn_method_labels_02b = {"Retrieval": "BM25+Dense Fusion", "Rerank": "CE Rerank"}
 with plt.rc_context(WORKINGNOTE_FIG_RC):
     fig, axes = plt.subplots(1, 2, figsize=(8.5, 4.2), sharex=True, sharey=True)
 
@@ -395,7 +396,7 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
                 vals,
                 marker=cfg["marker"],
                 color=cfg["color"],
-                label=method_name,
+                label=_wn_method_labels_02b.get(method_name, method_name),
                 markersize=6,
                 linewidth=1.8,
             )
@@ -410,7 +411,7 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
         ax.grid(True, axis="x")
 
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.92, 0.18), fontsize=15)
+    fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.95, 0.18), fontsize=15)
     plt.tight_layout()
 
 fig_path = output_dir / "02b_hybrid_rerank_fusion_recall_dev_vs_test_merged.png"
@@ -709,6 +710,10 @@ plt.show()
 
 # %%
 _wn_mapk_x4b = _wn_mapk_xticks(map_ks)
+_wn_method_labels_04b = {
+    "Hybrid (retrieval)": "BM25+Dense Fusion",
+    "Rerank": "CE Rerank",
+}
 with plt.rc_context(WORKINGNOTE_FIG_RC):
     fig, axes = plt.subplots(1, 2, figsize=(8.5, 4.2), sharex=True, sharey=True)
 
@@ -731,7 +736,7 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
                 marker="o",
                 markersize=6,
                 color=colors_map.get(method_name),
-                label=method_name,
+                label=_wn_method_labels_04b.get(method_name, method_name),
                 linewidth=1.8,
             )
         ax.set_title(panel_label, fontsize=16, fontweight="bold")
@@ -746,7 +751,7 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
         ax.grid(True, axis="x")
 
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper right", bbox_to_anchor=(0.92, 0.8), fontsize=14)
+    fig.legend(handles, labels, loc="upper right", bbox_to_anchor=(0.96, 0.9), fontsize=15)
     plt.tight_layout()
 
 fig_path = output_dir / "04b_hybrid_rerank_fusion_mapk_dev_vs_test_merged.png"
@@ -769,12 +774,13 @@ max_gold = max(gold_counts_all) if gold_counts_all else 0
 bins = range(1, max_gold + 2) if max_gold > 0 else [0, 1]
 
 with plt.rc_context(WORKINGNOTE_FIG_RC):
-    fig, ax = plt.subplots(figsize=(5.5, 3.8))
-    ax.hist(gold_counts_all, bins=bins, color="#4c72b0", alpha=0.8, edgecolor="white")
+    fig, ax = plt.subplots(figsize=(5.5, 4))
+    ax.hist(gold_counts_all, bins=bins, color="#4c72b0", alpha=0.9, edgecolor="white")
     ax.set_xlabel("|gold| (relevant docs)")
     ax.set_ylabel("# queries")
-    ax.set_title(f"Dev + Test (n={len(gold_counts_all)})", fontweight="bold")
-    plt.tight_layout()
+    ax.set_title(f"Dev + Test (n={len(gold_counts_all)})", fontweight="bold",fontsize=14)
+    fig.suptitle("Gold Document Count per Query", fontsize=16, fontweight="bold", x=0.6,y=0.88)
+    plt.tight_layout(rect=[0, 0, 1, 0.94])
 
 fig_path = output_dir / "05_gold_count_hist_all.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
@@ -1009,7 +1015,25 @@ _wn_mapk_x8c = _wn_mapk_xticks(map_ks)
 with plt.rc_context(WORKINGNOTE_FIG_RC):
     fig, axes = plt.subplots(2, 4, figsize=(14, 6.5), sharex=True)
     methods_gold = list(run_dirs.keys())
-    colors_gold = {name: f"C{i}" for i, name in enumerate(methods_gold)}
+    # Match the color scheme used in figs 01/02b/03/04b:
+    # BM25+Dense Fusion = green, CE Rerank = blue, Post-rerank fusion = orange.
+    colors_gold = {
+        "Hybrid (retrieval)": "#2ca02c",
+        "Rerank": "#1f77b4",
+        "Post-rerank fusion": "#ff7f0e",
+    }
+    labels_gold = {
+        "Hybrid (retrieval)": "BM25+Dense Fusion",
+        "Rerank": "CE Rerank",
+        "Post-rerank fusion": "Post-rerank fusion",
+    }
+    # Use distinct markers + alpha so the overlapping CE Rerank and Post-rerank
+    # fusion curves remain visually separable.
+    style_gold = {
+        "Hybrid (retrieval)": {"marker": "D", "alpha": 1.0, "linewidth": 1.8, "zorder": 2},
+        "Rerank":             {"marker": "o", "alpha": 0.85, "linewidth": 2.2, "zorder": 3},
+        "Post-rerank fusion": {"marker": "s", "alpha": 0.7, "linewidth": 1.6, "zorder": 4},
+    }
 
     for col, bucket in enumerate(bucket_order):
         n_bucket = bucket_counts.get(bucket, 0)
@@ -1022,13 +1046,17 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
             )
             if sub.empty:
                 continue
+            st = style_gold[method_name]
             ax_top.plot(
                 sub["k"],
                 sub["MAP@K"],
-                marker="o",
+                marker=st["marker"],
+                markersize=6,
                 color=colors_gold[method_name],
-                linewidth=1.8,
-                label=method_name,
+                linewidth=st["linewidth"],
+                alpha=st["alpha"],
+                zorder=st["zorder"],
+                label=labels_gold[method_name],
             )
         ax_top.set_title(f"|gold| = {bucket}, n={n_bucket}", fontweight="bold")
         if col == 0:
@@ -1049,14 +1077,17 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
             )
             if sub.empty:
                 continue
+            st = style_gold[method_name]
             ax_bot.plot(
                 sub["k"],
                 sub["Recall@K"],
-                marker="o",
+                marker=st["marker"],
+                markersize=6,
                 linestyle="--",
                 color=colors_gold[method_name],
-                linewidth=1.8,
-                alpha=0.85,
+                linewidth=st["linewidth"],
+                alpha=st["alpha"],
+                zorder=st["zorder"],
             )
         if col == 0:
             ax_bot.set_ylabel("Recall@K")
@@ -1076,7 +1107,15 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
 
     from matplotlib.lines import Line2D as _Line2D_gold
     legend_handles_gold = [
-        _Line2D_gold([], [], color=colors_gold[m], linewidth=2.0, label=m)
+        _Line2D_gold(
+            [], [],
+            color=colors_gold[m],
+            marker=style_gold[m]["marker"],
+            markersize=6,
+            linewidth=2.0,
+            alpha=style_gold[m]["alpha"],
+            label=labels_gold[m],
+        )
         for m in methods_gold
     ]
     fig.legend(
@@ -1198,6 +1237,14 @@ colors_rerank = {
     "bge-reranker-v2-gemma, 2.5B": "#9467bd",
 }
 
+# Short legend labels (full keys stay as dict keys for IO / colors).
+RERANK_MODEL_LEGEND_SHORT = {
+    "ms-marco-MiniLM-L-12-v2, 33.4M": "MiniLM-L12",
+    "bge-reranker-v2-m3, 568M, tok_len=200": "bge-m3 (tok_len=200)",
+    "bge-reranker-v2-m3, 568M": "bge-m3",
+    "bge-reranker-v2-gemma, 2.5B": "bge-gemma",
+}
+
 for idx, split in enumerate(splits_rerank):
     ax = axes_flat[idx]
     for method_name, method_dict in rerank_map_curves.items():
@@ -1210,7 +1257,7 @@ for idx, split in enumerate(splits_rerank):
             marker="o",
             linewidth=1.8,
             color=colors_rerank[method_name],
-            label=method_name,
+            label=RERANK_MODEL_LEGEND_SHORT.get(method_name, method_name),
         )
     ax.set_title(split_labels.get(split, split), fontsize=14, fontweight="bold")
     ax.set_ylim(y_min, y_max)
@@ -1230,12 +1277,18 @@ for j in range(len(splits_rerank), len(axes_flat)):
 from matplotlib.lines import Line2D
 
 legend_handles = [
-    Line2D([0], [0], color=colors_rerank[name], marker="o", linestyle="-", label=name)
+    Line2D(
+        [0],
+        [0],
+        color=colors_rerank[name],
+        marker="o",
+        linestyle="-",
+        label=RERANK_MODEL_LEGEND_SHORT.get(name, name),
+    )
     for name in colors_rerank.keys()
 ]
 fig.legend(
     handles=legend_handles,
-    labels=list(colors_rerank.keys()),
     loc="lower right",
     bbox_to_anchor=(1.02, 0.05),
     fontsize=16,
@@ -1272,9 +1325,8 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
                 markersize=6,
                 linewidth=1.8,
                 color=colors_rerank[method_name],
-                label=method_name,
+                label=RERANK_MODEL_LEGEND_SHORT.get(method_name, method_name),
             )
-        ax.set_title(panel_label, fontsize=16, fontweight="bold")
         ax.set_ylim(y_min, y_max)
         ax.grid(True, axis="y")
         ax.grid(True, axis="x")
@@ -1285,14 +1337,20 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
         ax.set_xticklabels([str(k) for k in _wn_mapk_x7b])
 
     legend_handles_c = [
-        Line2D([0], [0], color=colors_rerank[name], marker="o", linestyle="-", label=name)
+        Line2D(
+            [0],
+            [0],
+            color=colors_rerank[name],
+            marker="o",
+            linestyle="-",
+            label=RERANK_MODEL_LEGEND_SHORT.get(name, name),
+        )
         for name in colors_rerank.keys()
     ]
     fig.legend(
         handles=legend_handles_c,
-        labels=list(colors_rerank.keys()),
         loc="upper right",
-        bbox_to_anchor=(1.02, 0.8),
+        bbox_to_anchor=(0.97, 0.94),
         fontsize=14,
     )
     plt.tight_layout()
@@ -1763,7 +1821,8 @@ if medcpt_map_curves and not rrf_results.empty:
         for a in axes[0]:
             a.set_ylim(top_ymin, top_ymax)
 
-        # Bottom row: doc/snippet weight sweep MAP@10
+        # Bottom row: doc/snippet weight sweep MAP@10 (neutral line color — not top-row “docs” blue)
+        _weight_sweep_color = "#757575"
         _test_split_ids_snip = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
         dev_rrf = rrf_results[rrf_results["split"] == "training14b_10pct_sample"].copy()
         test_rrf = rrf_results[rrf_results["split"].isin(_test_split_ids_snip)].copy()
@@ -1773,7 +1832,7 @@ if medcpt_map_curves and not rrf_results.empty:
         _test_n = test_rrf.groupby(["k_rrf", "weight_label"], as_index=False)["n_queries"].sum()
         test_rrf_merged = test_rrf_merged.merge(_test_n, on=["k_rrf", "weight_label"])
 
-        for idx, (panel_label, grp) in enumerate([
+        for idx, (_, grp) in enumerate([
             ("dev", dev_rrf),
             ("13B1–4 (merged)", test_rrf_merged),
         ]):
@@ -1781,11 +1840,18 @@ if medcpt_map_curves and not rrf_results.empty:
             for k_rrf in sorted(grp["k_rrf"].unique()):
                 sub = grp[grp["k_rrf"] == k_rrf].set_index("weight_label").reindex(weight_order)
                 vals = sub["MAP@10"].values
-                ax.plot(range(len(weight_order)), vals, marker="o", linewidth=1.6)
+                ax.plot(
+                    range(len(weight_order)),
+                    vals,
+                    marker="o",
+                    linewidth=1.6,
+                    color=_weight_sweep_color,
+                    markerfacecolor=_weight_sweep_color,
+                    markeredgecolor="white",
+                    markeredgewidth=0.6,
+                )
             ax.set_xticks(range(len(weight_order)))
             ax.set_xticklabels(weight_order, rotation=45, ha="right")
-            n_q = int(grp["n_queries"].max()) if not grp.empty else 0
-            ax.set_title(f"{panel_label} (n={n_q})", fontsize=16, fontweight="bold")
             if idx == 0:
                 ax.set_ylabel("MAP@10")
             ax.set_xlabel("(w_doc, w_snippet)")
@@ -1920,7 +1986,18 @@ print("Saved:", fig_path)
 plt.show()
 
 # %%
+# Distinct linestyle + marker so overlapping curves (esp. blue vs orange) read clearly at each K.
 _wn_mapk_x10b = _wn_mapk_xticks(map_ks)
+_bge_10b_markers = {
+    "no query rewriting": "o",
+    "query rewriting A: only typo fixing and minimal grammatical edits": "s",
+    "query rewriting B: questions generic enrichment": "D",
+}
+_bge_10b_linestyles = {
+    "no query rewriting": "-",
+    "query rewriting A: only typo fixing and minimal grammatical edits": "--",
+    "query rewriting B: questions generic enrichment": "-.",
+}
 with plt.rc_context(WORKINGNOTE_FIG_RC):
     fig, axes = plt.subplots(1, 2, figsize=(8.5, 4.2), sharex=True, sharey=True)
 
@@ -1937,14 +2014,19 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
             if not all_vals:
                 continue
             vals = np.mean(all_vals, axis=0)
+            c = colors_bge_local[method_name]
             ax.plot(
                 map_ks,
                 vals,
-                marker="o",
-                markersize=6,
-                linewidth=1.8,
-                color=colors_bge_local[method_name],
+                marker=_bge_10b_markers.get(method_name, "o"),
+                linestyle=_bge_10b_linestyles.get(method_name, "-"),
+                markersize=7,
+                linewidth=2.2,
+                color=c,
                 label=method_name,
+                markerfacecolor=c,
+                markeredgecolor="white",
+                markeredgewidth=1.0,
             )
         ax.set_title(panel_label, fontsize=16, fontweight="bold")
         ax.set_ylim(y_min_bge, y_max_bge)
@@ -1957,14 +2039,22 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
         ax.set_xticklabels([str(k) for k in _wn_mapk_x10b])
 
     legend_bge_handles_c = [
-        _Line2D_bge([0], [0], color=colors_bge_local[name], marker="o", linestyle="-", label=name)
+        _Line2D_bge(
+            [0],
+            [0],
+            color=colors_bge_local[name],
+            marker=_bge_10b_markers.get(name, "o"),
+            linestyle=_bge_10b_linestyles.get(name, "-"),
+            markersize=8,
+            linewidth=2.2,
+            label=name,
+        )
         for name in colors_bge_local
     ]
     fig.legend(
         handles=legend_bge_handles_c,
-        labels=list(colors_bge_local),
         loc="upper center",
-        bbox_to_anchor=(0.5, 1.05),
+        bbox_to_anchor=(0.5, 1.15),
         fontsize=13,
     )
     plt.tight_layout(rect=[0, 0, 1, 0.90])
@@ -2426,7 +2516,7 @@ if not len_compare_df.empty:
                     linestyle=linestyle,
                     color=colors_len_cmp[bin_label],
                 )
-        ax.set_title("Test (13B1–13B4 merged)", fontweight="bold")
+        ax.set_title("13B1–4 (merged)", fontweight="bold")
         ax.set_xlabel("K")
         ax.set_xticks(_wn_x13)
         ax.set_xticklabels([str(k) for k in _wn_x13])
@@ -2453,8 +2543,8 @@ if not len_compare_df.empty:
 
         # Global legend for line styles (methods) – same n, so no counts here
         style_handles = [
-            _Line2D_len([], [], color="black", linestyle="-", label="Rerank"),
-            _Line2D_len([], [], color="black", linestyle="--", label="Hybrid"),
+            _Line2D_len([], [], color="black", linestyle="-", label="CE Rerank"),
+            _Line2D_len([], [], color="black", linestyle="--", label="BM25+Dense Fusion"),
         ]
         fig.legend(
             handles=style_handles,
@@ -2816,7 +2906,7 @@ if not hybrid_recall_len_df.empty:
                 color=colors_len_rec[bin_label],
                 label=f"{bin_label} (n={n_q})",
             )
-        ax.set_title("Test (13B1–13B4 merged)", fontweight="bold")
+        ax.set_title("13B1–4 (merged)", fontweight="bold")
         ax.set_xlabel("K")
         ax.set_xticks(_wn_x14)
         ax.set_xticklabels([str(k) for k in _wn_x14])
@@ -2874,3 +2964,5 @@ else:
     print("\nAll working-note figures populated.")
 print("Final working-note figures in:", wn_output_dir)
 
+
+# %%
