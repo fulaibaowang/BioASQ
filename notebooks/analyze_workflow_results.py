@@ -1,6 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
@@ -340,10 +341,12 @@ def lexicon_has(term: str):
     print("NOT found in lexicon:", term)
     return False
 
-
+lexicon_has("7992")
 lexicon_has("rg7992")
-lexicon_has("pd1")
 lexicon_has("tocilizumab")
+lexicon_has("CYP2C19")
+lexicon_has("SYL")
+lexicon_has("0400")
 
 # %%
 from pyterrier.java import autoclass
@@ -1409,7 +1412,7 @@ else:
 # Metrics: **MAP@10** and **Recall@50**.
 
 # %%
-SWEEP_K_RRF = [10, 30, 60, 90]
+SWEEP_K_RRF = [30,60]
 SWEEP_POOL_RERANK = [50, 100, 200]
 SWEEP_POOL_HYBRID = [20, 50, 100, 200]
 W_BGE_FIXED = 0.8
@@ -1635,5 +1638,9 @@ for metric, role_col in [
     plt.suptitle(f"{metric} ({role_label}) — sweep over K_RRF x pool_top_rerank x pool_top_hybrid", y=1.02)
     plt.tight_layout()
     plt.show()
+
+# %% [markdown]
+# baseline: MAP@10 (rrf=60, top=50), 
+# snippet extraction: Recall@ (rrf=60, top=200)
 
 # %%

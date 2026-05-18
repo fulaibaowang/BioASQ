@@ -183,38 +183,57 @@ print("Saved:", fig_path)
 plt.show()
 
 # %%
-fig, axes = plt.subplots(1, 2, figsize=(10, 4.5), sharex=True, sharey=True)
+# Styling for 01b only: slightly narrower canvas, no figure suptitle, larger labels/ticks.
+_01b_rc = {
+    "font.size": 12,
+    "axes.titlesize": 16,
+    "axes.labelsize": 14,
+    "xtick.labelsize": 13,
+    "ytick.labelsize": 13,
+    "xtick.major.size": 5,
+    "ytick.major.size": 5,
+    "legend.fontsize": 14,
+}
+with plt.rc_context(_01b_rc):
+    fig, axes = plt.subplots(1, 2, figsize=(8.5, 4.2), sharex=True, sharey=True)
 
-for idx, (panel_label, panel_splits) in enumerate([
-    ("dev", ["training14b_10pct_sample"]),
-    ("13B1–4 (merged)", ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]),
-]):
-    ax = axes[idx]
-    for method_name, cfg in methods_cfg.items():
-        all_vals = []
-        for s in panel_splits:
-            row = cfg["df"][cfg["df"]["split"] == s]
-            if not row.empty:
-                all_vals.append([row.iloc[0][c] for c in recall_cols])
-        if not all_vals:
-            continue
-        vals = np.mean(all_vals, axis=0)
-        ax.plot(k_values, vals, marker=cfg["marker"], color=cfg["color"],
-                label=method_name, markersize=6, linewidth=1.8)
-    ax.set_title(panel_label, fontsize=15, fontweight="bold")
-    ax.set_ylim(global_ymin, global_ymax)
-    if idx == 0:
-        ax.set_ylabel("Mean Recall")
-    ax.set_xlabel("K")
-    ax.set_xticks(tick_values)
-    ax.set_xticklabels([str(k) for k in tick_values], rotation=90)
-    ax.grid(True, axis="y")
-    ax.grid(True, axis="x")
+    for idx, (panel_label, panel_splits) in enumerate([
+        ("dev", ["training14b_10pct_sample"]),
+        ("13B1–4 (merged)", ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]),
+    ]):
+        ax = axes[idx]
+        for method_name, cfg in methods_cfg.items():
+            all_vals = []
+            for s in panel_splits:
+                row = cfg["df"][cfg["df"]["split"] == s]
+                if not row.empty:
+                    all_vals.append([row.iloc[0][c] for c in recall_cols])
+            if not all_vals:
+                continue
+            vals = np.mean(all_vals, axis=0)
+            ax.plot(
+                k_values,
+                vals,
+                marker=cfg["marker"],
+                color=cfg["color"],
+                label=method_name,
+                markersize=6,
+                linewidth=1.8,
+            )
+        ax.set_title(panel_label, fontsize=16, fontweight="bold")
+        ax.set_ylim(global_ymin, global_ymax)
+        if idx == 0:
+            ax.set_ylabel("Mean Recall")
+        ax.set_xlabel("K")
+        ax.set_xticks(tick_values)
+        ax.set_xticklabels([str(k) for k in tick_values], rotation=90)
+        ax.grid(True, axis="y")
+        ax.grid(True, axis="x")
 
-handles, labels = axes[0].get_legend_handles_labels()
-fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.95, 0.18), fontsize=14)
-fig.suptitle("Retrieval Mean_Recall@K Curves", fontsize=16, fontweight="bold", y=0.98)
-plt.tight_layout(rect=[0, 0, 1, 0.96])
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.95, 0.18), fontsize=14)
+    plt.tight_layout()
+
 fig_path = output_dir / "01b_stage1_recall_dev_vs_test_merged.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
@@ -1145,10 +1164,12 @@ medcpt_dir = base_dir / "output" / "workflow_baseline_full_run_both_routes_MedCP
 
 medcpt_run_dirs = {
     "docs (full abstracts)": medcpt_dir / "rerank/post_rerank_fusion_snippet" / "runs",
-    "snippets": medcpt_dir / "snippet" / "snippet_rerank" / "runs",
+    "snippets": medcpt_dir / "snippet_rerank" / "runs",
 }
 
 medcpt_map_ks = list(range(10, 101, 10))
+
+(output_dir / "08_medcpt_rerank").mkdir(parents=True, exist_ok=True)
 
 medcpt_map_curves: dict[str, dict[str, dict[int, float]]] = defaultdict(dict)
 
@@ -1236,7 +1257,7 @@ fig.suptitle(
     y=0.98,
 )
 plt.tight_layout(rect=[0, 0, 1, 0.95])
-fig_path = output_dir / "08_medcpt_post_rerank_fusion_snippet_vs_snippet_mapk.png"
+fig_path = output_dir / "08_medcpt_rerank/post_rerank_fusion200_vs_snippet_mapk.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
@@ -1287,7 +1308,7 @@ fig.suptitle(
     y=0.98,
 )
 plt.tight_layout(rect=[0, 0, 1, 0.95])
-fig_path = output_dir / "08b_medcpt_post_rerank_fusion_snippet_vs_snippet_mapk_dev_vs_test_merged.png"
+fig_path = output_dir / "08b_medcpt_rerank/post_rerank_fusion200_vs_snippet_mapk_dev_vs_test_merged.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 print("Saved:", fig_path)
 plt.show()
@@ -1408,7 +1429,7 @@ for split in splits_rerank:
     path_h = (medcpt_dir / "rerank/post_rerank_fusion_snippet" / "runs" / f"{stem_h}.tsv")
     # snippet_rerank (same stem/pool config)
     stem_s = f"best_rrf_{split}_top5000_rrf_poolR200_poolH200_k60"
-    path_s = (medcpt_dir / "snippet" / "snippet_rerank" / "runs" / f"{stem_s}.tsv")
+    path_s = (medcpt_dir / "snippet_rerank" / "runs" / f"{stem_s}.tsv")
 
     if not path_h.exists() or not path_s.exists():
         continue

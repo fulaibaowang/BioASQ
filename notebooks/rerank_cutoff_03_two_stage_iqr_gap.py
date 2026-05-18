@@ -1,6 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py:percent
 #     jupytext_version: 1.19.1
 #     text_representation:
 #       extension: .py

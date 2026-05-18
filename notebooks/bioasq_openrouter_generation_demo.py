@@ -1,6 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
@@ -53,8 +54,7 @@ CONTEXTS_JSON = (
     REPO_ROOT
     / "bioasq14_output"
     / "batch_1"
-    / "evidence"
-    / "evidence_baseline"
+    / "evidence/evidence_baseline"
     / "BioASQ-task14bPhaseB-testset1_contexts.json"
 )
 PROMPTS_DIR = REPO_ROOT / "scripts" / "public" / "shared_scripts" / "prompts"

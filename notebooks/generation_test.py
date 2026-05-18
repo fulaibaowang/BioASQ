@@ -1,6 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
@@ -473,7 +474,7 @@ try:
 except ImportError:
     sm = None
 
-# Retrieval Success@10 from post_rerank_fusion per-query CSVs
+# Retrieval Success@10 from rerank/post_rerank_fusion per-query CSVs
 retrieval_perq_dir = base / "output/workflow_local_10pct_hpc_bge/rerank/post_rerank_fusion/per_query"
 retrieval_perq_frames = []
 for csv_path in sorted(retrieval_perq_dir.glob("*.csv")):
