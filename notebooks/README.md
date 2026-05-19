@@ -1,7 +1,7 @@
 # Notebooks index
 
 Personal experiment notebooks. Filename prefixes match the pipeline stages in
-`workingnotes/figures/00_pipeline.png`:
+`workingnotes/figures/01_pipeline.png`:
 
 - `retrieval_*` — BM25, dense, retrieval fusion
 - `rerank_*` — cross-encoder, post-rerank fusion, listwise, score-cutoffs

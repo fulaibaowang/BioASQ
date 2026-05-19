@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.3
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: dicty (Python 3.14 venv)
 #     language: python
@@ -2935,17 +2935,17 @@ else:
 import shutil
 
 workingnote_copy_map: dict[Path, str] = {
-    output_dir / "01b_stage1_recall_dev_vs_test_merged.png":           "01_stage1_recall.png",
+    output_dir / "01b_stage1_recall_dev_vs_test_merged.png":           "02_stage1_recall.png",
     output_dir / "02b_hybrid_rerank_fusion_recall_dev_vs_test_merged.png": "03_rerank_recall.png",
     output_dir / "04b_hybrid_rerank_fusion_mapk_dev_vs_test_merged.png":   "04_rerank_mapk.png",
     output_dir / "07b_rerankers_mapk_dev_vs_test_merged.png":             "05_reranker_comparison.png",
     output_dir / "05_gold_count_hist_all.png":                            "06_gold_count_hist.png",
     output_dir / "13_rerank_vs_hybrid_mapk_by_length_bins.png":           "08a_length_mapk_rerank_vs_hybrid.png",
     output_dir / "14_hybrid_recall_by_length_bins.png":                   "08b_length_recall_hybrid.png",
-    output_dir / "10b_bge_local_rerank_mapk_dev_vs_test_merged.png":      "10_query_rewriting.png",
+    output_dir / "10b_bge_local_rerank_mapk_dev_vs_test_merged.png":      "11_query_rewriting.png",
     # HyDE figure is produced by `dense_hyde_fusion_sweep.py`, not this notebook.
     base_dir / "output" / "retrieval_test" / "dense_hyde_fusion_sweep"
-        / "dense_hyde_vs_orig_recall_curves.png":                          "02_hyde_dense_recall.png",
+        / "dense_hyde_vs_orig_recall_curves.png":                          "10_hyde_dense_recall.png",
 }
 
 missing: list[Path] = []

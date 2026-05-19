@@ -6,7 +6,7 @@
 
 The system is a three-stage retrieve–rerank–generate pipeline for BioASQ Task 14b Phase A (document retrieval). Generation is implemented but is out of scope for this working note. The flow is summarised in Figure 1.
 
-![Pipeline overview](figures/00_pipeline.png)
+![Pipeline overview](figures/01_pipeline.png)
 
 **Figure 1. Pipeline overview.** Query → BM25+RM3 ∥ dense HNSW (top-5000 each) → retrieval RRF → cross-encoder rerank → post-rerank RRF → document route ∥ snippet route → generation.
 
@@ -75,7 +75,7 @@ The Results section is organised in five parts, baselines first and variants las
 
 ### 1. Stage 1 — First-stage retrieval
 
-![Stage-1 Recall@K — BM25, dense, RRF hybrid](figures/01_stage1_recall.png)
+![Stage-1 Recall@K — BM25, dense, RRF hybrid](figures/02_stage1_recall.png)
 
 **Figure 2. Stage-1 mean Recall@K — BM25, dense, and RRF hybrid.** Dev (left) and 13B1–4 merged (right). BM25+RM3 (PyTerrier) and dense (`MedEmbed-small-v0.1`, HNSW); RRF weights (w_BM25, w_dense) = (1, 1), k_rrf = 150; top-5000 candidates per branch.
 
@@ -157,7 +157,7 @@ Two interventions rewrite the input query before retrieval. HyDE is a *domain-sp
 
 #### 5.1 HyDE on the dense branch — positive
 
-![HyDE vs original query, dense Recall@K](figures/02_hyde_dense_recall.png)
+![HyDE vs original query, dense Recall@K](figures/10_hyde_dense_recall.png)
 
 **Figure 10. HyDE vs original query, dense Recall@K.** Dev small (left) and 13B subset (right). Type-aware gating: HyDE applied to list, summary, and short-factoid questions; original query for yes/no and numeric/measurement-sensitive factoids. Same dense encoder and HNSW index as Fig 2; HyDE passages precomputed (`example/hyde/`).
 
@@ -165,7 +165,7 @@ HyDE (Hypothetical Document Embeddings) generates a short hypothetical answer-li
 
 #### 5.2 LLM query rewriting through the full pipeline — no improvement
 
-![Query rewriting variants, MAP@K](figures/10_query_rewriting.png)
+![Query rewriting variants, MAP@K](figures/11_query_rewriting.png)
 
 **Figure 11. Query rewriting variants, MAP@K.** No-rewrite baseline vs variant A (conservative: typo/grammar normalisation) vs variant B (broad: paraphrase/enrichment). Dev small (left), 13B subset (right). Reranker and fusion configuration as in Fig 4.
 

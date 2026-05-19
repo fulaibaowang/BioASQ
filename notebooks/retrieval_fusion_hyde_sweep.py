@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.3
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: dicty (Python 3.14 venv)
 #     language: python
@@ -55,7 +55,7 @@ from retrieval_eval.common import recall_at_k
 output_dir = base_dir / "output" / "retrieval_test" / "dense_hyde_fusion_sweep"
 output_dir.mkdir(parents=True, exist_ok=True)
 
-# Same as notebooks/report.py — figure is copied to workingnotes/figures as 02_hyde_dense_recall.png.
+# Same as notebooks/report.py — figure is copied to workingnotes/figures as 10_hyde_dense_recall.png.
 WORKINGNOTE_FIG_RC: dict[str, object] = {
     "font.size": 12,
     "axes.titlesize": 16,
