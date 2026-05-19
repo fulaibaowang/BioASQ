@@ -26,7 +26,7 @@ The orchestrator and per-stage scripts live in `scripts/public/shared_scripts/`.
 | E2 | Cross-encoder reranking + post-rerank fusion | Does CE rerank improve over hybrid? Is RRF(CE, hybrid) additive? | Dev + 13B1–4 | §2, Figs 3–4 |
 | E3 | Reranker comparison (bge-v2-gemma 2.5B / bge-v2-m3 / MiniLM / bge-v2-m3 tok_len = 200) | Which CE gives the best MAP@K? Does input truncation hurt? | Dev (de-duplicated) + 13B1–4 | §2, Fig 5 |
 | E4 | Per-query diagnostics — by `|gold|` bucket | Where does the pipeline lose precision as the relevant set grows? | Dev + 13B1–4 (n = 923) | §3, Figs 6–7 |
-| E5 | Per-query diagnostics — by question length | Are short questions harder, and is the loss in retrieval or in ranking? | Dev + 13B1–4 (n = 923) | §3, Figs 8a–8b |
+| E5 | Per-query diagnostics — by question length | Are short questions harder, and is the loss in retrieval or in ranking? | Dev + 13B1–4 (n = 923) | §3, Fig 8 |
 | E6 | Snippet route — snippet rerank + doc/snippet RRF weight sweep | Does the snippet route preserve document MAP while compressing evidence for the LLM? | Dev + 13B1–4 | §4, Fig 9 |
 | E7 | HyDE on dense retrieval (domain-specific rewrite) | Do hypothetical-answer queries improve dense recall? | Dev small + 13B subset | §5.1, Fig 10 |
 | E8 | LLM query rewriting (generic; no-rewrite vs conservative vs broad) | Does generic query rewriting improve MAP? | Dev small + 13B subset | §5.2, Fig 11 |
@@ -125,13 +125,9 @@ For |gold| = 1 or 2, MAP is high and stabilises almost immediately, while recall
 
 The lower MAP for large-|gold| queries is therefore not mainly a failure to retrieve relevant documents. Relevant documents are still being accumulated as K grows, but many are ranked too deep to preserve high early precision. The difficulty shifts from finding any relevant item to ordering many relevant items near the top. Reranking helps in every bucket by sharpening top-of-list ordering relative to hybrid retrieval alone.
 
-![MAP@K by question length — rerank vs hybrid](figures/08a_length_mapk_rerank_vs_hybrid.png)
+![MAP@K (top) and stage-1 Recall@K (bottom) by question length](figures/08_length_mapk_and_recall.png)
 
-**Figure 8a. MAP@K by question length — rerank (solid) vs hybrid retrieval (dashed).** Length bins on whitespace-tokenised question body: short (≤ 7 tokens), mid (8–10), long (≥ 11). Dev (left), 13B1–4 merged (right).
-
-![Hybrid Recall@K by question length](figures/08b_length_recall_hybrid.png)
-
-**Figure 8b. Hybrid Recall@K by question length.** Same length bins as Fig 8a; stage-1 hybrid retrieval only.
+**Figure 8. MAP@K (top) and stage-1 retrieval Recall@K (bottom) by question length.** Length bins on whitespace-tokenised question body: short (≤ 7 tokens), mid (8–10), long (≥ 11). Dev (left), 13B1–4 merged (right). Top row: cross-encoder rerank (solid) vs stage-1 BM25+Dense RRF fusion (dashed) — 3 length bins × 2 methods = 6 lines per panel. Bottom row: stage-1 BM25+Dense RRF fusion Recall@K only, plotted dashed to match the stage-1 linestyle convention used in the top row.
 
 Question length is strongly associated with ranking quality. In both dev and merged test, long questions (≥ 11 tokens) achieve the highest MAP@K, mid-length questions are intermediate, and short questions (≤ 7) are worst across the full cutoff range. Reranking improves MAP for all three length bins, but it does not remove the gap between short and long questions. Retrieval recall shows the same ordering: long questions have the highest Recall@K and short questions the lowest, although all bins reach reasonably high recall by large K.
 

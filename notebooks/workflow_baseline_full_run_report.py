@@ -2920,12 +2920,127 @@ else:
     print("No per-query hybrid Recall@K metrics available for length-stratified curves.")
 
 # %% [markdown]
+# ## 17b. Working-note figure: MAP@K (top) + Hybrid Recall@K (bottom) by question length
+# Combines §15 (rerank vs hybrid MAP@K) and §17 (hybrid Recall@K) into a single
+# 2×2 figure. Top row: rerank (solid) vs hybrid (dashed). Bottom row: hybrid
+# Recall plotted dashed to match the hybrid linestyle convention from the top.
+
+# %%
+if not len_compare_df.empty and not hybrid_recall_len_df.empty:
+    from matplotlib.lines import Line2D as _Line2D_combined
+
+    len_bin_order_combined = ["short (≤7)", "mid (8–10)", "long (≥11)"]
+    colors_len_combined = {
+        "short (≤7)": "#1f77b4",
+        "mid (8–10)": "#ff7f0e",
+        "long (≥11)": "#2ca02c",
+    }
+
+    _wn_x_top = _wn_mapk_xticks(map_ks_len_compare)
+    _wn_x_bot = _wn_hybrid_recall_xticks(recall_ks_len)
+
+    with plt.rc_context(WORKINGNOTE_FIG_RC):
+        fig, axes = plt.subplots(2, 2, figsize=(11, 9))
+
+        # Top row: MAP@K (rerank solid, hybrid dashed)
+        top_panels = [
+            ("dev", dev_summary_cmp, dev_counts_cmp),
+            ("13B1–4 (merged)", test_summary_cmp, test_counts_cmp),
+        ]
+        for col_idx, (panel_title, summary_df, counts_dict) in enumerate(top_panels):
+            ax = axes[0, col_idx]
+            for bin_label in len_bin_order_combined:
+                for method_name, linestyle in [("Rerank", "-"), ("Hybrid", "--")]:
+                    sub = summary_df[
+                        (summary_df["len_bin"] == bin_label)
+                        & (summary_df["method"] == method_name)
+                    ].sort_values("k")
+                    if sub.empty:
+                        continue
+                    ax.plot(
+                        sub["k"],
+                        sub["MAP@K"],
+                        linestyle=linestyle,
+                        color=colors_len_combined[bin_label],
+                    )
+            ax.set_title(panel_title, fontweight="bold")
+            ax.set_xlabel("K")
+            if col_idx == 0:
+                ax.set_ylabel("MAP@K")
+            ax.set_xticks(_wn_x_top)
+            ax.set_xticklabels([str(k) for k in _wn_x_top])
+            ax.grid(True, axis="y")
+            ax.grid(True, axis="x")
+            color_handles = [
+                _Line2D_combined(
+                    [], [],
+                    color=colors_len_combined[bin_label],
+                    linestyle="-",
+                    label=f"{bin_label} (n={counts_dict.get(bin_label, 0)})",
+                )
+                for bin_label in len_bin_order_combined
+                if counts_dict.get(bin_label, 0) > 0
+            ]
+            if color_handles:
+                ax.legend(handles=color_handles, loc="upper right", fontsize=12)
+
+        # Bottom row: Hybrid Recall@K (dashed for consistency with top-row hybrid)
+        bot_panels = [
+            ("dev", dev_rec_summary),
+            ("13B1–4 (merged)", test_rec_summary),
+        ]
+        for col_idx, (_panel_title, summary_df) in enumerate(bot_panels):
+            ax = axes[1, col_idx]
+            for bin_label in len_bin_order_combined:
+                sub = summary_df[summary_df["len_bin"] == bin_label].sort_values("k")
+                if sub.empty:
+                    continue
+                ax.plot(
+                    sub["k"],
+                    sub["MeanRecall@K"],
+                    linestyle="--",
+                    marker="o",
+                    markersize=6,
+                    color=colors_len_combined[bin_label],
+                )
+            ax.set_xlabel("K")
+            if col_idx == 0:
+                ax.set_ylabel("Mean Recall@K — stage-1 fusion (BM25+Dense)")
+            ax.set_xticks(_wn_x_bot)
+            ax.set_xticklabels([str(k) for k in _wn_x_bot])
+            ax.grid(True, axis="y")
+            ax.grid(True, axis="x")
+
+        # Global linestyle legend (rerank vs hybrid), placed above the top row
+        style_handles = [
+            _Line2D_combined([], [], color="black", linestyle="-", label="CE Rerank"),
+            _Line2D_combined([], [], color="black", linestyle="--", label="BM25+Dense Fusion"),
+        ]
+        fig.legend(
+            handles=style_handles,
+            loc="upper center",
+            ncol=2,
+            bbox_to_anchor=(0.5, 0.965),
+            fontsize=12,
+        )
+
+        plt.tight_layout(rect=[0, 0, 1, 0.935])
+
+    fig_path_wn = wn_output_dir / "08_length_mapk_and_recall.png"
+    plt.savefig(fig_path_wn, dpi=150, bbox_inches="tight")
+    print("Saved (direct to working-note dir):", fig_path_wn)
+    plt.show()
+else:
+    print("Skipping combined length figure — upstream dataframes are empty.")
+
+# %% [markdown]
 # ## 18. Copy selected figures into `workingnotes/figures/`
 # This is the canonical list of figures used in the working note. Anything not
 # listed here stays in the notebook's debug `figures/` directory but is not
-# copied to the working-note folder. The two merged figures
-# (`07_mapk_recall_by_gold_bucket.png`, `09_snippet_ablation.png`) are written
-# directly to `wn_output_dir` by their own sections above and are not copied here.
+# copied to the working-note folder. The three merged figures
+# (`07_mapk_recall_by_gold_bucket.png`, `08_length_mapk_and_recall.png`,
+# `09_snippet_ablation.png`) are written directly to `wn_output_dir` by their
+# own sections above and are not copied here.
 
 # %%
 import shutil
@@ -2936,8 +3051,6 @@ workingnote_copy_map: dict[Path, str] = {
     output_dir / "04b_hybrid_rerank_fusion_mapk_dev_vs_test_merged.png":   "04_rerank_mapk.png",
     output_dir / "07b_rerankers_mapk_dev_vs_test_merged.png":             "05_reranker_comparison.png",
     output_dir / "05_gold_count_hist_all.png":                            "06_gold_count_hist.png",
-    output_dir / "13_rerank_vs_hybrid_mapk_by_length_bins.png":           "08a_length_mapk_rerank_vs_hybrid.png",
-    output_dir / "14_hybrid_recall_by_length_bins.png":                   "08b_length_recall_hybrid.png",
     output_dir / "10b_bge_local_rerank_mapk_dev_vs_test_merged.png":      "11_query_rewriting.png",
     # HyDE figure is produced by `dense_hyde_fusion_sweep.py`, not this notebook.
     base_dir / "output" / "retrieval_test" / "dense_hyde_fusion_sweep"
