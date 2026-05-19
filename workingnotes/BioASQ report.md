@@ -4,11 +4,11 @@
 
 ### Pipeline overview
 
-The system is a three-stage retrieve–rerank–generate pipeline for BioASQ Task 14b Phase A (document retrieval). Generation is implemented but is out of scope for this working note. The flow is summarised in Figure 0.
+The system is a three-stage retrieve–rerank–generate pipeline for BioASQ Task 14b Phase A (document retrieval). Generation is implemented but is out of scope for this working note. The flow is summarised in Figure 1.
 
 ![Pipeline overview](figures/00_pipeline.png)
 
-**Figure 0. Pipeline overview.** Query → BM25+RM3 ∥ dense HNSW (top-5000 each) → retrieval RRF → cross-encoder rerank → post-rerank RRF → document route ∥ snippet route → generation.
+**Figure 1. Pipeline overview.** Query → BM25+RM3 ∥ dense HNSW (top-5000 each) → retrieval RRF → cross-encoder rerank → post-rerank RRF → document route ∥ snippet route → generation.
 
 For each query the pipeline executes:
 
@@ -22,14 +22,14 @@ The orchestrator and per-stage scripts live in `scripts/public/shared_scripts/`.
 
 | ID | Experiment | Question | Split | Section / figure |
 |---|---|---|---|---|
-| E1 | First-stage retrieval — BM25 vs dense vs RRF hybrid | Does dense retrieval add coverage beyond BM25+RM3? | Dev + 13B1–4 | §1, Fig 1 |
-| E2 | HyDE on dense retrieval | Do hypothetical-answer queries improve dense recall? | Dev small + 13B subset | §1, Fig 2 |
-| E3 | Cross-encoder reranking + post-rerank fusion | Does CE rerank improve over hybrid? Is RRF(CE, hybrid) additive? | Dev + 13B1–4 | §2, Figs 3–4 |
-| E4 | Reranker comparison (bge-v2-gemma 2.5B / bge-v2-m3 / MiniLM / bge-v2-m3 tok_len = 200) | Which CE gives the best MAP@K? Does input truncation hurt? | Dev (de-duplicated) + 13B1–4 | §2, Fig 5 |
-| E5 | Per-query diagnostics — by `|gold|` bucket | Where does the pipeline lose precision as the relevant set grows? | Dev + 13B1–4 (n = 923) | §3, Figs 6–7 |
-| E6 | Per-query diagnostics — by question length | Are short questions harder, and is the loss in retrieval or in ranking? | Dev + 13B1–4 (n = 923) | §3, Figs 8a–8b |
-| E7 | Snippet route — snippet rerank + doc/snippet RRF weight sweep | Does the snippet route preserve document MAP while compressing evidence for the LLM? | Dev + 13B1–4 | §4, Fig 9 |
-| E8 | Query rewriting (no-rewrite vs conservative vs broad) | Does LLM query rewriting improve MAP? | Dev small + 13B subset | §5, Fig 10 |
+| E1 | First-stage retrieval — BM25 vs dense vs RRF hybrid | Does dense retrieval add coverage beyond BM25+RM3? | Dev + 13B1–4 | §1, Fig 2 |
+| E2 | Cross-encoder reranking + post-rerank fusion | Does CE rerank improve over hybrid? Is RRF(CE, hybrid) additive? | Dev + 13B1–4 | §2, Figs 3–4 |
+| E3 | Reranker comparison (bge-v2-gemma 2.5B / bge-v2-m3 / MiniLM / bge-v2-m3 tok_len = 200) | Which CE gives the best MAP@K? Does input truncation hurt? | Dev (de-duplicated) + 13B1–4 | §2, Fig 5 |
+| E4 | Per-query diagnostics — by `|gold|` bucket | Where does the pipeline lose precision as the relevant set grows? | Dev + 13B1–4 (n = 923) | §3, Figs 6–7 |
+| E5 | Per-query diagnostics — by question length | Are short questions harder, and is the loss in retrieval or in ranking? | Dev + 13B1–4 (n = 923) | §3, Figs 8a–8b |
+| E6 | Snippet route — snippet rerank + doc/snippet RRF weight sweep | Does the snippet route preserve document MAP while compressing evidence for the LLM? | Dev + 13B1–4 | §4, Fig 9 |
+| E7 | HyDE on dense retrieval (domain-specific rewrite) | Do hypothetical-answer queries improve dense recall? | Dev small + 13B subset | §5.1, Fig 10 |
+| E8 | LLM query rewriting (generic; no-rewrite vs conservative vs broad) | Does generic query rewriting improve MAP? | Dev small + 13B subset | §5.2, Fig 11 |
 
 ### Corpus and indexing
 
@@ -39,7 +39,7 @@ The corpus is the PubMed abstract dump distributed with the BioASQ 13 task, pars
 
 **BM25 with RM3 query expansion** (`retrieval/retrieve_bm25.py`; feedback pool 50 documents, 20 feedback documents, 30 feedback terms, λ = 0.6) produces the lexical candidate list. **Dense retrieval** (`retrieval/retrieve_dense.py`) queries the HNSW index with the same SentenceTransformer encoder used to build it. Both stages return the top 5000 candidates per query. **Retrieval fusion** (`retrieval/fuse_retrieval.py`) combines the two lists with reciprocal rank fusion, RRF(*d*) = Σᵢ wᵢ / (k_rrf + rankᵢ(*d*)). The pipeline sweeps k_rrf ∈ {60, 100} and weight tuples (1, 1), (2, 1), (1, 2) and picks the configuration with the highest Recall@5000 on dev; our operating point is k_rrf = 60, (w_BM25, w_dense) = (1, 1).
 
-**HyDE.** For the HyDE experiment (Figure 2) the original query is replaced by a short hypothetical answer-like passage generated from the question body. The passages are precomputed offline (`example/hyde/`) and passed to `retrieve_dense.py` via the `query_text_hyde` field. Gating is type-aware: HyDE is applied to list, summary, and short-factoid questions; skipped for yes/no and numeric/measurement-sensitive factoid questions.
+**HyDE.** For the HyDE experiment (Figure 10) the original query is replaced by a short hypothetical answer-like passage generated from the question body. The passages are precomputed offline (`example/hyde/`) and passed to `retrieve_dense.py` via the `query_text_hyde` field. Gating is type-aware: HyDE is applied to list, summary, and short-factoid questions; skipped for yes/no and numeric/measurement-sensitive factoid questions.
 
 ### Stage 2 — cross-encoder reranking and post-rerank fusion
 
@@ -71,23 +71,17 @@ Per-query analyses (Figures 6–8) merge Dev with 13B1–B4 (n = 923 questions).
 
 ## Results
 
-The Results section is organised in five parts. §1 covers first-stage retrieval and the HyDE augmentation of dense retrieval. §2 covers cross-encoder reranking, post-rerank fusion, and the comparison of reranker models. §3 looks at where the pipeline still loses, stratified by gold-document count and by question length. §4 evaluates the snippet route — used downstream as an evidence-compression mechanism — and asks whether it preserves document MAP when snippets stand in for full abstracts. §5 reports a query-rewriting ablation that did not improve MAP.
+The Results section is organised in five parts, baselines first and variants last. §1 covers first-stage retrieval. §2 covers cross-encoder reranking, post-rerank fusion, and the comparison of reranker models. §3 stratifies the remaining failures by gold-document count and question length. §4 evaluates the snippet route — used downstream as an evidence-compression mechanism — and asks whether it preserves document MAP when snippets stand in for full abstracts. §5 covers two query-reformulation variants: HyDE on the dense branch (positive), and LLM query rewriting through the full pipeline (no improvement).
 
 ### 1. Stage 1 — First-stage retrieval
 
 ![Stage-1 Recall@K — BM25, dense, RRF hybrid](figures/01_stage1_recall.png)
 
-**Figure 1. Stage-1 mean Recall@K — BM25, dense, and RRF hybrid.** Dev (left) and 13B1–4 merged (right). BM25+RM3 (PyTerrier) and dense (`MedEmbed-small-v0.1`, HNSW); RRF weights (w_BM25, w_dense) = (1, 1), k_rrf = 150; top-5000 candidates per branch.
+**Figure 2. Stage-1 mean Recall@K — BM25, dense, and RRF hybrid.** Dev (left) and 13B1–4 merged (right). BM25+RM3 (PyTerrier) and dense (`MedEmbed-small-v0.1`, HNSW); RRF weights (w_BM25, w_dense) = (1, 1), k_rrf = 150; top-5000 candidates per branch.
 
 BM25–dense fusion achieves the best recall on dev and on the merged 13B1–4 test set across almost all K. BM25 alone is consistently better than dense alone. The advantage of fusion appears early and persists at larger cutoffs.
 
-These curves support using reciprocal rank fusion as the primary first-stage retriever. The hybrid gain over BM25 shows that dense retrieval contributes additional relevant documents beyond lexical matching, but the strong BM25 baseline and the weak early dense recall indicate that lexical evidence remains the dominant signal in this setting.
-
-![HyDE vs original query, dense Recall@K](figures/02_hyde_dense_recall.png)
-
-**Figure 2. HyDE vs original query, dense Recall@K.** Dev small (left) and 13B subset (right). Type-aware gating: HyDE applied to list, summary, and short-factoid questions; original query for yes/no and numeric/measurement-sensitive factoids. Same dense encoder and HNSW index as Fig 1; HyDE passages precomputed (`example/hyde/`).
-
-HyDE (Hypothetical Document Embeddings) generates a short hypothetical answer-like passage from the query and uses that generated text, rather than the raw query, for dense retrieval. HyDE improves dense-retrieval recall over the original query on both dev small and the 13B subset across nearly all cutoffs. The gain appears early and remains positive up to large K.
+These curves support using reciprocal rank fusion as the primary first-stage retriever. The hybrid gain over BM25 shows that dense retrieval contributes additional relevant documents beyond lexical matching, but the strong BM25 baseline and the weak early dense recall indicate that lexical evidence remains the dominant signal in this setting. A targeted dense-side query rewrite (HyDE) is evaluated separately in §5.
 
 ### 2. Stage 2 — Cross-encoder reranking
 
@@ -157,15 +151,27 @@ Full-abstract reranking gives higher MAP@K than snippet-only reranking on both d
 
 Improving document MAP via snippets in this configuration is structurally hard: the snippet branch operates inside the already strong top-200 shortlist, so it can refine the ordering of evidence near the top but cannot surface new high-value documents. We read the result not as a failed ablation but as the expected behaviour of a downstream-facing component, evaluated on a metric (document MAP) that is *not* its target.
 
-### 5. Query rewriting — no MAP improvement
+### 5. Query reformulation
+
+Two interventions rewrite the input query before retrieval. HyDE is a *domain-specific* rewrite that replaces the query with a generated hypothetical-answer passage, applied only on the dense branch. LLM query rewriting is a *generic* rewrite (typo/grammar normalisation or paraphrase/enrichment) of the question body itself, used by every downstream stage. They target different stages of the pipeline and have different verdicts.
+
+#### 5.1 HyDE on the dense branch — positive
+
+![HyDE vs original query, dense Recall@K](figures/02_hyde_dense_recall.png)
+
+**Figure 10. HyDE vs original query, dense Recall@K.** Dev small (left) and 13B subset (right). Type-aware gating: HyDE applied to list, summary, and short-factoid questions; original query for yes/no and numeric/measurement-sensitive factoids. Same dense encoder and HNSW index as Fig 2; HyDE passages precomputed (`example/hyde/`).
+
+HyDE (Hypothetical Document Embeddings) generates a short hypothetical answer-like passage from the query and uses that generated text, rather than the raw query, for dense retrieval. HyDE improves dense-retrieval recall over the original query on both dev small and the 13B subset across nearly all cutoffs. The gain appears early and remains positive up to large K.
+
+#### 5.2 LLM query rewriting through the full pipeline — no improvement
 
 ![Query rewriting variants, MAP@K](figures/10_query_rewriting.png)
 
-**Figure 10. Query rewriting variants, MAP@K.** No-rewrite baseline vs variant A (conservative: typo/grammar normalisation) vs variant B (broad: paraphrase/enrichment). Dev small (left), 13B subset (right). Reranker and fusion configuration as in Fig 4.
+**Figure 11. Query rewriting variants, MAP@K.** No-rewrite baseline vs variant A (conservative: typo/grammar normalisation) vs variant B (broad: paraphrase/enrichment). Dev small (left), 13B subset (right). Reranker and fusion configuration as in Fig 4.
 
-In the current reranking setup, query rewriting does not improve MAP@K. The no-rewrite baseline and the conservative rewrite variant A are nearly identical across dev and the merged test set, with only negligible differences at some cutoffs. The broader rewrite variant B is consistently worse, with a clear drop across the full K range.
+In the current reranking setup, generic query rewriting does not improve MAP@K. The no-rewrite baseline and the conservative rewrite variant A are nearly identical across dev and the merged test set, with only negligible differences at some cutoffs. The broader rewrite variant B is consistently worse, with a clear drop across the full K range.
 
-These results suggest that reranking is already robust to minor query noise, so typo fixing and light grammatical cleanup add little once a strong candidate set has been retrieved. At the same time, generic query enrichment appears harmful: adding broader or more interpretive wording likely dilutes the original information need and weakens query–document matching for the reranker.
+These results suggest that reranking is already robust to minor query noise, so typo fixing and light grammatical cleanup add little once a strong candidate set has been retrieved. Generic enrichment appears harmful: broader or more interpretive wording likely dilutes the original information need and weakens query–document matching for the reranker. The contrast with HyDE is informative: a targeted rewrite that addresses a real bi-encoder weakness can help at its specific stage, while a generic rewrite that propagates through the full pipeline does not survive the reranker.
 
 ## Discussion
 
