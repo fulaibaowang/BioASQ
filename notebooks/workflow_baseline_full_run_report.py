@@ -1814,11 +1814,6 @@ if medcpt_map_curves and not rrf_results.empty:
             ax.set_xticklabels([str(k) for k in _wn_med_x])
             ax.grid(True, axis="y")
             ax.grid(True, axis="x")
-        # Share y on top row
-        top_ymin = min(axes[0, 0].get_ylim()[0], axes[0, 1].get_ylim()[0])
-        top_ymax = max(axes[0, 0].get_ylim()[1], axes[0, 1].get_ylim()[1])
-        for a in axes[0]:
-            a.set_ylim(top_ymin, top_ymax)
 
         # Bottom row: doc/snippet weight sweep MAP@10 (neutral line color — not top-row “docs” blue)
         _weight_sweep_color = "#757575"
@@ -1855,11 +1850,6 @@ if medcpt_map_curves and not rrf_results.empty:
                 ax.set_ylabel("MAP@10")
             ax.set_xlabel("(w_doc, w_snippet)")
             ax.grid(True, axis="y")
-        # Share y on bottom row
-        bot_ymin = min(axes[1, 0].get_ylim()[0], axes[1, 1].get_ylim()[0])
-        bot_ymax = max(axes[1, 0].get_ylim()[1], axes[1, 1].get_ylim()[1])
-        for a in axes[1]:
-            a.set_ylim(bot_ymin, bot_ymax)
 
         # Single legend for the docs/snippet line colors (top row)
         from matplotlib.lines import Line2D as _Line2D_snip
@@ -2017,10 +2007,6 @@ if bge_map_curves and not bge_rrf_results.empty:
             ax.set_xticklabels([str(k) for k in _wn_bge_x])
             ax.grid(True, axis="y")
             ax.grid(True, axis="x")
-        top_ymin = min(axes[0, 0].get_ylim()[0], axes[0, 1].get_ylim()[0])
-        top_ymax = max(axes[0, 0].get_ylim()[1], axes[0, 1].get_ylim()[1])
-        for a in axes[0]:
-            a.set_ylim(top_ymin, top_ymax)
 
         # Bottom row: doc/snippet weight sweep MAP@10
         _weight_sweep_color = "#757575"
@@ -2056,10 +2042,6 @@ if bge_map_curves and not bge_rrf_results.empty:
                 ax.set_ylabel("MAP@10")
             ax.set_xlabel("(w_doc, w_snippet)")
             ax.grid(True, axis="y")
-        bot_ymin = min(axes[1, 0].get_ylim()[0], axes[1, 1].get_ylim()[0])
-        bot_ymax = max(axes[1, 0].get_ylim()[1], axes[1, 1].get_ylim()[1])
-        for a in axes[1]:
-            a.set_ylim(bot_ymin, bot_ymax)
 
         from matplotlib.lines import Line2D as _Line2D_bge_snip
         snip_legend_bge = [
