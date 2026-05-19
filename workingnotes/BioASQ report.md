@@ -49,7 +49,7 @@ The corpus is the PubMed abstract dump distributed with the BioASQ 13 task, pars
 
 ### Snippet branch
 
-The snippet branch operates inside the already-shortlisted document set produced by post-rerank fusion (top 200 documents). For each (query, document) pair we extract overlapping sentence windows of 3 sentences with stride 1 (`evidence/rerank_snippets.py`) and rescore them with the same cross-encoder as in stage 2. The window scores are then fused with the document scores by RRF at k_rrf = 60 and default weights (w_doc, w_snippet) = (0.8, 0.2); Figure 9 (bottom row) sweeps the doc/snippet weight from (1.0, 0.0) to (0.0, 1.0). Snippet contexts are emitted one per distinct PMID (chunks aggregated). For the snippet ablation in Figure 9 (top row) we also report a MedCPT bi-encoder + cross-encoder variant.
+The snippet branch operates inside the same shortlist as the document route — the top-50 post-rerank-fusion documents. For each (query, document) pair we extract overlapping sentence windows of 3 sentences with stride 1 (`evidence/rerank_snippets.py`) and rescore them with the same cross-encoder used in stage 2 (`bge-reranker-v2-m3`). The window scores are then fused with the document scores by RRF at k_rrf = 60 and default weights (w_doc, w_snippet) = (0.8, 0.2); Figure 9 (bottom row) sweeps the doc/snippet weight from (1.0, 0.0) to (0.0, 1.0). Snippet contexts are emitted one per distinct PMID (chunks aggregated).
 
 ### Evaluation
 
@@ -141,7 +141,7 @@ The question for this route is therefore not whether snippet-aware ranking *impr
 
 ![Snippet route — MAP@K and doc/snippet weight sweep](figures/09_snippet_ablation.png)
 
-**Figure 9. Snippet route.** Top: MAP@K for document reranking, snippet-only reranking with `bge-reranker-v2-m3`, and a MedCPT bi-encoder + cross-encoder snippet variant; all inside the top-200 post-rerank-fusion shortlist; sentence windows of 3, stride 1. Bottom: MAP@10 across the doc/snippet RRF weight sweep (w_doc, w_snippet) ∈ {(1.0, 0.0), (0.8, 0.2), (0.6, 0.4), (0.4, 0.6), (0.2, 0.8), (0.0, 1.0)}; k_rrf = 60. Dev (left), 13B1–4 merged (right).
+**Figure 9. Snippet route (bge-reranker-v2-m3 throughout).** Top: MAP@K for document reranking vs snippet-only reranking, both with `bge-reranker-v2-m3` inside the top-50 post-rerank-fusion shortlist; sentence windows of 3, stride 1. Bottom: MAP@10 across the doc/snippet RRF weight sweep (w_doc, w_snippet) ∈ {(1.0, 0.0), (0.9, 0.1), …, (0.0, 1.0)} in 0.1 steps; k_rrf = 60. Dev (left), 13B1–4 merged (right).
 
 Full-abstract reranking gives higher MAP@K than snippet-only reranking on both dev and the merged test set across the cutoff range, which is expected: the snippet scorer sees less context per document. The relevant observation is in the weight sweep (bottom row): doc/snippet RRF fusion essentially recovers document-only MAP. Document-heavy mixtures around (w_doc, w_snippet) = (0.8, 0.2) are within a small margin of pure-document MAP@10 on every split, while snippet-heavy settings degrade more visibly. The route therefore delivers compact, snippet-level evidence for the LLM without measurably degrading document ranking — a trade we are willing to take whenever the generation stage is context-bound.
 

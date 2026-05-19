@@ -1768,9 +1768,12 @@ if not rrf_results.empty:
     plt.show()
 
 # %% [markdown]
-# ## 11c. Working-note figure: snippet ablation (docs vs snippet + weight sweep)
-# Merged figure used in the working note. 2 rows × 2 cols:
-# top row = docs vs snippet MAP@K curves (dev | 13B1–4 merged),
+# ## 11c. Historical MedCPT snippet ablation (kept for reference)
+# Originally the working-note Figure 9; the snippet route now uses bge-m3
+# throughout (see §11d). This cell still renders the MedCPT-based version
+# under a `_medcpt` suffix so the historical figure is preserved for
+# comparison and re-runs do not silently drop it.
+# 2 rows × 2 cols: top row = docs vs snippet MAP@K curves (dev | 13B1–4 merged),
 # bottom row = doc/snippet weight sweep MAP@10 (dev | 13B1–4 merged).
 # Reuses `medcpt_map_curves`, `colors_medcpt`, `rrf_results`, `weight_order`.
 
@@ -1875,10 +1878,217 @@ if medcpt_map_curves and not rrf_results.empty:
 
         plt.tight_layout(rect=[0, 0, 1, 0.96])
 
+    fig_path_wn = wn_output_dir / "09_snippet_ablation_medcpt.png"
+    plt.savefig(fig_path_wn, dpi=150, bbox_inches="tight")
+    print("Saved (workingnotes, MedCPT historical):", fig_path_wn)
+    plt.show()
+
+# %% [markdown]
+# ## 11d. Working-note Figure 9 (bge-m3 single-model version)
+# Canonical Fig 9 for the working note. Same 2×2 structure as §11c, but the
+# snippet rerank uses `bge-reranker-v2-m3` — the same cross-encoder as the
+# stage-2 doc rerank — so the working note tells a single-model story.
+# Sources `output/workflow_local_10pct_hpc_bge/` (pool=50, window=3 sentences):
+#   docs:     rerank_hybrid/runs/best_rrf_{split}_top5000_rrf_pool50_k60.tsv
+#   snippets: snippet_rerank_windows3/runs/best_rrf_{split}_top5000_rrf_pool50_k60.tsv
+# Saved to `wn_output_dir / "09_snippet_ablation.png"`.
+
+# %%
+bge_dir = base_dir / "output" / "workflow_local_10pct_hpc_bge"
+bge_doc_runs_dir = bge_dir / "rerank_hybrid" / "runs"
+bge_snip_runs_dir = bge_dir / "snippet_rerank_windows3" / "runs"
+bge_run_dirs = {
+    "docs (full abstracts)": bge_doc_runs_dir,
+    "snippets": bge_snip_runs_dir,
+}
+
+bge_map_ks = list(range(10, 101, 10))
+bge_map_curves: dict[str, dict[str, dict[int, float]]] = defaultdict(dict)
+
+for split in splits_rerank:
+    qrels_split = qrels_by_split.get(split, {})
+    if not qrels_split:
+        continue
+    if split == "training14b_10pct_sample" and train_overlap_qids:
+        qrels_split = {q: r for q, r in qrels_split.items() if q not in train_overlap_qids}
+    for method_name, runs_dir in bge_run_dirs.items():
+        path = runs_dir / f"best_rrf_{split}_top5000_rrf_pool50_k60.tsv"
+        if not path.exists():
+            print(f"missing: {path}")
+            continue
+        run_df = _load_run(path)
+        if split == "training14b_10pct_sample" and train_overlap_qids:
+            qid_col, _ = run_df.columns.tolist()
+            run_df = run_df[~run_df[qid_col].astype(str).isin(train_overlap_qids)]
+        bge_map_curves[method_name][split] = _map_at_ks_for_run(run_df, qrels_split, bge_map_ks)
+
+bge_hybrid_run_maps: dict[str, dict[str, list[str]]] = {}
+bge_snippet_run_maps: dict[str, dict[str, list[str]]] = {}
+
+for split in splits_rerank:
+    path_h = bge_doc_runs_dir / f"best_rrf_{split}_top5000_rrf_pool50_k60.tsv"
+    path_s = bge_snip_runs_dir / f"best_rrf_{split}_top5000_rrf_pool50_k60.tsv"
+    if not path_h.exists() or not path_s.exists():
+        continue
+    df_h = _load_run(path_h)
+    df_s = _load_run(path_s)
+    if split == "training14b_10pct_sample" and train_overlap_qids:
+        qid_col, _ = df_h.columns.tolist()
+        df_h = df_h[~df_h[qid_col].astype(str).isin(train_overlap_qids)]
+        df_s = df_s[~df_s[qid_col].astype(str).isin(train_overlap_qids)]
+    bge_hybrid_run_maps[split] = _build_run_map(df_h)
+    bge_snippet_run_maps[split] = _build_run_map(df_s)
+
+bge_rrf_rows: list[dict[str, object]] = []
+for split in splits_rerank:
+    gold = gold_maps.get(split)
+    run_h = bge_hybrid_run_maps.get(split)
+    run_s = bge_snippet_run_maps.get(split)
+    if not gold or not run_h or not run_s:
+        continue
+    for k_rrf in RRF_KS:
+        for w_h, w_s in RRF_WEIGHTS:
+            map10, n_q = _ap10_for_fusion(
+                gold=gold,
+                run_hybrid=run_h,
+                run_snippet=run_s,
+                k_rrf=k_rrf,
+                w_hybrid=w_h,
+                w_snippet=w_s,
+            )
+            bge_rrf_rows.append(
+                {
+                    "split": split,
+                    "k_rrf": k_rrf,
+                    "w_hybrid": w_h,
+                    "w_snippet": w_s,
+                    "MAP@10": map10,
+                    "n_queries": n_q,
+                }
+            )
+
+bge_rrf_results = pd.DataFrame(bge_rrf_rows)
+if not bge_rrf_results.empty:
+    bge_rrf_results["weight_label"] = bge_rrf_results.apply(
+        lambda r: f"({r['w_hybrid']:.1f},{r['w_snippet']:.1f})",
+        axis=1,
+    )
+
+colors_bge_snip = {
+    "docs (full abstracts)": "#1f77b4",
+    "snippets": "#ff7f0e",
+}
+
+if bge_map_curves and not bge_rrf_results.empty:
+    _wn_bge_x = _wn_medcpt_mapk_xticks(bge_map_ks)
+    _test_split_ids_bge = ["13B1_golden", "13B2_golden", "13B3_golden", "13B4_golden"]
+
+    with plt.rc_context(WORKINGNOTE_FIG_RC):
+        fig, axes = plt.subplots(2, 2, figsize=(10, 6.5), sharex=False)
+
+        # Top row: docs vs snippets MAP@K curves
+        for idx, (panel_label, panel_splits) in enumerate([
+            ("dev", ["training14b_10pct_sample"]),
+            ("13B1–4 (merged)", _test_split_ids_bge),
+        ]):
+            ax = axes[0, idx]
+            for method_name, method_dict in bge_map_curves.items():
+                all_vals = []
+                for s in panel_splits:
+                    if s in method_dict:
+                        all_vals.append([method_dict[s].get(k, 0.0) for k in bge_map_ks])
+                if not all_vals:
+                    continue
+                vals = np.mean(all_vals, axis=0)
+                ax.plot(
+                    bge_map_ks,
+                    vals,
+                    marker="o",
+                    markersize=6,
+                    linewidth=1.8,
+                    color=colors_bge_snip[method_name],
+                    label=method_name,
+                )
+            ax.set_title(panel_label, fontsize=16, fontweight="bold")
+            if idx == 0:
+                ax.set_ylabel("MAP@K")
+            ax.set_xlabel("K")
+            ax.set_xticks(_wn_bge_x)
+            ax.set_xticklabels([str(k) for k in _wn_bge_x])
+            ax.grid(True, axis="y")
+            ax.grid(True, axis="x")
+        top_ymin = min(axes[0, 0].get_ylim()[0], axes[0, 1].get_ylim()[0])
+        top_ymax = max(axes[0, 0].get_ylim()[1], axes[0, 1].get_ylim()[1])
+        for a in axes[0]:
+            a.set_ylim(top_ymin, top_ymax)
+
+        # Bottom row: doc/snippet weight sweep MAP@10
+        _weight_sweep_color = "#757575"
+        dev_rrf_bge = bge_rrf_results[bge_rrf_results["split"] == "training14b_10pct_sample"].copy()
+        test_rrf_bge = bge_rrf_results[bge_rrf_results["split"].isin(_test_split_ids_bge)].copy()
+        test_rrf_bge_merged = (
+            test_rrf_bge.groupby(["k_rrf", "weight_label"], as_index=False)["MAP@10"].mean()
+        )
+        _test_n_bge = test_rrf_bge.groupby(["k_rrf", "weight_label"], as_index=False)["n_queries"].sum()
+        test_rrf_bge_merged = test_rrf_bge_merged.merge(_test_n_bge, on=["k_rrf", "weight_label"])
+
+        for idx, (_panel_label, grp) in enumerate([
+            ("dev", dev_rrf_bge),
+            ("13B1–4 (merged)", test_rrf_bge_merged),
+        ]):
+            ax = axes[1, idx]
+            for k_rrf in sorted(grp["k_rrf"].unique()):
+                sub = grp[grp["k_rrf"] == k_rrf].set_index("weight_label").reindex(weight_order)
+                vals = sub["MAP@10"].values
+                ax.plot(
+                    range(len(weight_order)),
+                    vals,
+                    marker="o",
+                    linewidth=1.6,
+                    color=_weight_sweep_color,
+                    markerfacecolor=_weight_sweep_color,
+                    markeredgecolor="white",
+                    markeredgewidth=0.6,
+                )
+            ax.set_xticks(range(len(weight_order)))
+            ax.set_xticklabels(weight_order, rotation=45, ha="right")
+            if idx == 0:
+                ax.set_ylabel("MAP@10")
+            ax.set_xlabel("(w_doc, w_snippet)")
+            ax.grid(True, axis="y")
+        bot_ymin = min(axes[1, 0].get_ylim()[0], axes[1, 1].get_ylim()[0])
+        bot_ymax = max(axes[1, 0].get_ylim()[1], axes[1, 1].get_ylim()[1])
+        for a in axes[1]:
+            a.set_ylim(bot_ymin, bot_ymax)
+
+        from matplotlib.lines import Line2D as _Line2D_bge_snip
+        snip_legend_bge = [
+            _Line2D_bge_snip(
+                [0], [0],
+                color=colors_bge_snip[name],
+                marker="o",
+                linestyle="-",
+                label=name,
+            )
+            for name in colors_bge_snip
+        ]
+        fig.legend(
+            handles=snip_legend_bge,
+            labels=list(colors_bge_snip.keys()),
+            loc="upper center",
+            ncol=2,
+            bbox_to_anchor=(0.5, 1.02),
+            fontsize=14,
+        )
+
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+
     fig_path_wn = wn_output_dir / "09_snippet_ablation.png"
     plt.savefig(fig_path_wn, dpi=150, bbox_inches="tight")
-    print("Saved (workingnotes):", fig_path_wn)
+    print("Saved (workingnotes, bge-m3 canonical):", fig_path_wn)
     plt.show()
+else:
+    print("Skipping bge-m3 Fig 9 — upstream data missing or empty.")
 
 # %% [markdown]
 # ## 12. MAP@K Curves – workflow_local_10pct_hpc_bge (rerank, rerank_body_rewrite_A, rerank_body_rewrite_B)
@@ -3005,7 +3215,7 @@ if not len_compare_df.empty and not hybrid_recall_len_df.empty:
                 )
             ax.set_xlabel("K")
             if col_idx == 0:
-                ax.set_ylabel("Mean Recall@K — stage-1 fusion (BM25+Dense)")
+                ax.set_ylabel("Mean Recall@K\nstage-1 retrieval")
             ax.set_xticks(_wn_x_bot)
             ax.set_xticklabels([str(k) for k in _wn_x_bot])
             ax.grid(True, axis="y")
