@@ -14,35 +14,28 @@ For each query the pipeline executes:
 2. **Cross-encoder reranking.** The top *N* candidates from stage 1 are rescored by a cross-encoder, and the reranked list is fused again with the stage-1 list by a second RRF ("post-rerank fusion").
 3. **Two downstream routes.** A *document route* feeds the top-K reranked abstracts to the LLM directly; a *snippet route* extracts local sentence windows from the same top-200 shortlist, reranks the windows with the same cross-encoder, and fuses snippet and document scores before evidence is assembled. Generation is not evaluated here.
 
-The configuration table below summarises every default at a glance; the prose that follows describes each stage in context. All values are the defaults used to generate the results in §1–§4 unless stated otherwise. The orchestrator and per-stage scripts live in `scripts/public/shared_scripts/`.
+The orchestrator and per-stage scripts live in `scripts/public/shared_scripts/`. The subsections below describe each stage and its default hyperparameters; Table 1 lists every experiment evaluated in §1–§5 and points to the corresponding figure.
 
-### Configuration
+### Experiments (Table 1)
 
-| Stage | Component | Setting (default) |
-|---|---|---|
-| Indexing | BM25 (Terrier, PyTerrier) | default term pipeline; Java 21 |
-|  | Dense encoder | `abhinand/MedEmbed-small-v0.1` (SentenceTransformer) |
-|  | HNSW (`hnswlib`) | M = 32, ef_construction = 200, ef_search = 100 |
-| Stage 1 | BM25 + RM3 | feedback pool 50 docs; 20 fb docs, 30 fb terms; λ = 0.6 |
-|  | Retrieval depth | top 5000 per query (BM25 and Dense) |
-|  | Retrieval fusion | RRF, k_rrf = 60, weights (w_BM25, w_dense) = (1, 1) |
-|  | HyDE (optional, Fig 2) | precomputed answer-like passage; type-aware gating |
-| Stage 2 | Cross-encoder | `BAAI/bge-reranker-v2-m3`, max_length = 512 |
-|  | Candidate cap | top 2000 stage-1 docs per query |
-|  | Post-rerank fusion | RRF, k_rrf = 60, (w_rerank, w_retrieval) = (0.8, 0.2); pool = top-50 (doc route) / top-200 (snippet route) |
-| Snippet branch | Window | 3 sentences, stride 1 |
-|  | Snippet rerank | same cross-encoder as stage 2 |
-|  | Doc/snippet fusion | RRF, k_rrf = 60, (w_doc, w_snippet) = (0.8, 0.2) |
-| Evaluation | Mean Recall@K | K ∈ {50, 100, 200, 300, 400, 500, 1000, 2000, 5000} (≤ 300 for stage-2) |
-|  | MAP@K | K ∈ {1, 3, 5, 10, 20, 30, 40, 50, 75, 100}; BioASQ Phase A formula |
+| ID | Experiment | Question | Split | Section / figure |
+|---|---|---|---|---|
+| E1 | First-stage retrieval — BM25 vs dense vs RRF hybrid | Does dense retrieval add coverage beyond BM25+RM3? | Dev + 13B1–4 | §1, Fig 1 |
+| E2 | HyDE on dense retrieval | Do hypothetical-answer queries improve dense recall? | Dev small + 13B subset | §1, Fig 2 |
+| E3 | Cross-encoder reranking + post-rerank fusion | Does CE rerank improve over hybrid? Is RRF(CE, hybrid) additive? | Dev + 13B1–4 | §2, Figs 3–4 |
+| E4 | Reranker comparison (bge-v2-gemma 2.5B / bge-v2-m3 / MiniLM / bge-v2-m3 tok_len = 200) | Which CE gives the best MAP@K? Does input truncation hurt? | Dev (de-duplicated) + 13B1–4 | §2, Fig 5 |
+| E5 | Per-query diagnostics — by `|gold|` bucket | Where does the pipeline lose precision as the relevant set grows? | Dev + 13B1–4 (n = 923) | §3, Figs 6–7 |
+| E6 | Per-query diagnostics — by question length | Are short questions harder, and is the loss in retrieval or in ranking? | Dev + 13B1–4 (n = 923) | §3, Figs 8a–8b |
+| E7 | Snippet route — snippet rerank + doc/snippet RRF weight sweep | Does the snippet route preserve document MAP while compressing evidence for the LLM? | Dev + 13B1–4 | §4, Fig 9 |
+| E8 | Query rewriting (no-rewrite vs conservative vs broad) | Does LLM query rewriting improve MAP? | Dev small + 13B subset | §5, Fig 10 |
 
 ### Corpus and indexing
 
-The corpus is the PubMed abstract dump distributed with the BioASQ 13 task, parsed by `data/parse_pubmed_local.py` into JSONL shards (one record per PMID with `title` and `abstract` fields). Two indices are built over the same shards: a Terrier BM25 index (`index/build_bm25_index_from_jsonl_shards.py`) and a dense HNSW index (`index/build_dense_hnsw_index_from_jsonl_shards.py`). Hyperparameters are in the configuration table.
+The corpus is the PubMed abstract dump distributed with the BioASQ 13 task, parsed by `data/parse_pubmed_local.py` into JSONL shards (one record per PMID with `title` and `abstract` fields). Two indices are built over the same shards: a Terrier BM25 index (`index/build_bm25_index_from_jsonl_shards.py`, default term pipeline, Java 21) and a dense HNSW index (`index/build_dense_hnsw_index_from_jsonl_shards.py`; `M = 32`, `ef_construction = 200`, `ef_search = 100`) embedded with `abhinand/MedEmbed-small-v0.1`.
 
 ### Stage 1 — first-stage retrieval
 
-**BM25 with RM3 query expansion** (`retrieval/retrieve_bm25.py`) produces the lexical candidate list. **Dense retrieval** (`retrieval/retrieve_dense.py`) queries the HNSW index with the SentenceTransformer encoder used to build it. **Retrieval fusion** (`retrieval/fuse_retrieval.py`) combines the two top-5000 lists with reciprocal rank fusion, RRF(*d*) = Σᵢ wᵢ / (k_rrf + rankᵢ(*d*)). The pipeline sweeps k_rrf ∈ {60, 100} and weight tuples (1, 1), (2, 1), (1, 2) and picks the configuration with the highest Recall@5000 on dev; the operating point in our runs is the table default.
+**BM25 with RM3 query expansion** (`retrieval/retrieve_bm25.py`; feedback pool 50 documents, 20 feedback documents, 30 feedback terms, λ = 0.6) produces the lexical candidate list. **Dense retrieval** (`retrieval/retrieve_dense.py`) queries the HNSW index with the same SentenceTransformer encoder used to build it. Both stages return the top 5000 candidates per query. **Retrieval fusion** (`retrieval/fuse_retrieval.py`) combines the two lists with reciprocal rank fusion, RRF(*d*) = Σᵢ wᵢ / (k_rrf + rankᵢ(*d*)). The pipeline sweeps k_rrf ∈ {60, 100} and weight tuples (1, 1), (2, 1), (1, 2) and picks the configuration with the highest Recall@5000 on dev; our operating point is k_rrf = 60, (w_BM25, w_dense) = (1, 1).
 
 **HyDE.** For the HyDE experiment (Figure 2) the original query is replaced by a short hypothetical answer-like passage generated from the question body. The passages are precomputed offline (`example/hyde/`) and passed to `retrieve_dense.py` via the `query_text_hyde` field. Gating is type-aware: HyDE is applied to list, summary, and short-factoid questions; skipped for yes/no and numeric/measurement-sensitive factoid questions.
 
@@ -50,15 +43,15 @@ The corpus is the PubMed abstract dump distributed with the BioASQ 13 task, pars
 
 **Cross-encoder rerank** (`rerank/rerank_crossencoder.py`) rescores each (query, document) pair and produces a fully reordered list of the stage-1 candidates (capped at 2000 per query). For the reranker-comparison results (Figure 5) we also evaluate `BAAI/bge-reranker-v2-gemma` (2.5 B, LLM-style reranker), the same `bge-reranker-v2-m3` with `max_length = 200`, and `cross-encoder/ms-marco-MiniLM-L-12-v2`.
 
-**Post-rerank fusion** (`rerank/fuse_rerank.py`) combines the reranked top-K and the stage-1 fused top-K with a second RRF. We use pool = 50 for the document route (`rerank_hybrid/`) and pool = 200 for the snippet route (`rerank_hybrid_200/`). The output of this stage is what we refer to as *post-rerank fusion* in the figures.
+**Post-rerank fusion** (`rerank/fuse_rerank.py`) combines the reranked top-K and the stage-1 fused top-K with a second RRF at k_rrf = 60 and (w_rerank, w_retrieval) = (0.8, 0.2). We use pool = 50 for the document route (`rerank_hybrid/`) and pool = 200 for the snippet route (`rerank_hybrid_200/`). The output of this stage is what we refer to as *post-rerank fusion* in the figures.
 
 ### Snippet branch
 
-The snippet branch operates inside the already-shortlisted document set produced by post-rerank fusion (top 200 documents). For each (query, document) pair we extract overlapping sentence windows (`evidence/rerank_snippets.py`) and rescore them with the same cross-encoder as in stage 2. The window scores are then fused with the document scores by RRF; Figure 9 (bottom row) sweeps the doc/snippet weight from (1.0, 0.0) to (0.0, 1.0). Snippet contexts are emitted one per distinct PMID (chunks aggregated). For the snippet ablation in Figure 9 (top row) we also report a MedCPT bi-encoder + cross-encoder variant.
+The snippet branch operates inside the already-shortlisted document set produced by post-rerank fusion (top 200 documents). For each (query, document) pair we extract overlapping sentence windows of 3 sentences with stride 1 (`evidence/rerank_snippets.py`) and rescore them with the same cross-encoder as in stage 2. The window scores are then fused with the document scores by RRF at k_rrf = 60 and default weights (w_doc, w_snippet) = (0.8, 0.2); Figure 9 (bottom row) sweeps the doc/snippet weight from (1.0, 0.0) to (0.0, 1.0). Snippet contexts are emitted one per distinct PMID (chunks aggregated). For the snippet ablation in Figure 9 (top row) we also report a MedCPT bi-encoder + cross-encoder variant.
 
 ### Evaluation
 
-All metrics are computed against the BioASQ gold relevance set (the `documents` field of each question). The PMID for a candidate is taken as the trailing path component of the gold URL or the raw docno. **Mean Recall@K** is the average over queries of |retrieved_top_K ∩ gold| / |gold|. **MAP@K** is computed as in BioASQ Phase A: AP@K = (1/min(|gold|, K)) · Σᵢ (hitsᵢ / i), where the sum is over the top-K ranks and hitsᵢ counts relevant documents up to rank *i*; MAP@K is the mean over queries. For the per-query analyses (Figures 6–8) the same per-query AP@K and Recall@K are computed directly from the run TSVs against the gold qrels, and queries are grouped by |gold| or by question word count.
+All metrics are computed against the BioASQ gold relevance set (the `documents` field of each question). The PMID for a candidate is taken as the trailing path component of the gold URL or the raw docno. **Mean Recall@K** is the average over queries of |retrieved_top_K ∩ gold| / |gold|, reported at K ∈ {50, 100, 200, 300, 400, 500, 1000, 2000, 5000} (capped at 300 for the stage-2 curves). **MAP@K** is reported at K ∈ {1, 3, 5, 10, 20, 30, 40, 50, 75, 100} and computed as in BioASQ Phase A: AP@K = (1/min(|gold|, K)) · Σᵢ (hitsᵢ / i), where the sum is over the top-K ranks and hitsᵢ counts relevant documents up to rank *i*; MAP@K is the mean over queries. For the per-query analyses (Figures 6–8) the same per-query AP@K and Recall@K are computed directly from the run TSVs against the gold qrels, and queries are grouped by |gold| or by question word count.
 
 ### Splits
 
@@ -76,7 +69,7 @@ Per-query analyses (Figures 6–8) merge Dev with 13B1–B4 (n = 923 questions).
 
 ## Results
 
-The Results section is organised in four parts. Section 1 covers first-stage retrieval and the HyDE augmentation of dense retrieval. Section 2 covers cross-encoder reranking, post-rerank fusion, and the comparison of reranker models. Section 3 looks at where the pipeline still loses, stratified by gold-document count and by question length. Section 4 reports two ablations that did not improve document MAP — snippet-aware reranking and query rewriting.
+The Results section is organised in five parts. §1 covers first-stage retrieval and the HyDE augmentation of dense retrieval. §2 covers cross-encoder reranking, post-rerank fusion, and the comparison of reranker models. §3 looks at where the pipeline still loses, stratified by gold-document count and by question length. §4 evaluates the snippet route — used downstream as an evidence-compression mechanism — and asks whether it preserves document MAP when snippets stand in for full abstracts. §5 reports a query-rewriting ablation that did not improve MAP.
 
 ### 1. Stage 1 — First-stage retrieval
 
@@ -130,13 +123,19 @@ Question length is strongly associated with ranking quality. In both dev and mer
 
 Short questions are difficult for both retrieval and ranking, likely because they provide less lexical and semantic constraint. However, the main loss is not only missing candidates: recall for short questions rises steadily and becomes fairly high at large K, while MAP remains clearly below the longer-question bins. The system often retrieves relevant material for short questions but does not place it early enough. Reranking helps in every bin, so better within-candidate ordering is part of the solution, but the persistent gap indicates that short-question ambiguity remains unresolved even after reranking.
 
-### 4. Ablations that did not improve document MAP
+### 4. Snippet route — context compression for downstream generation
+
+The snippet route is not an alternative document retriever. It starts from the same top-200 documents produced by post-rerank fusion, extracts local sentence windows, rescores them with the same cross-encoder, and fuses snippet and document scores into a final ranking. Its purpose is to localise the most relevant evidence inside already-good documents so that downstream generation can fit more queries' worth of evidence into a finite LLM context window — many BioASQ questions have several relevant abstracts, and feeding full abstracts quickly exhausts the budget.
+
+The question for this route is therefore not whether snippet-aware ranking *improves* document MAP, but whether it *preserves* it once snippets stand in for full abstracts.
 
 ![Snippet-aware reranking: docs vs snippets MAP@K (top); doc/snippet fusion weight sweep MAP@10 (bottom)](figures/09_snippet_ablation.png)
 
-Full-abstract reranking gives higher MAP@K than snippet-aware reranking on dev and on the merged test set across the full cutoff range. Fusing document and snippet scores changes MAP@10 only marginally: the best results are obtained with document-heavy mixtures, while snippet-heavy settings usually reduce performance. The default *w_doc* = 0.8, *w_snippet* = 0.2 is therefore a reasonable conservative choice, but it does not produce a large early-ranking gain over document-only scoring.
+Full-abstract reranking gives higher MAP@K than snippet-only reranking on both dev and the merged test set across the cutoff range, which is expected: the snippet scorer sees less context per document. The relevant observation is in the weight sweep (bottom row): doc/snippet RRF fusion essentially recovers document-only MAP. Document-heavy mixtures around (w_doc, w_snippet) = (0.8, 0.2) are within a small margin of pure-document MAP@10 on every split, while snippet-heavy settings degrade more visibly. The route therefore delivers compact, snippet-level evidence for the LLM without measurably degrading document ranking — a trade we are willing to take whenever the generation stage is context-bound.
 
-The snippet branch is not an independent retrieval path from the full corpus; it starts from the already strong top-200 document shortlist, extracts local windows, reranks them, and only then fuses snippet and document signals. Under that setup, large MAP@10 improvements are naturally hard to obtain, because the snippet stage is mostly refining evidence within documents that are already near the top rather than discovering new high-value documents. The main value of snippet routing is therefore better evidence localisation and compression for downstream LLM input, not a major gain in document-ranking precision.
+Improving document MAP via snippets in this configuration is structurally hard: the snippet branch operates inside the already strong top-200 shortlist, so it can refine the ordering of evidence near the top but cannot surface new high-value documents. We read the result not as a failed ablation but as the expected behaviour of a downstream-facing component, evaluated on a metric (document MAP) that is *not* its target.
+
+### 5. Query rewriting — no MAP improvement
 
 ![Query rewriting variants — MAP@K](figures/10_query_rewriting.png)
 
@@ -150,6 +149,8 @@ These results suggest that reranking is already robust to minor query noise, so 
 
 **Where it still fails.** The diagnostic plots point to a single underlying mechanism. For queries with one or two relevant documents, MAP saturates almost immediately; for queries with three or more relevant documents, recall keeps growing with K but MAP drops and only partially recovers. The system is retrieving the relevant material — it is just ranking too much of it too deep. The question-length analysis tells the same story from a different angle: short questions have lower MAP than long questions across the full range, while their recall reaches respectable levels by large K. In both cases, the bottleneck is early-rank ordering of a broad relevant set rather than missing candidates. This is why post-rerank fusion becomes most useful on the hard |gold| buckets — broad stage-1 coverage still carries information that pure rerank decisions can lose.
 
-**What did not help.** Neither snippet-aware reranking nor query rewriting moved document MAP in this configuration. Both negative results are consistent with the architecture rather than surprising: the snippet branch operates *inside* the already strong top-200 document shortlist, so it can only refine evidence within documents that are already near the top, not surface new high-value documents. Its value is downstream — evidence localisation and compression for the LLM — not document-ranking precision. Query rewriting, similarly, is neutral for conservative typo/grammar edits and harmful for broader interpretive enrichment: the reranker is already robust to minor surface variation, and generic expansion dilutes the information need rather than clarifying it.
+**The snippet route, repositioned.** The snippet route is not designed to improve document MAP and should not be judged as such. It compresses already-good documents into localised sentence windows so that the LLM context window can hold evidence for more queries. The empirical question is whether that compression damages ranking — and the doc/snippet RRF fusion shows it does not: at the default (w_doc, w_snippet) = (0.8, 0.2) the route is within a small margin of document-only MAP@10 while emitting substantially more compact contexts. The right comparison for this component is end-to-end generation quality under a fixed context budget, which is left to downstream evaluation.
 
-**Implications.** Future improvements should target ordering within broad relevant sets — stronger rerankers with full document context, or learned post-rerank fusion that adapts to |gold| — and disambiguation of short questions, where stage-1 weakness compounds with stage-2 limitations. The snippet branch and any text-level query reformulation are better treated as downstream evidence-packaging tools than as ways to improve document MAP.
+**Query rewriting did not help.** Query rewriting is genuinely neutral or harmful in this configuration: conservative typo/grammar edits leave MAP unchanged, and broader interpretive enrichment consistently reduces it. The reranker is already robust to minor surface variation, and generic expansion dilutes the information need rather than clarifying it. Unlike the snippet route, this is a negative result on the metric the component targets.
+
+**Implications.** Future improvements should target ordering within broad relevant sets — stronger rerankers with full document context, or learned post-rerank fusion that adapts to |gold| — and disambiguation of short questions, where stage-1 weakness compounds with stage-2 limitations. The snippet route is best evaluated end-to-end through generation quality under a fixed LLM context budget rather than through document MAP; text-level query reformulation does not appear to be a productive direction in this pipeline.
