@@ -1014,25 +1014,20 @@ plt.show()
 _wn_mapk_x8c = _wn_mapk_xticks(map_ks)
 with plt.rc_context(WORKINGNOTE_FIG_RC):
     fig, axes = plt.subplots(2, 4, figsize=(14, 6.5), sharex=True)
-    methods_gold = list(run_dirs.keys())
+    methods_gold = [m for m in run_dirs if m != "Post-rerank fusion"]
     # Match the color scheme used in figs 01/02b/03/04b:
-    # BM25+Dense Fusion = green, CE Rerank = blue, Post-rerank fusion = orange.
+    # BM25+Dense Fusion = green, CE Rerank = blue.
     colors_gold = {
         "Hybrid (retrieval)": "#2ca02c",
         "Rerank": "#1f77b4",
-        "Post-rerank fusion": "#ff7f0e",
     }
     labels_gold = {
         "Hybrid (retrieval)": "BM25+Dense Fusion",
         "Rerank": "CE Rerank",
-        "Post-rerank fusion": "Post-rerank fusion",
     }
-    # Use distinct markers + alpha so the overlapping CE Rerank and Post-rerank
-    # fusion curves remain visually separable.
     style_gold = {
         "Hybrid (retrieval)": {"marker": "D", "alpha": 1.0, "linewidth": 1.8, "zorder": 2},
-        "Rerank":             {"marker": "o", "alpha": 0.85, "linewidth": 2.2, "zorder": 3},
-        "Post-rerank fusion": {"marker": "s", "alpha": 0.7, "linewidth": 1.6, "zorder": 4},
+        "Rerank": {"marker": "o", "alpha": 0.85, "linewidth": 2.2, "zorder": 3},
     }
 
     for col, bucket in enumerate(bucket_order):

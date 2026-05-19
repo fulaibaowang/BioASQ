@@ -117,13 +117,13 @@ The relevance-set size is highly skewed: a visible spike occurs at |gold| = 1, b
 
 ![Per-query MAP@K and Recall@K by |gold| bucket](figures/07_mapk_recall_by_gold_bucket.png)
 
-**Figure 7. Per-query MAP@K (top) and Recall@K (bottom) by |gold| bucket.** Hybrid vs rerank vs post-rerank fusion; same pipeline configuration as Fig 4. Dev + 13B1–4 merged (n = 923); buckets 1, 2, 3–5, > 5.
+**Figure 7. Per-query MAP@K (top) and Recall@K (bottom) by |gold| bucket.** BM25+Dense fusion (hybrid retrieval) vs CE rerank; same pipeline configuration as Fig 4 except post-rerank fusion is omitted here for clarity. Dev + 13B1–4 merged (n = 923); buckets 1, 2, 3–5, > 5.
 
 MAP@K depends strongly on |gold|. Queries with one or two relevant documents achieve the highest MAP, queries with three to five — or more — are substantially lower. Across all gold-count buckets, reranking improves over hybrid retrieval.
 
-For |gold| = 1 or 2, MAP is high and stabilises almost immediately, while recall continues to grow only slightly with larger K; rerank and post-rerank fusion are nearly identical. For |gold| ≥ 3, recall keeps increasing with K, but MAP drops after the first few ranks and recovers only slightly later. This gap is largest for |gold| > 5, where post-rerank fusion gives the best trade-off between early precision and broader recall.
+For |gold| = 1 or 2, MAP is high and stabilises almost immediately, while recall continues to grow only slightly with larger K; the reranker tracks hybrid recall closely while lifting MAP. For |gold| ≥ 3, recall keeps increasing with K, but MAP drops after the first few ranks and recovers only slightly later. This gap is largest for |gold| > 5, where the reranker still improves MAP over hybrid while both curves accumulate relevant documents at similar recall.
 
-The lower MAP for large-|gold| queries is therefore not mainly a failure to retrieve relevant documents. Relevant documents are still being accumulated as K grows, but many are ranked too deep to preserve high early precision. The difficulty shifts from finding any relevant item to ordering many relevant items near the top. That is why reranking helps in every bucket, but fusion becomes most useful when |gold| is large: it retains the broader coverage of hybrid retrieval while preserving the sharper top-rank ordering from the reranker.
+The lower MAP for large-|gold| queries is therefore not mainly a failure to retrieve relevant documents. Relevant documents are still being accumulated as K grows, but many are ranked too deep to preserve high early precision. The difficulty shifts from finding any relevant item to ordering many relevant items near the top. Reranking helps in every bucket by sharpening top-of-list ordering relative to hybrid retrieval alone.
 
 ![MAP@K by question length — rerank vs hybrid](figures/08a_length_mapk_rerank_vs_hybrid.png)
 
