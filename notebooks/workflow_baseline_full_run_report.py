@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.3
 #   kernelspec:
 #     display_name: dicty (Python 3.14 venv)
 #     language: python
@@ -1327,6 +1327,7 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
                 color=colors_rerank[method_name],
                 label=RERANK_MODEL_LEGEND_SHORT.get(method_name, method_name),
             )
+        ax.set_title(panel_label, fontsize=16, fontweight="bold")
         ax.set_ylim(y_min, y_max)
         ax.grid(True, axis="y")
         ax.grid(True, axis="x")
@@ -1350,7 +1351,7 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
     fig.legend(
         handles=legend_handles_c,
         loc="upper right",
-        bbox_to_anchor=(0.97, 0.94),
+        bbox_to_anchor=(0.97, 0.91),
         fontsize=14,
     )
     plt.tight_layout()
