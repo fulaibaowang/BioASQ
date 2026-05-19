@@ -6,7 +6,9 @@
 
 The system is a three-stage retrieve–rerank–generate pipeline for BioASQ Task 14b Phase A (document retrieval). Generation is implemented but is out of scope for this working note. The flow is summarised in Figure 0.
 
-![Pipeline overview: query → BM25 + Dense → retrieval fusion → cross-encoder + post-rerank fusion → (document route) top-K documents, (snippet route) snippet extraction + snippet/doc fusion → top-K snippets](figures/00_pipeline.png)
+![Pipeline overview](figures/00_pipeline.png)
+
+**Figure 0. Pipeline overview.** Query → BM25+RM3 ∥ dense HNSW (top-5000 each) → retrieval RRF → cross-encoder rerank → post-rerank RRF → document route ∥ snippet route → generation.
 
 For each query the pipeline executes:
 
@@ -73,29 +75,39 @@ The Results section is organised in five parts. §1 covers first-stage retrieval
 
 ### 1. Stage 1 — First-stage retrieval
 
-![BM25 / Dense / Hybrid Recall@K, dev vs 13B1–4 merged](figures/01_stage1_recall.png)
+![Stage-1 Recall@K — BM25, dense, RRF hybrid](figures/01_stage1_recall.png)
+
+**Figure 1. Stage-1 mean Recall@K — BM25, dense, and RRF hybrid.** Dev (left) and 13B1–4 merged (right). BM25+RM3 (PyTerrier) and dense (`MedEmbed-small-v0.1`, HNSW); RRF weights (w_BM25, w_dense) = (1, 1), k_rrf = 150; top-5000 candidates per branch.
 
 BM25–dense fusion achieves the best recall on dev and on the merged 13B1–4 test set across almost all K. BM25 alone is consistently better than dense alone. The advantage of fusion appears early and persists at larger cutoffs.
 
 These curves support using reciprocal rank fusion as the primary first-stage retriever. The hybrid gain over BM25 shows that dense retrieval contributes additional relevant documents beyond lexical matching, but the strong BM25 baseline and the weak early dense recall indicate that lexical evidence remains the dominant signal in this setting.
 
-![HyDE vs original query on dense retrieval, dev small and 13B subset](figures/02_hyde_dense_recall.png)
+![HyDE vs original query, dense Recall@K](figures/02_hyde_dense_recall.png)
+
+**Figure 2. HyDE vs original query, dense Recall@K.** Dev small (left) and 13B subset (right). Type-aware gating: HyDE applied to list, summary, and short-factoid questions; original query for yes/no and numeric/measurement-sensitive factoids. Same dense encoder and HNSW index as Fig 1; HyDE passages precomputed (`example/hyde/`).
 
 HyDE (Hypothetical Document Embeddings) generates a short hypothetical answer-like passage from the query and uses that generated text, rather than the raw query, for dense retrieval. HyDE improves dense-retrieval recall over the original query on both dev small and the 13B subset across nearly all cutoffs. The gain appears early and remains positive up to large K.
 
 ### 2. Stage 2 — Cross-encoder reranking
 
-![Hybrid vs Rerank vs Post-rerank fusion — Recall@K (K ≤ 300)](figures/03_rerank_recall.png)
+![Stage-2 Recall@K — hybrid, rerank, post-rerank fusion](figures/03_rerank_recall.png)
+
+**Figure 3. Stage-2 mean Recall@K — hybrid vs rerank vs post-rerank fusion.** Dev (left) and 13B1–4 merged (right). Cross-encoder `bge-reranker-v2-m3` (max_length = 512) on the top-2000 stage-1 candidates; post-rerank RRF k_rrf = 60, (w_rerank, w_retrieval) = (0.8, 0.2), pool = 50. K ≤ 300.
 
 Across dev and the merged test set, reranking yields higher recall than the stage-1 hybrid retrieval at every evaluated cutoff up to K = 300. The gain appears already at K = 10 and remains stable through K = 300.
 
-![Hybrid vs Rerank vs Post-rerank fusion — MAP@K curves](figures/04_rerank_mapk.png)
+![Stage-2 MAP@K — hybrid, rerank, post-rerank fusion](figures/04_rerank_mapk.png)
+
+**Figure 4. Stage-2 MAP@K — hybrid vs rerank vs post-rerank fusion.** Same configurations as Fig 3. K ∈ {1, 3, 5, 10, 20, 30, 40, 50, 75, 100}.
 
 Reranking improves MAP over stage-1 retrieval on dev and the merged test set, and post-rerank fusion gives the best MAP@K in every split. The MAP@K curves show the same overall pattern across the full cutoff range: rerank is consistently better than retrieval, and post-rerank fusion is usually best.
 
 These results show that the cross-encoder adds clear ranking value beyond candidate retrieval alone, improving not only recall at small cutoffs but also the placement of relevant documents near the top of the list. The additional gain from post-rerank fusion indicates that the reranked list and the original hybrid ranking are not redundant: reranking sharpens local ordering among retrieved candidates, while fusion preserves useful stage-1 evidence that would otherwise be lost when relying on the reranker alone.
 
-![Reranker comparison — MAP@K (bge-v2-gemma 2.5B, bge-v2-m3, MiniLM)](figures/05_reranker_comparison.png)
+![Reranker comparison, MAP@K](figures/05_reranker_comparison.png)
+
+**Figure 5. Reranker comparison, MAP@K.** `bge-reranker-v2-gemma` (2.5 B), `bge-reranker-v2-m3` (max_length = 512), `bge-reranker-v2-m3` (max_length = 200), and `cross-encoder/ms-marco-MiniLM-L-12-v2`, each applied to the same hybrid stage-1 top-2000 candidates. Dev (de-duplicated against 13B1–4) and 13B1–4 merged.
 
 Across dev and the merged test set, the 2.5 B **bge-reranker-v2-gemma** gives the highest MAP@K at every evaluated cutoff. The full-length **bge-reranker-v2-m3** is consistently second. **ms-marco-MiniLM-L-12-v2** and the truncated **bge-reranker-v2-m3** with `tok_len = 200` are weaker, with the truncated variant usually worst. The ranking between models is stable across K: curves drop sharply from very small K to around K = 10–20, then flatten, but their ordering does not change.
 
@@ -103,11 +115,15 @@ These results show a clear capacity effect in the reranking stage: larger rerank
 
 ### 3. Diagnostics — where the pipeline still fails
 
-![Gold-document count per query, Dev + Test (n = 923)](figures/06_gold_count_hist.png)
+![Histogram of |gold| per query](figures/06_gold_count_hist.png)
+
+**Figure 6. Histogram of |gold| per query.** Dev + 13B1–4, n = 923. Stratification buckets used in Fig 7: 1, 2, 3–5, > 5.
 
 The relevance-set size is highly skewed: a visible spike occurs at |gold| = 1, but the overall distribution is long-tailed and most queries still have more than five relevant documents. We use this to stratify the per-query analyses below into four buckets: |gold| ∈ {1, 2, 3–5, >5}.
 
-![MAP@K (top) and Recall@K (bottom) by |gold| bucket](figures/07_mapk_recall_by_gold_bucket.png)
+![Per-query MAP@K and Recall@K by |gold| bucket](figures/07_mapk_recall_by_gold_bucket.png)
+
+**Figure 7. Per-query MAP@K (top) and Recall@K (bottom) by |gold| bucket.** Hybrid vs rerank vs post-rerank fusion; same pipeline configuration as Fig 4. Dev + 13B1–4 merged (n = 923); buckets 1, 2, 3–5, > 5.
 
 MAP@K depends strongly on |gold|. Queries with one or two relevant documents achieve the highest MAP, queries with three to five — or more — are substantially lower. Across all gold-count buckets, reranking improves over hybrid retrieval.
 
@@ -115,9 +131,13 @@ For |gold| = 1 or 2, MAP is high and stabilises almost immediately, while recall
 
 The lower MAP for large-|gold| queries is therefore not mainly a failure to retrieve relevant documents. Relevant documents are still being accumulated as K grows, but many are ranked too deep to preserve high early precision. The difficulty shifts from finding any relevant item to ordering many relevant items near the top. That is why reranking helps in every bucket, but fusion becomes most useful when |gold| is large: it retains the broader coverage of hybrid retrieval while preserving the sharper top-rank ordering from the reranker.
 
-![MAP@K by question length — rerank (solid) vs retrieval (dashed)](figures/08a_length_mapk_rerank_vs_hybrid.png)
+![MAP@K by question length — rerank vs hybrid](figures/08a_length_mapk_rerank_vs_hybrid.png)
 
-![Retrieval Recall@K by question length](figures/08b_length_recall_hybrid.png)
+**Figure 8a. MAP@K by question length — rerank (solid) vs hybrid retrieval (dashed).** Length bins on whitespace-tokenised question body: short (≤ 7 tokens), mid (8–10), long (≥ 11). Dev (left), 13B1–4 merged (right).
+
+![Hybrid Recall@K by question length](figures/08b_length_recall_hybrid.png)
+
+**Figure 8b. Hybrid Recall@K by question length.** Same length bins as Fig 8a; stage-1 hybrid retrieval only.
 
 Question length is strongly associated with ranking quality. In both dev and merged test, long questions (≥ 11 tokens) achieve the highest MAP@K, mid-length questions are intermediate, and short questions (≤ 7) are worst across the full cutoff range. Reranking improves MAP for all three length bins, but it does not remove the gap between short and long questions. Retrieval recall shows the same ordering: long questions have the highest Recall@K and short questions the lowest, although all bins reach reasonably high recall by large K.
 
@@ -129,7 +149,9 @@ The snippet route is not an alternative document retriever. It starts from the s
 
 The question for this route is therefore not whether snippet-aware ranking *improves* document MAP, but whether it *preserves* it once snippets stand in for full abstracts.
 
-![Snippet-aware reranking: docs vs snippets MAP@K (top); doc/snippet fusion weight sweep MAP@10 (bottom)](figures/09_snippet_ablation.png)
+![Snippet route — MAP@K and doc/snippet weight sweep](figures/09_snippet_ablation.png)
+
+**Figure 9. Snippet route.** Top: MAP@K for document reranking, snippet-only reranking with `bge-reranker-v2-m3`, and a MedCPT bi-encoder + cross-encoder snippet variant; all inside the top-200 post-rerank-fusion shortlist; sentence windows of 3, stride 1. Bottom: MAP@10 across the doc/snippet RRF weight sweep (w_doc, w_snippet) ∈ {(1.0, 0.0), (0.8, 0.2), (0.6, 0.4), (0.4, 0.6), (0.2, 0.8), (0.0, 1.0)}; k_rrf = 60. Dev (left), 13B1–4 merged (right).
 
 Full-abstract reranking gives higher MAP@K than snippet-only reranking on both dev and the merged test set across the cutoff range, which is expected: the snippet scorer sees less context per document. The relevant observation is in the weight sweep (bottom row): doc/snippet RRF fusion essentially recovers document-only MAP. Document-heavy mixtures around (w_doc, w_snippet) = (0.8, 0.2) are within a small margin of pure-document MAP@10 on every split, while snippet-heavy settings degrade more visibly. The route therefore delivers compact, snippet-level evidence for the LLM without measurably degrading document ranking — a trade we are willing to take whenever the generation stage is context-bound.
 
@@ -137,7 +159,9 @@ Improving document MAP via snippets in this configuration is structurally hard: 
 
 ### 5. Query rewriting — no MAP improvement
 
-![Query rewriting variants — MAP@K](figures/10_query_rewriting.png)
+![Query rewriting variants, MAP@K](figures/10_query_rewriting.png)
+
+**Figure 10. Query rewriting variants, MAP@K.** No-rewrite baseline vs variant A (conservative: typo/grammar normalisation) vs variant B (broad: paraphrase/enrichment). Dev small (left), 13B subset (right). Reranker and fusion configuration as in Fig 4.
 
 In the current reranking setup, query rewriting does not improve MAP@K. The no-rewrite baseline and the conservative rewrite variant A are nearly identical across dev and the merged test set, with only negligible differences at some cutoffs. The broader rewrite variant B is consistently worse, with a clear drop across the full K range.
 
