@@ -163,7 +163,7 @@ HyDE (Hypothetical Document Embeddings) generates a short hypothetical answer-li
 
 ![Query rewriting variants, MAP@K](figures/11_query_rewriting.png)
 
-**Figure 11. Query rewriting variants, MAP@K.** No-rewrite baseline vs variant A (conservative: typo/grammar normalisation) vs variant B (broad: paraphrase/enrichment). Dev small (left), 13B subset (right). Reranker and fusion configuration as in Fig 4.
+**Figure 11. Query rewriting variants, MAP@K.** CE Reranker (no rewriting) vs variant A (conservative: typo/grammar normalisation) vs variant B (broad: paraphrase/enrichment). Dev small (left), 13B subset (right). Reranker and fusion configuration as in Fig 4.
 
 In the current reranking setup, generic query rewriting does not improve MAP@K. The no-rewrite baseline and the conservative rewrite variant A are nearly identical across dev and the merged test set, with only negligible differences at some cutoffs. The broader rewrite variant B is consistently worse, with a clear drop across the full K range.
 

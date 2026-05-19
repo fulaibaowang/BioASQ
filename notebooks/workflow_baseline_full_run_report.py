@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.3
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: dicty (Python 3.14 venv)
 #     language: python
@@ -2079,7 +2079,7 @@ else:
 bge_local_dir = base_dir / "output" / "workflow_local_10pct_hpc_bge"
 
 bge_local_run_dirs = {
-    "no query rewriting": bge_local_dir / "rerank" / "runs",
+    "CE Reranker (no rewriting)": bge_local_dir / "rerank" / "runs",
     "query rewriting A: only typo fixing and minimal grammatical edits": bge_local_dir / "rerank_body_rewrite_A" / "runs",
     "query rewriting B: questions generic enrichment": bge_local_dir / "rerank_body_rewrite_B" / "runs",
 }
@@ -2116,7 +2116,7 @@ else:
     y_min_bge, y_max_bge = 0.0, 1.0
 
 colors_bge_local = {
-    "no query rewriting": "#1f77b4",
+    "CE Reranker (no rewriting)": "#1f77b4",
     "query rewriting A: only typo fixing and minimal grammatical edits": "#ff7f0e",
     "query rewriting B: questions generic enrichment": "#2ca02c",
 }
@@ -2177,12 +2177,12 @@ plt.show()
 # Distinct linestyle + marker so overlapping curves (esp. blue vs orange) read clearly at each K.
 _wn_mapk_x10b = _wn_mapk_xticks(map_ks)
 _bge_10b_markers = {
-    "no query rewriting": "o",
+    "CE Reranker (no rewriting)": "o",
     "query rewriting A: only typo fixing and minimal grammatical edits": "s",
     "query rewriting B: questions generic enrichment": "D",
 }
 _bge_10b_linestyles = {
-    "no query rewriting": "-",
+    "CE Reranker (no rewriting)": "-",
     "query rewriting A: only typo fixing and minimal grammatical edits": "--",
     "query rewriting B: questions generic enrichment": "-.",
 }
