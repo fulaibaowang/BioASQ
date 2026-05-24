@@ -1,0 +1,246 @@
+﻿Use these consistently:
+* BM25+RM3, not sometimes “BM25 + RM3”
+* BM25+Dense, not sometimes “BM25+dense”
+* 13B1–4, not 13B1–B4
+* kRRFk_{\mathrm{RRF}}kRRF​, not RRF_K
+* wBM25w_{\mathrm{BM25}}wBM25​, wdensew_{\mathrm{dense}}wdense​, wrerankw_{\mathrm{rerank}}wrerank​, wretrievalw_{\mathrm{retrieval}}wretrieval​
+* ∣G∣=1|G|=1∣G∣=1, ∣G∣=2|G|=2∣G∣=2, ∣G∣=3–5|G|=3\text{--}5∣G∣=3–5, ∣G∣>5|G|>5∣G∣>5
+Intro
+..
+Pipeline overview
+We use a retrieve–rerank pipeline for BioASQ Task 14b Phase A/A+ document retrieval. The system also includes document- and snippet-based evidence routes for preparing downstream generation inputs, but this working note focuses on retrieval and reranking; generation itself is outside the scope of the evaluation. The overall workflow is shown in Fig. 1.
+For each question, the system first retrieves candidate PubMed abstracts using two first-stage retrievers: a lexical BM25 branch and a dense bi-encoder branch. The two ranked lists are combined by reciprocal rank fusion (RRF). The fused candidate pool is then reranked with a cross-encoder. Finally, the cross-encoder ranking is combined with the original retrieval ranking using a second RRF step, which we refer to as post-rerank fusion.
+The final document ranking is used for document-level evaluation. The same ranked document set can also be passed to a snippet route, where local sentence windows are extracted, reranked, and fused with document-level scores to produce compact evidence for downstream generation.
+  
+
+Figure 1. Pipeline overview. 
+First-stage retrieval
+The first stage retrieves candidate abstracts with lexical and dense retrieval over the same PubMed abstract corpus.
+The lexical branch uses BM25 with RM3 query expansion over title and abstract text. In this report, BM25 in the results refers to this BM25+RM3 setting. The dense branch uses abhinand/MedEmbed-small-v0.1 as the bi-encoder and retrieves from an HNSW index built over the same corpus. Each branch returns the top 5000 candidate documents per query.
+The two ranked lists are fused with reciprocal rank fusion:
+\[
+\mathrm{RRF}(d) = \sum_{i \in \mathcal{R}}
+\frac{w_i}{k_{\mathrm{RRF}} + \mathrm{rank}_i(d)},
+\]
+where d is a candidate document, i indexes the retrieval branch, and w_i​ is the branch weight. The default retrieval fusion uses equal branch weights, (wBM25,wdense)=(1,1) and kRRF​=150.
+Cross-encoder reranking and post-rerank fusion
+The top 2000 candidates from first-stage fusion are passed to a cross-encoder reranker. The default reranker is BAAI/bge-reranker-v2-m3 with maximum input length 512. Each query–document pair is scored independently, and candidates are sorted by cross-encoder score.
+We report two reranking outputs. CE rerank is the ranking produced directly by the cross-encoder. Post-rerank fusion combines the CE ranking with the original first-stage hybrid ranking using a second RRF step. The default post-rerank fusion setting is
+kRRF​=60, (w_rerank​,w_retrieval​)=(0.8,0.2).
+Because model capacity and input length may affect cross-encoder relevance estimation, we evaluate four reranking configurations on the same first-stage candidate pool: cross-encoder/ms-marco-MiniLM-L-12-v2 (33.4M), BAAI/bge-reranker-v2-m3 (568M), BAAI/bge-reranker-v2-m3 with maximum length 200, and BAAI/bge-reranker-v2-gemma(2.51B).
+Snippet route
+Because generation often favors compact evidence, we test whether snippet-level reranking preserves document MAP while producing shorter evidence units. The snippet route operates after document reranking. Starting from the post-rerank document shortlist, we split each abstract into overlapping sentence windows (default: 3-sentence windows, stride 1, with the abstract title prepended to each window). Window selection then proceeds in two stages. In stage A, candidate windows within each abstract are scored by BM25 and by the dense bi-encoder and fused by RRF; only the top W windows per abstract (default W=8) are retained. This stage acts as a cheap intra-abstract filter so that the cross-encoder budget is spent on plausibly relevant windows rather than on the full sentence grid. In stage B, the preselected windows are scored with the same cross-encoder used for document reranking. For each PMID, snippet scores are aggregated by keeping the best-scoring (max-pool) window. The resulting snippet-level ranking is then fused with the document-level ranking using RRF.
+The default snippet fusion is document-heavy,
+(wdoc,wsnippet)=(0.8,0.2),
+and we also sweep the weights from document-only to snippet-only to test the effect of snippet evidence on document MAP.
+Query reformulation ablations
+In addition to the original BioASQ question text, we evaluate two LLM-based query reformulation strategies as ablations. These variants are not used as default components of the main pipeline; instead, they test whether changing the query representation can improve retrieval or reranking under controlled settings.
+The first strategy is HyDE: for a given question, an LLM generates a short hypothetical biomedical answer-like passage. This passage is not treated as an answer to be evaluated. Instead, it serves as an expanded query representation that may contain terms, entities, and contextual phrasing related to relevant abstracts. We apply simple type-aware filtering and do not generate HyDE passages for questions where reformulation may change the target of retrieval, such as exact-identifier, numeric, or measurement-sensitive questions.
+The second strategy is direct query rewriting. Here, the LLM rewrites the original question while preserving its information. We evaluate two variants: a conservative rewrite that only corrects obvious typos, grammar, and telegraphic phrasing, and a broader rewrite that adds mild retrieval-oriented wording without adding new biomedical facts, synonym lists, or extra constraints.
+For both strategies, the reformulated query text is evaluated in controlled ablations, while the rest of the pipeline is kept fixed. This allows us to distinguish gains from query reformulation from gains due to changes in retrieval depth, reranker model, or fusion settings.
+Experimental setup
+Evaluation splits
+Most experiments are evaluated on two question sets. The internal development set contains 583 questions, sampled at approximately 10% from the available BioASQ training questions and augmented with a small number of difficult retrieval cases for fast iteration and stress testing. The second set is formed by merging the BioASQ 13B1–4 batches, with 85 questions per batch. We use the terms “dev” and “13B1–4” to denote these two evaluation sets, and use them primarily to check whether the observed retrieval and reranking behavior is consistent across question samples, rather than to imply a strict train/test split. One reformulation experiment uses smaller subsets: dev-small contains 192 questions sampled from dev, and the 13B subset contains 50 questions sampled from 13B1–4.
+Corpus and indexing
+We use the PubMed 2026 baseline corpus. Each document is indexed by PMID and contains title and abstract fields. The same corpus is used for both lexical and dense retrieval.
+The lexical index is built for BM25+RM3 retrieval (PyTerrier). The dense index is built with abhinand/MedEmbed-small-v0.1 embeddings and HNSW nearest-neighbor search. Dense retrieval uses the same encoder at indexing and query time.
+Metrics
+All retrieval metrics are computed at the PMID level against the BioASQ gold document set. Candidate PMIDs are extracted from the document identifier or from the trailing component of the BioASQ document URL.
+Mean Recall@K is computed per query as
+\[
+\mathrm{Recall@K}(q)
+=
+\frac{|R_K(q) \cap G_q|}{|G_q|}.
+\]
+The final Recall@K is the mean over all queries:
+\[
+\mathrm{Mean\ Recall@K}
+=
+\frac{1}{|Q|}
+\sum_{q \in Q}
+\mathrm{Recall@K}(q).
+\]
+where RK(q) is the top-K retrieved set and G(q)G(q)G(q) is the gold document set.MAP@K follows the BioASQ Phase A truncated AP definition:
+We also report MAP@K using the truncated average precision definition used for BioASQ Phase A.
+For query $q$, AP@K is:
+\[
+\mathrm{AP@K}(q)
+=
+\frac{1}{\min(|G_q|, K)}
+\sum_{i=1}^{K}
+\mathrm{P@}i(q) \cdot \mathbf{1}[d_i \in G_q],
+\]
+where
+\[
+\mathrm{P@}i(q)
+=
+\frac{1}{i}
+\sum_{j=1}^{i}
+\mathbf{1}[d_j \in G_q].
+\]
+MAP@K is then computed as the mean AP@K over all queries:
+\[
+\mathrm{MAP@K}
+=
+\frac{1}{|Q|}
+\sum_{q \in Q}
+\mathrm{AP@K}(q).
+\]
+
+
+Experiment map
+The experiments are grouped into three categories. E1–E3 establish the baseline behavior of the retrieval and reranking pipeline. E4–E5 provide diagnostic analyses of BioASQ-specific retrieval behavior, focusing on gold-set size and question length. E6–E8 evaluate optional pipeline variants, including snippet-based evidence compression and query reformulation for dense retrieval and reranking.
+ID
+	Experiment
+	Main question
+	Figure
+	E1
+	First-stage retrieval
+	Compare the behavior of lexical BM25+RM3, dense bi-encoder retrieval, and their RRF fusion.
+	Fig. 2
+	E2
+	CE reranking and post-rerank fusion
+	Does reranking improve over retrieval, and is fusion additive?
+	Figs. 3–4
+	E3
+	Reranker comparison
+	Compare reranker model size and input-length settings.
+	Fig. 5
+	E4
+	Gold-set-size diagnostic
+	Does MAP behavior depend on the number of relevant documents?
+	Figs. 6–7
+	E5
+	Question-length diagnostic
+	Compare first-stage recall and final MAP across question-length bins.
+	Fig. 8
+	E6
+	Snippet route
+	Can snippet-level evidence preserve document MAP while compressing context?
+	Fig. 9
+	E7
+	HyDE query representation for retrieval
+	Test LLM-generated hypothetical passages as an alternative dense-query representation.
+	Fig. 10
+	E8
+	LLM query rewriting for reranking
+	Test whether rewritten question text changes CE reranking
+	Fig. 11
+	
+
+
+
+Results
+First-stage retrieval
+Using the pipeline in Fig. 1, we first evaluate the retrieval stage. Figure 2 shows the first-stage Recall@K for BM25, dense retrieval, and BM25+Dense fusion. BM25+Dense fusion gives the best recall on both dev and the merged 13B1–4 batches across almost all cutoffs. BM25 alone is consistently stronger than dense retrieval alone, especially at early depths, indicating that lexical matching remains a dominant signal in this task. At the same time, fusion improves over BM25, showing that dense retrieval contributes additional relevant documents that are not fully captured by lexical search.
+These results support the use of hybrid RRF retrieval as the first-stage candidate generator. They also suggest that BioASQ document retrieval remains strongly lexical: biomedical entities, exact terms, and phrase-level overlap provide important retrieval signals. Dense retrieval is useful, but in this setting it is better treated as a complementary branch rather than a replacement for BM25.
+
+
+
+
+
+
+  
+
+
+
+Figure 2. Stage-1 mean Recall@K for BM25, dense, and BM25+Dense RRF fusion. Results are shown on dev and the merged 13B1–4 set. BM25+RM3 and dense (MedEmbed-small-v0.1, HNSW); RRF weights (w_BM25, w_dense) = (1, 1), k_rrf = 150.
+
+
+Cross-encoder reranking
+We next examine whether cross-encoder reranking improves the hybrid candidate pool. Figure 3 shows that reranking improves Recall@K over BM25+Dense fusion at all evaluated cutoffs from K=10 to K=300 on both dev and the merged batches. This indicates that the reranker is not only changing the order within the very top ranks, but also moves more gold documents into the evaluated top-K range.
+Figure 4 shows the corresponding MAP@K results. Cross-encoder reranking improves MAP over the first-stage hybrid ranking, and post-rerank fusion gives the best MAP@K on both splits. This indicates that the cross-encoder adds clear ranking value beyond candidate retrieval alone: it improves both early recall and the placement of relevant documents near the top of the list. The additional gain from post-rerank fusion suggests that the reranked list and the original retrieval list are not redundant. Reranking sharpens local relevance ordering, while the retrieval ranking preserves useful first-stage evidence and coverage.
+We compare rerankers of different sizes on the same BM25+Dense top-2000 candidate pool (Fig. 5). The large bge-reranker-v2-gemma model gives the highest MAP@K across all cutoffs on both dev and 13B1-4. The full-length bge-reranker-v2-m3 is consistently second, while MiniLM-L12 and the truncated bge-m3 setting with max length 200 are weaker. The ordering between models is stable across K: the curves drop sharply from very small K to around K=10–20 and then flatten, but the relative model ranking does not change.
+These results show a clear reranker-capacity effect in this candidate-pool setting. Once candidate retrieval is fixed, stronger cross-encoders provide better relevance estimation. The advantage of bge-gemma is not limited to top-1 decisions, but persists across the full cutoff range. The drop from full-length bge-m3 to the 200-token version further suggests that aggressive input truncation removes useful evidence and materially hurts document-level ranking.
+  
+
+Figure 3. Stage-2 mean Recall@K for BM25+Dense fusion (first stage retrieval) and cross-encoder reranking. The reranker is applied to the top-2000 retrieval candidates. 
+
+
+
+
+  
+
+Figure 4. Stage-2 MAP@K for BM25+Dense fusion, cross-encoder reranking, and post-rerank fusion. Post-rerank fusion combines reranker and retrieval rankings with RRF_K = 60, (w_rerank, w_retrieval) = (0.8, 0.2).
+
+
+  
+ 
+Figure 5. Reranker comparison by MAP@K: cross-encoder/ms-marco-MiniLM-L12-v2 (33.4M), BAAI/bge-reranker-v2-m3 (568M; max_length = 200 or 512), BAAI/bge-reranker-v2-gemma (2.51B), each applied to the same hybrid stage-1 top-2000 candidates.
+Diagnostics: gold-set size and question length
+The aggregate MAP@K curves reveal a consistent pattern across systems: strong performance at rank 1, a drop at small K, and only limited recovery at larger K. This shape is partly influenced by the BioASQ MAP@K calculation, because AP is affected by the number of gold documents available for each query. We therefore analyze performance by gold-set size.
+Figure 6 shows that the relevance-set size is highly skewed. There is a visible spike at ∣gold∣=1, but the distribution has a long tail, and many queries contain more than five relevant documents. We therefore group queries into four buckets: ∣gold∣, ∣gold∣=2|, ∣gold∣=3–5, and ∣gold∣>5, and compare MAP@K and Recall@K within each bucket in Fig. 7.
+Figure 7 shows that MAP@K depends strongly on gold-set size. For ∣G∣=1, MAP behaves almost like a single-hit metric: once the relevant document is found, increasing K does not reduce the score. For ∣G∣=2 and ∣G∣=3–5, MAP drops at small K and then stabilizes, while Recall@K continues to increase. This suggests that the first relevant document is often ranked early, but additional relevant documents are spread farther down the list. The effect is strongest for ∣G∣>5 the largest bucket. In this group, Recall@K increases steadily, but MAP remains much lower, showing that the main difficulty is not simply finding any relevant document, but ranking many relevant documents near the top.
+Thus, the aggregate MAP@K shape reflects both metric behavior and model behavior. The MAP definition makes the curve sensitive to gold-set size, especially for single-gold versus multi-gold queries, but the bucketed Recall@K results show that the effect is not purely an artifact of the formula. For queries with multiple gold documents, relevant documents continue to be recovered at larger K while MAP remains low, indicating that the main remaining difficulty is ranking several relevant documents early and compactly.
+
+
+
+
+  
+
+Figure 6. Distribution of the number of gold documents per query on dev plus merged 13B1–4 (n = 923).
+
+
+  
+
+
+
+Figure 7. MAP@K and Recall@K by gold-document-count bucket. Queries are grouped by ∣gold∣=1, ∣gold∣=2, ∣gold∣=3–5, and ∣gold∣>5.
+
+
+We also examine question length as a simple proxy for query specificity. Figure 8 groups questions into short, mid-length, and long bins based on whitespace-tokenized question-body length. In both dev and the merged test set, long questions achieve the highest MAP@K, mid-length questions are generally intermediate, and short questions perform worst across most cutoffs. CE reranking improves over BM25+Dense fusion in all length bins, but it does not remove the gap between short and long questions.
+The stage-1 recall curves in Fig. 8 show a related but weaker pattern. Short questions have lower first-stage Recall@K than longer questions, especially at small candidate depths, suggesting that they provide fewer lexical and semantic constraints for retrieval. However, the recall gap narrows at larger K. Therefore, the persistent MAP gap cannot be explained only by missing candidates in the first stage. Relevant documents are often present somewhere in the candidate pool, but they are not placed densely enough near the top of the final ranking.
+Together, these diagnostics suggest that short questions mainly suffer from weak early ranking rather than complete retrieval failure. Longer questions likely contain more specific lexical and semantic signals, benefiting both hybrid retrieval and CE reranking.   
+
+
+Figure 8. MAP@K and stage-1 Recall@K by question length. Questions were grouped by question-body length: short (≤7 words), mid-length (8–10 words), and long (≥11 words). The top row compares MAP@K for CE reranking and BM25+Dense RRF fusion. The bottom row shows stage-1 BM25+Dense RRF Recall@K. 
+Snippet route
+We next compare full-abstract document scoring with snippet-level scoring within the same reranked shortlist (Fig. 9). Snippet scoring is close to full-abstract document scoring on the development set, but is consistently lower on the merged 13B1–4 set. This suggests that local snippets can capture useful evidence, but may lose broader context needed for reliable document-level relevance estimation. The RRF weight sweep therefore mainly serves to identify a safe fusion setting between document and snippet rankings. Across splits, document-heavy mixtures are preferable: they preserve the stronger full-abstract ranking signal while allowing snippet-level evidence to contribute. In contrast, snippet-heavy settings are less stable and degrade more clearly on the merged test set.
+Overall, the snippet route should be interpreted as a context-compression module rather than a method for improving document MAP. It does not reliably outperform full-abstract reranking, but it can provide localized evidence with limited loss when fused conservatively with document scores. This trade-off is useful for the generation stage, where the constraint is not only ranking quality but also how much evidence can fit into the LLM context window.
+  
+
+
+
+
+
+Figure 9. Snippet-route ablation. Top: MAP@K for full-abstract document scoring and snippet scoring using the same cross-encoder within the post-rerank document shortlist. Snippets are local sentence windows, represented by the best-scoring snippet per document. The bottom row shows MAP@10 under document/snippet RRF weight sweeps.
+5. Query reformulation
+The previous experiments suggest two query-side limitations. Dense retrieval is weaker than BM25 but complementary after fusion, motivating HyDE for semantic retrieval. In addition, the question-length diagnostic suggests that short questions often suffer from ranking or disambiguation problems even when relevant documents are present, motivating direct query rewriting for cross-encoder reranking.
+HyDE on the dense branch
+HyDE tests whether a generated evidence-like query representation can strengthen dense retrieval. Figure 10 shows that HyDE consistently improves dense Recall@K over the original query on both dev-small and the 13B subset. The gain appears already at small and intermediate candidate depths and remains positive up to K=5000. This suggests that HyDE helps the dense retriever place relevant documents higher in its candidate list, rather than only adding recall at very large K.
+In the full pipeline, this gain may be partly attenuated after BM25+dense fusion, because BM25 already contributes many overlapping relevant candidates. Nevertheless, HyDE still improves the dense branch and can increase the retrieval pool before reranking, especially for questions where semantic expansion helps recover relevant abstracts not well matched by the original wording.
+
+
+
+
+  
+
+Figure 10. HyDE versus original-query dense retrieval. Mean Recall@K is shown for dev-small (n=192) and the 13B subset (n=50) using the same dense encoder and HNSW index.
+
+
+LLM query rewriting in reranking — no improvement
+
+
+The second ablation addresses the ranking-side difficulty suggested by the question-length diagnostic in Fig. 8. We test whether rewriting the query text improves cross-encoder query–document matching while keeping the retrieved candidate pool fixed. This isolates the effect of the query text used by the reranker from changes in first-stage retrieval.
+
+
+We evaluated two rewriting variants as described in the methods section: Variant A for conservative normalization and Variant B for generic enrichment. Figure 11 shows that query rewriting does not improve reranking performance. The no-rewrite baseline and variant A are nearly identical on both dev and the merged 13B1–4 set, with only negligible differences across K. This suggests that the CE reranker is already robust to minor surface noise, so typo correction and light grammatical normalization add little once the candidate set is fixed.
+
+
+Variant B is consistently worse, even though the enrichment is deliberately mild. This suggests that generic additions can dilute the original information need or weaken exact biomedical query–document matching. The contrast with HyDE is therefore informative: HyDE helps when applied as a targeted dense-retrieval intervention, but generic query rewriting at the reranking stage does not help and can be harmful.
+
+
+  
+
+Figure 11. Query rewriting for reranking. MAP@K is shown for the original question, variant A with conservative normalization only, and variant B with normalization plus minimal generic retrieval-friendly enrichment. The retrieved candidate pool is fixed; only the query text passed to the cross-encoder reranker is changed.
+Discussion
+This working note mainly evaluates an offline document retrieval and reranking pipeline for BioASQ Phase A/A+. The results show that combining lexical retrieval, dense retrieval, cross-encoder reranking, and post-rerank fusion is effective, but they also clarify the scope of what the system has optimized. The pipeline is designed around document-level MAP, with fixed retrieval depths, fixed fusion weights, and a fixed reranking stage. It is therefore best understood as a strong MAP-oriented retrieval pipeline, rather than as a fully adaptive or deployment-oriented biomedical QA system.
+A central design choice is the repeated use of reciprocal rank fusion. In the first stage, fusion combines lexical and dense retrieval; after reranking, fusion combines the cross-encoder ranking with the original retrieval ranking. This is not only a way to increase scores, but also a conservative way to retain complementary signals. Lexical retrieval remains important for exact biomedical entities and terminology, dense retrieval can add semantically related candidates, and the cross-encoder improves local relevance estimation. Post-rerank fusion is useful because the reranker and the original retrieval ranking are not fully redundant. However, the current fusion strategy is learned from the whole dataset and is not query-adaptive.
+The diagnostic results suggest, but do not fully prove, that remaining errors often involve early-rank ordering rather than only missing candidates. For multi-gold questions, recall can continue to increase while MAP remains low, indicating that additional relevant documents are often found only deeper in the ranking. For short questions, the weaker MAP may reflect both reduced candidate recall and weaker ranking signals. Since we did not manually inspect failed questions or classify errors by whether gold documents were absent from the candidate pool, these conclusions should be treated as aggregate tendencies rather than complete failure-mode explanations.
+The snippet route should also be interpreted within this scope. It is not primarily intended to improve document MAP. Its purpose is to turn retrieved abstracts into more compact local evidence windows for downstream generation. The current evaluation only tests whether this compression substantially damages document-level ranking; it does not evaluate whether the selected snippets improve answer generation, evidence coverage, or factual grounding. Because generation is outside the scope of the present evaluation, future work should evaluate the snippet route under fixed context budgets and with generation-oriented metrics. This distinction is important because a ranking that is optimal for MAP@10 is not necessarily optimal for producing grounded answers. 
+The negative result for direct query rewriting show that conservative rewriting does not improve reranking, while broader rewriting can hurt. This does not mean that all query-side interventions are unhelpful. HyDE can still be useful when targeted at dense retrieval, where the problem is semantic candidate generation. The broader lesson is that query reformulation should be matched to a specific failure mode. Generic rewriting at the reranking stage appears less promising than targeted interventions for candidate generation, short-question disambiguation, or query-aware fusion.
+There are also several system-level limitations. The current architecture is not latency-aware, does not optimize GPU cost, and does not use parallel or conditional execution to reduce unnecessary computation. Every question is processed through the same general route, although different BioASQ questions may require different behavior. Some questions may only need lexical retrieval, some may benefit from dense expansion, some may require stronger reranking, and some may require snippet-level evidence selection. A future system could therefore use question-adaptive routing or learned fusion to decide which components are needed for each question.
+From an engineering standpoint, the pipeline is provided as a Docker image together with a bash orchestrator and a small set of configuration templates. The main stage-level choices — retrieval depth, RRF k and weights, reranker model and input length, snippet window size and stride, and the selection between document and snippet routes — are exposed as configuration variables rather than hard-coded, so an experiment can be repeated under different settings without modifying source code. The orchestrator also performs step-wise resume: each stage detects existing outputs and skips it, which makes it practical to re-enter the pipeline after a crash, or to swap a single component (for example, a different reranker) without rerunning BM25 retrieval, dense retrieval, or first-stage fusion. As a result, the experiments reported here can be reproduced at the level of per-query run tables and aggregate metrics by sourcing the corresponding configuration file.
+
+The reproducibility envelope is, however, narrower than full portability. The pipeline still depends on the specific PubMed baseline snapshot, on the BM25 and dense index artifacts (which are not redistributed with the container), on the exact embedding and cross-encoder checkpoints used, and on the availability of GPU resources for reranking, especially for the larger bge-reranker-v2-gemma variant. The container fixes the software environment but not the corpus and model state on which the numerical results depend. Fully reproducing the reported numbers therefore requires re-indexing the same PubMed snapshot and obtaining the same model versions, rather than only pulling the image.
+Overall, the most promising next step is not simply adding more generic rewriting, but making the ranking and evidence-selection process more adaptive. Future work should include per-question failure analysis, learned or query-aware post-rerank fusion, stronger handling of short and underspecified questions, and end-to-end evaluation of snippet-selected evidence for answer generation.
