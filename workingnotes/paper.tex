@@ -51,27 +51,23 @@ Hybrid Retrieval, Reranking, and Snippet Selection}
 %%
 %% The "author" command and its associated commands are used to define
 
-\author[1]{anonymous authors}[
+\author[1]{Yun Wang}[%
+orcid=0000-0002-2441-4182,
+email=yun.wang@fri.uni-lj.si,
+url=https://fulaibaowang.github.io/
 ]
+\cormark[1]
+\address[1]{University of Ljubljana, Faculty of Computer and Information Science,
+  Ve\v{c}na pot 113, 1000 Ljubljana, Slovenia}
 
-%% the authors and their affiliations.
-% \author[1]{Yun Wang}[%
-% orcid=0000-0002-2441-4182,
-% email=yun.wang@fri.uni-lj.si,
-% url=https://https://fulaibaowang.github.io/
-% ]
-% \cormark[1]
-% \address[1]{University of Ljubljana,
-%   Večna pot 113, 1000 Ljubljana, Slovenia}
-
-% %% Footnotes
-% \cortext[1]{Corresponding author.}
+%% Footnotes
+\cortext[1]{Corresponding author.}
 
 %%
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
-  This working note describes our system for BioASQ Task 14b, focusing on retrieval and reranking for biomedical question answering. The system follows a multi-stage retrieval-centered RAG design, combining lexical and dense retrieval with cross-encoder reranking to prepare evidence for downstream answer generation. Experiments show that hybrid retrieval and reranking improve document ranking, while diagnostic analyses highlight remaining limitations in early-rank ordering and evidence selection. These results support a conservative multi-stage design for BioASQ and motivate more adaptive evidence selection in future biomedical RAG systems. [Code and the repository link is omitted to preserve author anonymity]
+  This working note describes our system for BioASQ Task 14b, focusing on retrieval and reranking for biomedical question answering. The system follows a multi-stage retrieval-centered RAG design, combining lexical and dense retrieval with cross-encoder reranking to prepare evidence for downstream answer generation. Experiments show that hybrid retrieval and reranking improve document ranking, while diagnostic analyses highlight remaining limitations in early-rank ordering and evidence selection. These results support a conservative multi-stage design for BioASQ and motivate more adaptive evidence selection in future biomedical RAG systems. Code is available at \url{https://github.com/fulaibaowang/BioASQ}.
 
 \end{abstract}
 
@@ -88,9 +84,9 @@ BioASQ \sep biomedical information retrieval \sep reranking \sep reciprocal rank
 \maketitle
 
 \section{Introduction}
-BioASQ has served for more than a decade as a shared benchmark for large-scale biomedical information retrieval and question answering. Its Task b setting combines expert-written biomedical questions with curated relevant documents, snippets, and reference answers, making it a useful testbed for studying whether question answering systems can identify reliable biomedical evidence before generating answers \cite{tsatsaronis2015bioasq,krithara2023bioasqqa,nentidis2025bioasq13}.
+BioASQ has served for more than a decade as a shared benchmark for large-scale biomedical information retrieval and question answering. Its Task b setting combines expert-written biomedical questions with curated relevant documents, snippets, and reference answers, making it a useful testbed for studying whether question answering systems can identify reliable biomedical evidence before generating answers \cite{tsatsaronis2015bioasq,krithara2023bioasqqa,nentidis2025bioasq13,BioASQ2026}.
 
-This working note describes our system for BioASQ Task 14b. We use BioASQ as the main benchmark for developing and evaluating a retrieval-centered biomedical RAG system, with emphasis on document retrieval and reranking under the Phase A/A+ setting. Recent BioASQ systems have similarly adopted multi-stage retrieval, reranking, and retrieval-augmented generation components, reflecting the practical importance of evidence selection before answer generation \cite{jonker2025bitua,han2025ncuiisr}.
+This working note describes our system for BioASQ Task 14b~\cite{BioASQ2026,BioASQ2026task14bSynergy}. We use BioASQ as the main benchmark for developing and evaluating a retrieval-centered biomedical RAG system, with emphasis on document retrieval and reranking under the Phase A/A+ setting. Recent BioASQ systems have similarly adopted multi-stage retrieval, reranking, and retrieval-augmented generation components, reflecting the practical importance of evidence selection before answer generation \cite{jonker2025bitua,han2025ncuiisr}.
 
 The goal of this note is not to introduce a new model architecture, but to provide a compact and reproducible account of the system behavior. We therefore focus on the retrieval pipeline, diagnostic analyses, and ablation results that guided the final system design. Although the system includes an answer-generation stage, generation quality is not evaluated separately.
 
@@ -385,30 +381,20 @@ From an engineering standpoint, the pipeline is released as a Docker-based workf
 
 Overall, this working note shows that a conservative multi-stage retrieval and reranking pipeline is effective for BioASQ Phase A/A+, while also clarifying the limits of optimizing a fixed document-level MAP pipeline. Future work should connect these retrieval gains more directly to the final goal of biomedical RAG: selecting compact, reliable evidence that supports accurate and grounded answer generation. This requires generation-oriented evaluation of snippet-selected evidence, together with more adaptive ranking and evidence-selection strategies for different question types.
 
-\section{Acknowledgments}
-Acknowledgements omitted for anonymous review.
+\begin{acknowledgments}
+  The author thanks Bla\v{z} Zupan for helpful discussions and guidance on this work. This publication is co-funded by the European Union's Horizon Europe research and innovation program under the Marie Sk\l{}odowska-Curie COFUND Postdoctoral Programme grant agreement No.~101081355--SMASH, and by the Republic of Slovenia and the European Union from the European Regional Development Fund. We also thank the FRIDA cluster at the University of Ljubljana and HPC Vega at IZUM for providing the computational resources used in this work.
 
-
-% %%
-% %% The acknowledgments section is defined using the "acknowledgments" environment
-% %% (and NOT an unnumbered section). This ensures the proper
-% %% identification of the section in the article metadata, and the
-% %% consistent spelling of the heading.
-% \begin{acknowledgments}
-%   Thanks to the developers of ACM consolidated LaTeX styles
-%   \url{https://github.com/borisveytsman/acmart} and to the developers
-%   of Elsevier updated \LaTeX{} templates
-%   \url{https://www.ctan.org/tex-archive/macros/latex/contrib/els-cas-templates}.
-% \end{acknowledgments}
+  \emph{Disclaimer.} Co-funded by the European Union. Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or European Research Executive Agency. Neither the European Union nor the granting authority can be held responsible for them.
+\end{acknowledgments}
 
 %% The declaration on generative AI comes in effect
 %% in Janary 2025. See also
 %% https://ceur-ws.org/GenAI/Policy.html
 \section*{Declaration on Generative AI}
-During the preparation of this work, the author(s) used ChatGPT as a writing assistant. The author(s) also used Cursor
+During the preparation of this work, the author used ChatGPT in order to check grammar and spelling and to paraphrase and reword. The author also used Cursor
 and Claude to assist with code
-refactoring and debugging for the experimental pipeline. After using these tools/services,
-the author(s) reviewed and edited the content and code as needed and take(s)
+refactoring and debugging for the experimental pipeline. After using these tools and services,
+the author reviewed and edited the content and code as needed and takes
 full responsibility for the publication's content.
 
 %%
