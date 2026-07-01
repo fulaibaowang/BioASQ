@@ -147,7 +147,31 @@ The second strategy is direct query rewriting. Here, the LLM rewrites the origin
 
 For both strategies, the reformulated query text is evaluated in controlled ablations, while the rest of the pipeline is kept fixed. This allows us to distinguish gains from query reformulation from gains due to changes in retrieval depth, reranker model, or fusion settings.
 
+\subsection{Submitted system configurations}
+\label{sec:submitted}
+
+The official BioASQ Task 14b submissions correspond to four main configurations of the pipeline described above: a document route, the corresponding snippet route, a snippet route with a stronger reranker, and a snippet route that additionally applies HyDE-based dense-query reformulation (Table~\ref{tab:submitted}). All four share the same retrieve--rerank pipeline, while the snippet-based configurations additionally apply snippet-window selection and snippet-level rescoring before document/snippet fusion.
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Main system configurations submitted to BioASQ Task 14b Phase A/A+. All configurations share the same BM25+dense RRF first stage and cross-encoder reranking, and differ in the final evidence route, the reranker, and the dense-query representation.}
+  \label{tab:submitted}
+  \small
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    Configuration & Evidence route & Reranker & Dense query \\
+    \midrule
+    S1 & Document & BAAI/bge-reranker-v2-m3    & Original \\
+    S2 & Snippet  & BAAI/bge-reranker-v2-m3    & Original \\
+    S3 & Snippet  & BAAI/bge-reranker-v2-gemma & Original \\
+    S4 & Snippet  & BAAI/bge-reranker-v2-gemma & HyDE     \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \section{Experimental setup}
+
+The experiments in this note are offline development analyses on the dev and merged 13B1--4 question sets described below. We use these datasets because official Task 14b test relevance judgments were not available during system development. The experiments characterize the retrieval and reranking behavior of the pipeline and support the selection of the submitted system configurations in Section~\ref{sec:submitted}.
 
 \subsection{Evaluation splits}
 
@@ -230,6 +254,9 @@ Table~\ref{tab:experiment-map} summarizes the experiments reported in the result
 \end{table}
 
 \section{Results}
+\label{sec:results}
+
+The following analyses characterize each stage of the pipeline and motivate the components used in the submitted system configurations (Section~\ref{sec:submitted}): hybrid first-stage retrieval, cross-encoder reranking and post-rerank fusion, the reranker choice, the snippet route, and the query-reformulation options. Unless stated otherwise, results are reported on the dev and 13B1--4 sets.
 
 \subsection{First-stage retrieval}
 
