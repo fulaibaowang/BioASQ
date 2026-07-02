@@ -229,7 +229,7 @@ These results support the use of hybrid RRF retrieval as the first-stage candida
 
 \begin{figure}[!htbp]
   \centering
-  \includegraphics[width=0.85\linewidth]{02_stage1_recall.png}
+  \includegraphics[width=0.88\linewidth]{02_stage1_recall.png}
   \caption{Stage-1 mean Recall@K for BM25, dense, and BM25+Dense RRF fusion. Results are shown on dev and the merged 13B1--4 set. BM25 uses RM3 query expansion and the dense branch uses MedEmbed-small-v0.1 with HNSW; RRF weights are $(w_{\mathrm{BM25}}, w_{\mathrm{dense}})=(1,1)$ and $k_{\mathrm{RRF}}=150$.}
   \label{fig:stage1-recall}
 \end{figure}
@@ -241,7 +241,7 @@ We next examine whether cross-encoder reranking improves the hybrid candidate po
 
 \begin{figure}[!htbp]
   \centering
-  \includegraphics[width=0.85\linewidth]{03_rerank_recall.png}
+  \includegraphics[width=0.88\linewidth]{03_rerank_recall.png}
   \caption{Stage-2 mean Recall@K for BM25+Dense fusion and cross-encoder reranking, evaluated at $K \in \{10, 50, 100, 200, 300\}$. The reranker is applied to the top-2000 retrieval candidates.}
   \label{fig:rerank-recall}
 \end{figure}
@@ -251,7 +251,7 @@ Figure~\ref{fig:rerank-mapk} shows the corresponding MAP@K results. Cross-encode
 
 \begin{figure}[!htbp]
   \centering
-  \includegraphics[width=0.85\linewidth]{04_rerank_mapk.png}
+  \includegraphics[width=0.88\linewidth]{04_rerank_mapk.png}
   \caption{Stage-2 MAP@K for BM25+Dense fusion, cross-encoder reranking, and post-rerank fusion. Post-rerank fusion combines reranker and retrieval rankings with $k_{\mathrm{RRF}}=60$ and $(w_{\mathrm{rerank}}, w_{\mathrm{retrieval}})=(0.8,0.2)$.}
   \label{fig:rerank-mapk}
 \end{figure}
@@ -263,7 +263,7 @@ These results show a clear reranker-capacity effect in this candidate-pool setti
 
 \begin{figure}[!htbp]
   \centering
-  \includegraphics[width=0.85\linewidth]{05_reranker_comparison.png}
+  \includegraphics[width=0.88\linewidth]{05_reranker_comparison.png}
   \caption{Reranker comparison by MAP@K: cross-encoder/ms-marco-MiniLM-L12-v2 (33.4M), BAAI/bge-reranker-v2-m3 (568M; maximum length 200 or 512), and BAAI/bge-reranker-v2-gemma (2.51B), each applied to the same hybrid stage-1 top-2000 candidates.}
   \label{fig:reranker-comparison}
 \end{figure}
@@ -335,7 +335,7 @@ In the full pipeline, this gain may be partly attenuated after BM25+Dense fusion
 
 \begin{figure}[!htbp]
   \centering
-  \includegraphics[width=0.85\linewidth]{10_hyde_dense_recall.png}
+  \includegraphics[width=0.88\linewidth]{10_hyde_dense_recall.png}
   \caption{HyDE versus original-query dense retrieval. Mean Recall@K is shown for dev-small ($n=192$) and the 13B subset ($n=50$) using the same dense encoder and HNSW index.}
   \label{fig:hyde-dense-recall}
 \end{figure}
@@ -351,7 +351,7 @@ Variant B is consistently worse, even though the enrichment is deliberately mild
 
 \begin{figure}[!htbp]
   \centering
-  \includegraphics[width=0.98\linewidth]{11_query_rewriting.png}
+  \includegraphics[width=0.88\linewidth]{11_query_rewriting.png}
   \caption{Query rewriting for reranking. MAP@K is shown for the original question, Variant A with conservative normalization only, and Variant B with normalization plus minimal generic retrieval-friendly enrichment. The retrieved candidate pool is fixed; only the query text passed to the cross-encoder reranker is changed.}
   \label{fig:query-rewriting}
 \end{figure}
@@ -359,7 +359,7 @@ Variant B is consistently worse, even though the enrichment is deliberately mild
 
 \section{Discussion}
 
-This working note mainly evaluates an offline document retrieval and reranking pipeline for BioASQ Phase A/A+. The results show that a conservative multi-stage design---combining lexical retrieval, dense retrieval, cross-encoder reranking, and post-rerank fusion---is effective for document-level MAP. A central design choice is the repeated use of reciprocal rank fusion: first to combine lexical and dense retrieval, and later to combine the reranked list with the original retrieval ranking. This helps retain complementary signals, since lexical retrieval remains important for exact biomedical entities and terminology, dense retrieval can add semantically related candidates, and the cross-encoder improves local relevance estimation. At the same time, the reported system uses fixed retrieval depths, fixed fusion settings, and a fixed reranking stage. These choices are configurable in the released workflow, but they are fixed across queries in the reported experiments. The system is therefore best understood as a strong MAP-oriented retrieval pipeline, rather than as a fully adaptive or deployment-oriented biomedical QA system.
+This working note mainly evaluates a document retrieval and reranking pipeline for BioASQ Phase A/A+. The results show that a conservative multi-stage design---combining lexical retrieval, dense retrieval, cross-encoder reranking, and post-rerank fusion---is effective for document-level MAP. A central design choice is the repeated use of reciprocal rank fusion: first to combine lexical and dense retrieval, and later to combine the reranked list with the original retrieval ranking. This helps retain complementary signals, since lexical retrieval remains important for exact biomedical entities and terminology, dense retrieval can add semantically related candidates, and the cross-encoder improves local relevance estimation. At the same time, the reported system uses fixed retrieval depths, fixed fusion settings, and a fixed reranking stage. These choices are configurable in the released workflow, but they are fixed across queries in the reported experiments. The system is therefore best understood as a strong MAP-oriented retrieval pipeline, rather than as a fully adaptive or deployment-oriented biomedical QA system.
 
 The diagnostic results suggest, but do not fully prove, that remaining errors often involve early-rank ordering rather than only missing candidates. For multi-gold questions, recall can continue to increase while MAP remains low, indicating that additional relevant documents are often found only deeper in the ranking. For short questions, the weaker MAP may reflect both reduced candidate recall and weaker ranking signals. Since we did not manually inspect failed questions or classify errors by whether gold documents were absent from the candidate pool, these conclusions should be treated as aggregate tendencies rather than complete failure-mode explanations.
 

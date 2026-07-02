@@ -35,6 +35,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from _figure_palette import HYDE, annotate_curves_end
+
 plt.rcParams["figure.figsize"] = (14, 10)
 plt.rcParams["axes.grid"] = False
 plt.rcParams["axes.titlesize"] = 14
@@ -968,7 +970,7 @@ HYDE_ORIG_RECALL_SPECS = [
         "qrels_path": base_dir / "example" / "training14b_3pct_sample.json",
     },
     {
-        "split": "13b subset",
+        "split": "13B subset",
         "hyde_tsv": base_dir / "output" / "retrieval_test" / "bm25_new" / "dense" / "runs" / "dense_13b_golden_50q_sample.tsv",
         "orig_tsv": base_dir / "output" / "retrieval_test" / "bm25_new" / "dense_" / "runs" / "dense_13b_golden_50q_sample.tsv",
         "qrels_path": base_dir / "example" / "13b_golden_50q_sample.json",
@@ -1022,9 +1024,21 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
         c_f = mean_recall_curve(gold, fused_map, RECALL_CURVE_KS)
 
         xs = RECALL_CURVE_KS
-        ax.plot(xs, [c_h[k] for k in xs], marker="o", markersize=6, linewidth=1.8, label="HyDE")
-        ax.plot(xs, [c_o[k] for k in xs], marker="o", markersize=6, linewidth=1.8, label="Original")
+        ys_h = [c_h[k] for k in xs]
+        ys_o = [c_o[k] for k in xs]
+        ax.plot(xs, ys_h, marker="o", markersize=6, linewidth=1.8, color=HYDE["HyDE"])
+        ax.plot(xs, ys_o, marker="o", markersize=6, linewidth=1.8, color=HYDE["Original"])
         # ax.plot(xs, [c_f[k] for k in xs], marker='o', linewidth=1.6, label='RRF w=(0.6,0.4)')
+
+        annotate_curves_end(
+            ax,
+            [
+                (xs, ys_h, "HyDE", HYDE["HyDE"]),
+                (xs, ys_o, "Original", HYDE["Original"]),
+            ],
+            y_offsets=[10.0, -10.0],
+        )
+        ax.set_xlim(min(xs), max(xs) + max(xs) * 0.08)
 
         title = split_labels.get(split, split)
         ax.set_title(title, fontsize=16, fontweight="bold")
@@ -1035,8 +1049,10 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
         ax.grid(True, axis="x")
 
     axes[0].set_ylabel("Mean Recall@K")
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower right", bbox_to_anchor=(0.97, 0.18), fontsize=15)
+    # Slight top headroom so the "HyDE" label fits inside the axes box (sharey
+    # propagates this to the other panel).
+    _y0, _y1 = axes[0].get_ylim()
+    axes[0].set_ylim(_y0, _y1 + (_y1 - _y0) * 0.10)
     plt.tight_layout()
 
 fig_path = output_dir / "dense_hyde_vs_orig_recall_curves.png"
