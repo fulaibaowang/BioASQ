@@ -187,46 +187,9 @@ For lexical retrieval, we build a PyTerrier \cite{macdonald2021pyterrier} index 
 
 All retrieval metrics are computed at the PMID level against the BioASQ gold document set. Candidate PMIDs are extracted from the document identifier or from the trailing component of the BioASQ document URL.
 
-Recall@K is computed per query as
-\[
-\mathrm{Recall@K}(q)
-=
-\frac{|R_K(q) \cap G_q|}{|G_q|}.
-\]
-The final Recall@K is the mean over all queries:
-\[
-\mathrm{Mean\ Recall@K}
-=
-\frac{1}{|Q|}
-\sum_{q \in Q}
-\mathrm{Recall@K}(q),
-\]
-where $R_K(q)$ is the top-$K$ retrieved set and $G_q$ is the gold document set.
+Recall@K is the fraction of a query's gold documents $G_q$ that appear in its top-$K$ retrieved set, averaged over all queries.
 
-We also report MAP@K using the truncated average precision definition used for BioASQ Phase A. For query $q$, AP@K is:
-\[
-\mathrm{AP@K}(q)
-=
-\frac{1}{\min(|G_q|, K)}
-\sum_{i=1}^{K}
-\mathrm{P@}i(q) \cdot \mathbf{1}[d_i \in G_q],
-\]
-where
-\[
-\mathrm{P@}i(q)
-=
-\frac{1}{i}
-\sum_{j=1}^{i}
-\mathbf{1}[d_j \in G_q].
-\]
-MAP@K is then computed as the mean AP@K over all queries:
-\[
-\mathrm{MAP@K}
-=
-\frac{1}{|Q|}
-\sum_{q \in Q}
-\mathrm{AP@K}(q).
-\]
+We also report MAP@K using the truncated average-precision definition used for BioASQ Phase A. For each query, average precision at $K$ (AP@K) averages the precision taken at the ranks of the retrieved gold documents within the top $K$, but normalized by $\min(|G_q|, K)$ rather than by the total number of gold documents $|G_q|$; MAP@K is the mean of AP@K over all queries. Because of this truncated normalization, AP@K and MAP@K are sensitive to the number of gold documents per query, a property we revisit in the gold-set-size diagnostic.
 
 \subsection{Experiment map}
 
