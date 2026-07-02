@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.3
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: dicty (Python 3.14 venv)
 #     language: python
@@ -30,6 +30,15 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+from _figure_palette import (
+    LENGTH_BIN,
+    RERANKER,
+    REWRITE,
+    SNIPPET,
+    STAGE,
+    annotate_curves_end,
+)
 
 plt.rcParams["figure.figsize"] = (14, 10)
 plt.rcParams["axes.grid"] = False
@@ -143,9 +152,9 @@ tick_candidates = [50, 200, 500, 1000, 2000, 5000]
 tick_values = [k for k in tick_candidates if k in k_values]
 
 methods_cfg = {
-    "BM25": {"df": bm25_metrics, "color": "#1f77b4", "marker": "o"},
-    "Dense": {"df": dense_metrics, "color": "#ff7f0e", "marker": "s"},
-    "BM25 Dense Fusion": {"df": hybrid_metrics, "color": "#2ca02c", "marker": "D"},
+    "BM25": {"df": bm25_metrics, "color": STAGE["bm25"], "marker": "o"},
+    "Dense": {"df": dense_metrics, "color": STAGE["dense"], "marker": "s"},
+    "BM25 Dense Fusion": {"df": hybrid_metrics, "color": STAGE["hybrid_fusion"], "marker": "D"},
 }
 
 fig, axes = plt.subplots(2, 3, figsize=(16, 9), sharex=True, sharey=True)
@@ -277,12 +286,12 @@ rerank_metrics = rerank_metrics.rename(columns={"label": "split"})
 methods_stage2 = {
     "Retrieval": {
         "df": hybrid_stage1,
-        "color": "#2ca02c",
+        "color": STAGE["hybrid_fusion"],
         "marker": "D",
     },
     "Rerank": {
         "df": rerank_metrics,
-        "color": "#1f77b4",
+        "color": STAGE["ce_rerank"],
         "marker": "o",
     },
 }
@@ -426,9 +435,9 @@ plt.show()
 fig, ax = plt.subplots(1, 5, figsize=(10, 4), sharey=True)
 # fig.suptitle("Retrival vs Rerank vs Post-rerank Fusion – MAP@10", fontsize=16, fontweight="bold", y=1.08)
 method_colors = {
-    "Retrieval": "#2ca02c",
-    "Rerank": "#1f77b4",
-    "Post-rerank fusion": "#ff7f0e",
+    "Retrieval": STAGE["hybrid_fusion"],
+    "Rerank": STAGE["ce_rerank"],
+    "Post-rerank fusion": STAGE["post_fusion"],
 }
 
 for idx, split in enumerate(splits):
@@ -477,9 +486,9 @@ plt.show()
 
 # %%
 _method_colors_bar = {
-    "Retrieval": "#2ca02c",
-    "Rerank": "#1f77b4",
-    "Post-rerank fusion": "#ff7f0e",
+    "Retrieval": STAGE["hybrid_fusion"],
+    "Rerank": STAGE["ce_rerank"],
+    "Post-rerank fusion": STAGE["post_fusion"],
 }
 
 fig, ax = plt.subplots(1, 2, figsize=(6, 4), sharey=True)
@@ -656,9 +665,9 @@ else:
     y_min, y_max = 0.0, 1.0
 
 colors_map = {
-    "Hybrid (retrieval)": "#2ca02c",
-    "Rerank": "#1f77b4",
-    "Post-rerank fusion": "#ff7f0e",
+    "Hybrid (retrieval)": STAGE["hybrid_fusion"],
+    "Rerank": STAGE["ce_rerank"],
+    "Post-rerank fusion": STAGE["post_fusion"],
 }
 
 for idx, split in enumerate(splits):
@@ -713,6 +722,7 @@ _wn_mapk_x4b = _wn_mapk_xticks(map_ks)
 _wn_method_labels_04b = {
     "Hybrid (retrieval)": "BM25+Dense Fusion",
     "Rerank": "CE Rerank",
+    "Post-rerank fusion": "Post-rerank fusion",
 }
 with plt.rc_context(WORKINGNOTE_FIG_RC):
     fig, axes = plt.subplots(1, 2, figsize=(8.5, 4.2), sharex=True, sharey=True)
@@ -1018,8 +1028,8 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
     # Match the color scheme used in figs 01/02b/03/04b:
     # BM25+Dense Fusion = green, CE Rerank = blue.
     colors_gold = {
-        "Hybrid (retrieval)": "#2ca02c",
-        "Rerank": "#1f77b4",
+        "Hybrid (retrieval)": STAGE["hybrid_fusion"],
+        "Rerank": STAGE["ce_rerank"],
     }
     labels_gold = {
         "Hybrid (retrieval)": "BM25+Dense Fusion",
@@ -1225,12 +1235,7 @@ if all_vals:
 else:
     y_min, y_max = 0.0, 1.0
 
-colors_rerank = {
-    "ms-marco-MiniLM-L-12-v2, 33.4M": "#1f77b4",
-    "bge-reranker-v2-m3, 568M, tok_len=200": "#ff7f0e",
-    "bge-reranker-v2-m3, 568M": "#2ca02c",
-    "bge-reranker-v2-gemma, 2.5B": "#9467bd",
-}
+colors_rerank = dict(RERANKER)
 
 # Short legend labels (full keys stay as dict keys for IO / colors).
 RERANK_MODEL_LEGEND_SHORT = {
@@ -1868,9 +1873,11 @@ if medcpt_map_curves and not rrf_results.empty:
 
         plt.tight_layout(rect=[0, 0, 1, 0.96])
 
-    fig_path_wn = wn_output_dir / "09_snippet_ablation_medcpt.png"
-    plt.savefig(fig_path_wn, dpi=150, bbox_inches="tight")
-    print("Saved (workingnotes, MedCPT historical):", fig_path_wn)
+    # Historical MedCPT variant: keep in the debug figures dir only, not in
+    # workingnotes/figures/ (the paper uses the bge-m3 canonical Fig 9 below).
+    fig_path_dbg = output_dir / "09_snippet_ablation_medcpt.png"
+    plt.savefig(fig_path_dbg, dpi=150, bbox_inches="tight")
+    print("Saved (debug, MedCPT historical):", fig_path_dbg)
     plt.show()
 
 # %% [markdown]
@@ -1964,9 +1971,17 @@ if not bge_rrf_results.empty:
         axis=1,
     )
 
-colors_bge_snip = {
-    "docs (full abstracts)": "#1f77b4",
-    "snippets": "#ff7f0e",
+colors_bge_snip = dict(SNIPPET)
+_snip_label_short = {
+    "docs (full abstracts)": "doc",
+    "snippets": "snippet",
+}
+# Per-panel label placement (top row): idx 0 = dev (left), 1 = 13B1–4 merged (right).
+# y_offsets: [docs curve, snippets curve] in points (+ = above, − = below).
+# x_offset: horizontal shift from the curve end in points (+ = right, − = left).
+_snip_label_offsets = {
+    0: {"y_offsets": [16.0, -16.0], "x_offset": 18.0},
+    1: {"y_offsets": [8.0, -2.0], "x_offset": 18.0},
 }
 
 if bge_map_curves and not bge_rrf_results.empty:
@@ -1976,12 +1991,13 @@ if bge_map_curves and not bge_rrf_results.empty:
     with plt.rc_context(WORKINGNOTE_FIG_RC):
         fig, axes = plt.subplots(2, 2, figsize=(10, 6.5), sharex=False)
 
-        # Top row: docs vs snippets MAP@K curves
+        # Top row: docs vs snippets MAP@K curves (text labels at curve ends, no color legend)
         for idx, (panel_label, panel_splits) in enumerate([
             ("dev", ["training14b_10pct_sample"]),
             ("13B1–4 (merged)", _test_split_ids_bge),
         ]):
             ax = axes[0, idx]
+            end_series: list[tuple[list, list, str, str]] = []
             for method_name, method_dict in bge_map_curves.items():
                 all_vals = []
                 for s in panel_splits:
@@ -1990,15 +2006,32 @@ if bge_map_curves and not bge_rrf_results.empty:
                 if not all_vals:
                     continue
                 vals = np.mean(all_vals, axis=0)
+                color = colors_bge_snip[method_name]
                 ax.plot(
                     bge_map_ks,
                     vals,
                     marker="o",
                     markersize=6,
                     linewidth=1.8,
-                    color=colors_bge_snip[method_name],
-                    label=method_name,
+                    color=color,
                 )
+                end_series.append((
+                    list(bge_map_ks),
+                    list(vals),
+                    _snip_label_short.get(method_name, method_name),
+                    color,
+                ))
+            _off = _snip_label_offsets.get(idx, {"y_offsets": [10.0, -10.0], "x_offset": 4.0})
+            annotate_curves_end(
+                ax,
+                end_series,
+                y_offsets=_off["y_offsets"],
+                x_offset=_off["x_offset"],
+                fontweight="normal"
+            )
+            # Slight top headroom so the on-curve text labels fit inside the panel.
+            _y0, _y1 = ax.get_ylim()
+            ax.set_ylim(_y0, _y1 + (_y1 - _y0) * 0.12)
             ax.set_title(panel_label, fontsize=16, fontweight="bold")
             if idx == 0:
                 ax.set_ylabel("MAP@K")
@@ -2007,6 +2040,7 @@ if bge_map_curves and not bge_rrf_results.empty:
             ax.set_xticklabels([str(k) for k in _wn_bge_x])
             ax.grid(True, axis="y")
             ax.grid(True, axis="x")
+            ax.set_xlim(min(bge_map_ks), max(bge_map_ks) + 12)
 
         # Bottom row: doc/snippet weight sweep MAP@10
         _weight_sweep_color = "#757575"
@@ -2042,26 +2076,6 @@ if bge_map_curves and not bge_rrf_results.empty:
                 ax.set_ylabel("MAP@10")
             ax.set_xlabel("(w_doc, w_snippet)")
             ax.grid(True, axis="y")
-
-        from matplotlib.lines import Line2D as _Line2D_bge_snip
-        snip_legend_bge = [
-            _Line2D_bge_snip(
-                [0], [0],
-                color=colors_bge_snip[name],
-                marker="o",
-                linestyle="-",
-                label=name,
-            )
-            for name in colors_bge_snip
-        ]
-        fig.legend(
-            handles=snip_legend_bge,
-            labels=list(colors_bge_snip.keys()),
-            loc="upper center",
-            ncol=2,
-            bbox_to_anchor=(0.5, 1.02),
-            fontsize=14,
-        )
 
         plt.tight_layout(rect=[0, 0, 1, 0.96])
 
@@ -2115,11 +2129,7 @@ if all_vals_bge:
 else:
     y_min_bge, y_max_bge = 0.0, 1.0
 
-colors_bge_local = {
-    "CE Reranker (no rewriting)": "#1f77b4",
-    "query rewriting A: only typo fixing and minimal grammatical edits": "#ff7f0e",
-    "query rewriting B: questions generic enrichment": "#2ca02c",
-}
+colors_bge_local = dict(REWRITE)
 
 for idx, split in enumerate(splits_rerank):
     ax = axes_flat[idx]
@@ -2186,6 +2196,11 @@ _bge_10b_linestyles = {
     "query rewriting A: only typo fixing and minimal grammatical edits": "--",
     "query rewriting B: questions generic enrichment": "-.",
 }
+_bge_10b_legend_labels = {
+    "CE Reranker (no rewriting)": "Original (no rewriting)",
+    "query rewriting A: only typo fixing and minimal grammatical edits": "Variant A: conservative normalization",
+    "query rewriting B: questions generic enrichment": "Variant B: generic enrichment",
+}
 with plt.rc_context(WORKINGNOTE_FIG_RC):
     fig, axes = plt.subplots(1, 2, figsize=(8.5, 4.2), sharex=True, sharey=True)
 
@@ -2211,7 +2226,7 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
                 markersize=7,
                 linewidth=2.2,
                 color=c,
-                label=method_name,
+                label=_bge_10b_legend_labels.get(method_name, method_name),
                 markerfacecolor=c,
                 markeredgecolor="white",
                 markeredgewidth=1.0,
@@ -2235,7 +2250,7 @@ with plt.rc_context(WORKINGNOTE_FIG_RC):
             linestyle=_bge_10b_linestyles.get(name, "-"),
             markersize=8,
             linewidth=2.2,
-            label=name,
+            label=_bge_10b_legend_labels.get(name, name),
         )
         for name in colors_bge_local
     ]
@@ -3122,11 +3137,7 @@ if not len_compare_df.empty and not hybrid_recall_len_df.empty:
     from matplotlib.lines import Line2D as _Line2D_combined
 
     len_bin_order_combined = ["short (≤7)", "mid (8–10)", "long (≥11)"]
-    colors_len_combined = {
-        "short (≤7)": "#1f77b4",
-        "mid (8–10)": "#ff7f0e",
-        "long (≥11)": "#2ca02c",
-    }
+    colors_len_combined = dict(LENGTH_BIN)
 
     _wn_x_top = _wn_mapk_xticks(map_ks_len_compare)
     _wn_x_bot = _wn_hybrid_recall_xticks(recall_ks_len)
