@@ -76,7 +76,7 @@ See [scripts/public/README.md](../scripts/public/README.md) for other format scr
 
 ### Build 10% training subset (BioASQ QAs)
 
-This is only related to BioASQ working note. For pipeline development and evaluaion we made a small subset from the whole training dataset. We ship an example subset at [example/training14b_10pct_sample.json](../example/training14b_10pct_sample.json). It is built from gold QAs, zero-recall IDs, and top-5000 retrieved PMIDs.
+This is only related to BioASQ working note. For pipeline development and evaluation we made a small subset from the whole training dataset. We ship an example subset at [example/training14b_10pct_sample.json](../example/training14b_10pct_sample.json). It is built from gold QAs, zero-recall IDs, and top-5000 retrieved PMIDs.
 
 See the notebook section **Build 10% Subset with Gold + zero recall ids + Retrieved PMIDs top 5000** in [notebooks/retrieval_bm25_baseline_and_subset.ipynb](../notebooks/retrieval_bm25_baseline_and_subset.ipynb) for the exact steps.
 
@@ -94,7 +94,7 @@ For running the pipeline, use the generic examples in [RAG-scripts docs/USAGE.md
 Config templates: [config.env](../bioasq_data/14b/workflow_config_14b_example.env), [workflow_config_full.env](https://github.com/fulaibaowang/RAG-scripts/blob/main/conf/workflow_config_full.env). Parameter tuning: [PARAMETERS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/docs/PARAMETERS.md).
 
 
-Copy [config.env](bioasq_data/14b/workflow_config_14b_example.env) to a private file and set at least: `WORKFLOW_OUTPUT_DIR`, `INPUT_JSONL` and/or `INPUT_BATCH_JSONLS` (`.jsonl` query streams), `BM25_INDEX_PATH`, `DENSE_INDEX_DIR`, and for rerank and downstream steps `DOCS_JSONL`. Use `HAVE_GROUND_TRUTH=0` when you have no documents/snippets.
+Copy [config.env](../bioasq_data/14b/workflow_config_14b_example.env) to a private file and set at least: `WORKFLOW_OUTPUT_DIR`, `INPUT_JSONL` and/or `INPUT_BATCH_JSONLS` (`.jsonl` query streams), `BM25_INDEX_PATH`, `DENSE_INDEX_DIR`, and for rerank and downstream steps `DOCS_JSONL`. Use `HAVE_GROUND_TRUTH=0` when you have no documents/snippets.
 
 ---
 
