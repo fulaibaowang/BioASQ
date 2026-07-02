@@ -318,7 +318,7 @@ Overall, the snippet route should be interpreted as a context-compression module
 \begin{figure}[!htbp]
   \centering
   \includegraphics[width=0.98\linewidth]{09_snippet_ablation.png}
-  \caption{Snippet-route ablation. Top: MAP@K for full-abstract document scoring and snippet scoring using the same cross-encoder within the post-rerank document shortlist. Snippets are local sentence windows, represented by the best-scoring snippet per document. The bottom row shows MAP@10 under document/snippet RRF weight sweeps.}
+  \caption{Snippet-route ablation. Top: MAP@K for full-abstract document scoring (\emph{doc}) and snippet scoring (\emph{snippet}) using the same cross-encoder within the post-rerank document shortlist. Snippets are local sentence windows, represented by the best-scoring snippet per document. The bottom row shows MAP@10 under document/snippet RRF weight sweeps, where $(w_{\mathrm{doc}}, w_{\mathrm{snippet}})$ are the document and snippet fusion weights.}
   \label{fig:snippet-ablation}
 \end{figure}
 \FloatBarrier
