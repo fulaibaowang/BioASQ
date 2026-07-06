@@ -133,6 +133,10 @@ while [ $# -gt 0 ]; do
       echo "  RUN_DOCUMENT=0|1        Control document-route evidence/generation (default 1)."
       echo "  RUN_SNIPPET_RRF=0|1     Control snippet-rrf route (steps 6–7, evidence/evidence_snippet/, generation/generation_snippet/)."
       echo "  RUN_RRF_FUSION=0|1      Control Retrieval+Rerank RRF fusion (default 1; 0 is same as --no-rrf-fusion)."
+      echo "                          When 0, document-route evidence uses the raw cross-encoder runs (no post-rerank fusion)."
+      echo "  STAGE1_SOURCE=rrf|external|bm25|dense   First-stage source (default rrf = BM25+Dense->RRF)."
+      echo "                          external = stage a pre-computed STAGE1_RUN (e.g. hosted Pyserini API), skip BM25/Dense/Fusion."
+      echo "                          bm25 / dense = run only that retriever, stage its run as stage-1, skip the other retriever and Fusion."
       echo "  RUN_GENERATION_DOCUMENT=0|1   Run generation for document route (default 1)."
       echo "  RUN_GENERATION_SNIPPET=0|1    Run generation for snippet route (default 1)."
       echo "  GENERATION_SCHEMAS_DIR       Directory of schema *.txt for LLM prompts (default: scripts/public/shared_scripts/prompts/schemas under repo root)."
@@ -201,14 +205,16 @@ fi
 
 # ----- First-stage source selector (STAGE1_SOURCE) -----
 # rrf (default) = BM25 + Dense -> RRF fusion [unchanged]. external = use a pre-computed STAGE1_RUN
-# (e.g. hosted Pyserini API output), skipping BM25/Dense/Fusion. bm25/dense reserved. Reranker/
-# evidence text always comes from DOCS_JSONL. Default 'rrf' keeps existing behavior identical.
+# (e.g. hosted Pyserini API output), skipping BM25/Dense/Fusion. bm25 / dense = run only that one
+# retriever and stage its run as the stage-1 output, skipping the other retriever and Fusion.
+# Reranker/evidence text always comes from DOCS_JSONL. Default 'rrf' keeps existing behavior identical.
 STAGE1_SOURCE="${STAGE1_SOURCE:-rrf}"
 case "$STAGE1_SOURCE" in
   rrf)      _need_bm25=1; _need_dense=1; _need_fusion=1 ;;
   external) _need_bm25=0; _need_dense=0; _need_fusion=0 ;;
-  bm25|dense) echo "Error: STAGE1_SOURCE=$STAGE1_SOURCE not implemented yet (use 'rrf' or 'external')." >&2; exit 1 ;;
-  *) echo "Error: unknown STAGE1_SOURCE='$STAGE1_SOURCE' (expected rrf|external)." >&2; exit 1 ;;
+  bm25)     _need_bm25=1; _need_dense=0; _need_fusion=0 ;;
+  dense)    _need_bm25=0; _need_dense=1; _need_fusion=0 ;;
+  *) echo "Error: unknown STAGE1_SOURCE='$STAGE1_SOURCE' (expected rrf|external|bm25|dense)." >&2; exit 1 ;;
 esac
 
 # Required env (set by config file or by sourcing before run)
@@ -282,6 +288,7 @@ DENSE_OUT="$RETRIEVAL_OUT/dense"
 HYBRID_OUT="$RETRIEVAL_OUT/fusion"
 RERANK_ROOT="$WORKFLOW_OUTPUT_DIR/rerank"
 CROSS_ENCODER_OUT="$RERANK_ROOT/cross_encoder"
+CROSS_ENCODER_TSTAR_OUT="$RERANK_ROOT/cross_encoder_tstar"
 POST_RERANK_FUSION_OUT="$RERANK_ROOT/post_rerank_fusion"
 POST_RERANK_FUSION_SNIPPET_OUT="$RERANK_ROOT/post_rerank_fusion_snippet"
 POST_RERANK_FUSION_TSTAR_OUT="$RERANK_ROOT/post_rerank_fusion_tstar"
@@ -632,6 +639,46 @@ else
 fi
 else
   echo "[3/$TOTAL_STEPS] Retrieval fusion... (skip: STAGE1_SOURCE=$STAGE1_SOURCE; stage-1 run supplied)"
+fi
+
+# ----- Stage single-retriever run as stage-1 (STAGE1_SOURCE=bm25|dense) -----
+# When only one first-stage retriever runs (no fusion), copy its per-split runs into the
+# canonical stage1_<split>_top<k> location so rerank/evidence/generation consume them
+# unchanged -- the same contract fuse_retrieval and the external route produce.
+if [ "$STAGE1_SOURCE" = "bm25" ] || [ "$STAGE1_SOURCE" = "dense" ]; then
+  mkdir -p "$HYBRID_OUT/runs"
+  if [ "$STAGE1_SOURCE" = "bm25" ]; then
+    _s1_src_glob="$BM25_OUT/runs/${BM25_METHOD_FOR_HYBRID}__*__top${BM25_TOP_K}.tsv"
+    _s1_topk="$BM25_TOP_K"
+  else
+    _s1_src_glob="$DENSE_OUT/runs/dense_*.tsv"
+    _s1_topk="$DENSE_TOP_K"
+  fi
+  _s1_staged=0
+  for _src in $_s1_src_glob; do
+    [ -f "$_src" ] || continue
+    _b=$(basename "$_src" .tsv)
+    if [ "$STAGE1_SOURCE" = "bm25" ]; then
+      # BM25_RM3__<split>__top<k> -> <split>
+      _sp="${_b#"${BM25_METHOD_FOR_HYBRID}"__}"
+      _sp="${_sp%%__top*}"
+    else
+      # dense_<split> -> <split>
+      _sp="${_b#dense_}"
+    fi
+    _dst="$HYBRID_OUT/runs/stage1_${_sp}_top${_s1_topk}.tsv"
+    if [ -f "$_dst" ]; then
+      echo "[stage1/$STAGE1_SOURCE] run already staged: $_dst"
+    else
+      cp "$_src" "$_dst"
+      echo "[stage1/$STAGE1_SOURCE] staged $STAGE1_SOURCE run -> $_dst"
+    fi
+    _s1_staged=$((_s1_staged+1))
+  done
+  if [ "$_s1_staged" = "0" ]; then
+    echo "Error: STAGE1_SOURCE=$STAGE1_SOURCE but no source runs matched $_s1_src_glob" >&2
+    exit 1
+  fi
 fi
 
 # ----- Reranker (optional: only if DOCS_JSONL set and not --no-rerank) -----
@@ -1228,6 +1275,12 @@ _DOCS_JSONL_OK=0
             _EVIDENCE_RUNS_DIR="$POST_RERANK_FUSION_OUT/runs"
             _EVIDENCE_POST_DIR="$POST_RERANK_FUSION_OUT"
           fi
+        elif [ "${RERANK_TSTAR_ENABLE:-0}" = "1" ] && [ "$RUN_RERANK" = "1" ]; then
+          # No post-rerank fusion, but t* requested: cut the raw CE runs by their own CE scores
+          # so the cutoff is honored instead of silently dropped.
+          _apply_rerank_tstar_cutoff "$CROSS_ENCODER_OUT/runs" "$CROSS_ENCODER_TSTAR_OUT" "cross_encoder"
+          _EVIDENCE_RUNS_DIR="$CROSS_ENCODER_TSTAR_OUT/runs"
+          _EVIDENCE_POST_DIR="$CROSS_ENCODER_TSTAR_OUT"
         else
           _EVIDENCE_RUNS_DIR="$CROSS_ENCODER_OUT/runs"
           _EVIDENCE_POST_DIR="$CROSS_ENCODER_OUT"
@@ -1347,26 +1400,89 @@ _DOCS_JSONL_OK=0
         [ -n "$_split" ] || continue
 
         _ctx_json="$WORKFLOW_OUTPUT_DIR/$_EVIDENCE_SUBDIR/${_split}_contexts.jsonl"
+        # Optional context distillation before generation (GENERATION_MODE=claims|facets).
+        # Cross-repo safe: byte-identical behavior when GENERATION_MODE is unset or "direct".
+        _GEN_MODE="${GENERATION_MODE:-direct}"
+        _gen_input="$_ctx_json"
         _gen_json="$WORKFLOW_OUTPUT_DIR/$_GEN_SUBDIR/${_split}_answers.jsonl"
+        if [ "$_GEN_MODE" != "direct" ]; then
+          case "${GENERATION_BACKEND:-ollama}" in
+            ollama) ;;
+            *) echo "[Distill] ERROR: GENERATION_MODE=$_GEN_MODE supports only GENERATION_BACKEND=ollama (got '${GENERATION_BACKEND:-}')" >&2; exit 1 ;;
+          esac
+          _distilled="$WORKFLOW_OUTPUT_DIR/$_EVIDENCE_SUBDIR/${_split}_distilled_contexts.jsonl"
+          _gen_input="$_distilled"
+          # generate_answers strips only a trailing "_contexts" from the input stem
+          _gen_json="$WORKFLOW_OUTPUT_DIR/$_GEN_SUBDIR/${_split}_distilled_answers.jsonl"
+        fi
         if [ -f "$_gen_json" ]; then
           echo "[Generation] $_split... (skip: output exists)"
         elif [ ! -f "$_ctx_json" ]; then
           echo "[Generation] Skip $_split: evidence not found ($_ctx_json)"
         else
+          if [ "$_GEN_MODE" != "direct" ]; then
+            if [ ! -f "$_distilled" ]; then
+              # Stage knobs come from GENERATION_EXTRACT_* / GENERATION_DISTIL_* /
+              # GENERATION_FACET_* / GENERATION_SUMMARY_* / GENERATION_SELECT_* env
+              # (read by the stage scripts themselves; see docs/PARAMETERS.md).
+              _claims_cache="$WORKFLOW_OUTPUT_DIR/$_EVIDENCE_SUBDIR/${_split}_claims_cache.jsonl"
+              echo "[Distill] $_split: extract claims (mode=$_GEN_MODE)..."
+              python "$SCRIPT_DIR/generation/extract_claims.py" \
+                --evidence "$_ctx_json" --cache "$_claims_cache"
+              if [ "$_GEN_MODE" = "claims" ]; then
+                echo "[Distill] $_split: distil claims into slots..."
+                python "$SCRIPT_DIR/generation/distil_claims.py" \
+                  --evidence "$_ctx_json" --cache "$_claims_cache" --out "$_distilled"
+              else
+                echo "[Distill] $_split: cluster + summarize facets..."
+                python "$SCRIPT_DIR/generation/summarize_facets.py" \
+                  --evidence "$_ctx_json" --cache "$_claims_cache" \
+                  --out "$WORKFLOW_OUTPUT_DIR/$_EVIDENCE_SUBDIR/${_split}_facets_full.jsonl" \
+                  --summary-cache "$WORKFLOW_OUTPUT_DIR/$_EVIDENCE_SUBDIR/${_split}_facet_summaries.jsonl" \
+                  --emb-cache "$WORKFLOW_OUTPUT_DIR/$_EVIDENCE_SUBDIR/${_split}_claim_emb.npz"
+                echo "[Distill] $_split: select slots (slot-text hybrid RRF)..."
+                python "$SCRIPT_DIR/generation/select_contexts.py" \
+                  --full "$WORKFLOW_OUTPUT_DIR/$_EVIDENCE_SUBDIR/${_split}_facets_full.jsonl" \
+                  --out "$_distilled"
+              fi
+            else
+              echo "[Distill] $_split... (skip: output exists)"
+            fi
+            # Preflight: distilled slot files are prompt-heavy; warn before the model
+            # truncates silently (the fix is raising num_ctx, never cutting slots).
+            if [ -n "${GENERATION_NUM_CTX:-}" ]; then
+              python - "$_gen_input" "${GENERATION_NUM_CTX}" <<'DISTILL_PREFLIGHT'
+import json, sys
+path, num_ctx = sys.argv[1], int(sys.argv[2])
+worst = max((sum(len((c.get("text") or "").split()) for c in json.loads(l).get("contexts") or [])
+             for l in open(path) if l.strip()), default=0)
+est = int(worst * 1.4) + 800  # rough prompt tokens: words*1.4 + prompt scaffolding
+if est > num_ctx * 0.75:
+    print(f"[Distill] WARNING: largest slot set ~{est} prompt tokens vs GENERATION_NUM_CTX={num_ctx}; "
+          f"output may truncate -- raise GENERATION_NUM_CTX rather than cutting slots.")
+DISTILL_PREFLIGHT
+            fi
+          fi
           echo "[Generation] $_split..."
           GENERATION_ARGS=(
-            --input-path "$_ctx_json"
+            --input-path "$_gen_input"
             --output-dir "$WORKFLOW_OUTPUT_DIR/$_GEN_SUBDIR"
             --schemas-dir "$GENERATION_SCHEMAS_DIR"
           )
           [ -n "${GENERATION_CONCURRENCY:-}" ] && GENERATION_ARGS+=(--concurrency "$GENERATION_CONCURRENCY")
-          if [ "$_route" = "document" ]; then
+          if [ "$_GEN_MODE" != "direct" ]; then
+            # Distilled slot files carry the whole selected budget; the per-route defaults
+            # (8/10) would silently truncate them, so default high. Explicit env still wins.
+            _max_ctx="${GENERATION_MAX_CONTEXTS_DISTILLED:-${GENERATION_MAX_CONTEXTS:-100}}"
+          elif [ "$_route" = "document" ]; then
             _max_ctx="${GENERATION_MAX_CONTEXTS_DOCUMENT:-${GENERATION_MAX_CONTEXTS:-8}}"
           else
             _max_ctx="${GENERATION_MAX_CONTEXTS_SNIPPET:-${GENERATION_MAX_CONTEXTS:-10}}"
           fi
           [ -n "$_max_ctx" ] && GENERATION_ARGS+=(--max-contexts "$_max_ctx")
-          if [ "$_route" = "document" ]; then
+          if [ "$_GEN_MODE" != "direct" ]; then
+            _max_chars="${GENERATION_MAX_CHARS_PER_CONTEXT_DISTILLED:-${GENERATION_MAX_CHARS_PER_CONTEXT:-1800}}"
+          elif [ "$_route" = "document" ]; then
             _max_chars="${GENERATION_MAX_CHARS_PER_CONTEXT_DOCUMENT:-${GENERATION_MAX_CHARS_PER_CONTEXT:-1300}}"
           else
             _max_chars="${GENERATION_MAX_CHARS_PER_CONTEXT_SNIPPET:-${GENERATION_MAX_CHARS_PER_CONTEXT:-960}}"
@@ -1383,7 +1499,10 @@ _DOCS_JSONL_OK=0
             [ -n "${GENERATION_RESCUE_TIMEOUT:-}" ] && RESCUE_ARGS+=(--timeout "$GENERATION_RESCUE_TIMEOUT")
             [ -n "${GENERATION_RESCUE_RETRY_SLEEP:-}" ] && RESCUE_ARGS+=(--retry-sleep "$GENERATION_RESCUE_RETRY_SLEEP")
             [ -n "$_max_ctx" ] && RESCUE_ARGS+=(--max-contexts "$_max_ctx")
-            [ -n "${GENERATION_MAX_CHARS_PER_CONTEXT:-}" ] && RESCUE_ARGS+=(--max-chars-per-context "$GENERATION_MAX_CHARS_PER_CONTEXT")
+            # Input-preserving rescue: identical truncation caps to the main run, so a
+            # rescued answer is never generated from silently reduced evidence. (The rescue
+            # script's own standalone default is a shorter 1100 chars — never rely on it here.)
+            [ -n "$_max_chars" ] && RESCUE_ARGS+=(--max-chars-per-context "$_max_chars")
             python "$SCRIPT_DIR/generation/rescue_failed_generation.py" "${RESCUE_ARGS[@]}"
           fi
         fi

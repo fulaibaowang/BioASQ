@@ -76,7 +76,10 @@ def _find_repo_root() -> Path:
 
 REPO_ROOT = _find_repo_root()
 
-OLLAMA_URL = "https://chat.fri.uni-lj.si/ollama/api/generate"
+# Endpoint is env-overridable so a self-hosted ollama (e.g. a local SLURM GPU job at
+# http://127.0.0.1:11434/api/generate) can be used in place of the institutional API.
+# Default is unchanged, so behaviour is byte-identical when OLLAMA_URL is unset (cross-repo safe).
+OLLAMA_URL = os.getenv("OLLAMA_URL", "https://chat.fri.uni-lj.si/ollama/api/generate")
 OLLAMA_MODEL = "llama3.3:latest"
 
 MAX_LLM_RETRIES = 3
@@ -260,6 +263,29 @@ def openai_compat_enabled() -> bool:
     )
 
 
+def resolve_citation_granularity() -> str:
+    """Citation granularity for the emitted answers, from CITATION_GRANULARITY.
+
+    ``answer`` (default, and when unset/empty) — current behavior: one answer-level
+    ``evidence_ids`` list per question; output JSONL is byte-identical to the plain pipeline.
+    ``sentence`` — reserved for a future per-sentence citation route (segment ``ideal_answer``
+    and attribute each sentence to evidence ids); not implemented yet. Kept as a validated
+    config axis so downstream/submission serializers can branch and so setting it fails fast
+    rather than silently falling back to answer-level.
+    """
+    raw = (os.getenv("CITATION_GRANULARITY") or "").strip().lower()
+    if not raw or raw == "answer":
+        return "answer"
+    if raw == "sentence":
+        raise RuntimeError(
+            "CITATION_GRANULARITY=sentence is reserved but not implemented yet; "
+            "use answer (default). Per-sentence attribution is a planned post-hoc stage."
+        )
+    raise RuntimeError(
+        f"Unknown CITATION_GRANULARITY={raw!r}; use answer (default) or sentence (reserved)"
+    )
+
+
 def chat_completions_endpoint(gen_api_base: str) -> str:
     """Return full URL for POST .../chat/completions given GEN_API_BASE (e.g. https://openrouter.ai/api/v1)."""
     base = gen_api_base.strip().rstrip("/")
@@ -307,18 +333,36 @@ def call_llm_ollama(
     top_p: float = 1.0,
 ) -> str:
     prompt = f"[SYSTEM]\n{system_prompt}\n\n[USER]\n{user_prompt}"
+    options: Dict[str, Any] = {
+        "temperature": float(temperature),
+        "top_p": float(top_p),
+    }
+    # Optional context-window override. Ollama's server default num_ctx (e.g. 4096) silently
+    # TRUNCATES prompts that exceed it; set GENERATION_NUM_CTX to raise it per-request (e.g. on a
+    # self-host where long raw-evidence prompts must fit). Default unset -> server default, so
+    # behaviour is byte-identical when the env var is absent (cross-repo safe).
+    _num_ctx = (os.getenv("GENERATION_NUM_CTX") or "").strip()
+    if _num_ctx:
+        options["num_ctx"] = int(_num_ctx)
+    payload: Dict[str, Any] = {
+        "model": model,
+        "stream": False,
+        "prompt": prompt,
+        "options": options,
+    }
+    # Optional reasoning toggle for thinking-capable models (e.g. Gemma 4). Default unset -> key
+    # absent -> server/model default (no thinking), so behaviour is byte-identical when the env var
+    # is absent (cross-repo safe). When enabled, Ollama returns the trace in a separate "thinking"
+    # field and keeps "response" as the final answer, so JSON parsing is unaffected.
+    _think = (os.getenv("GENERATION_THINK") or "").strip().lower()
+    if _think in ("1", "true", "yes", "on"):
+        payload["think"] = True
+    elif _think in ("0", "false", "no", "off"):
+        payload["think"] = False
     r = requests.post(
         OLLAMA_URL,
         headers={"Authorization": f"Bearer {api_key}"},
-        json={
-            "model": model,
-            "stream": False,
-            "prompt": prompt,
-            "options": {
-                "temperature": float(temperature),
-                "top_p": float(top_p),
-            },
-        },
+        json=payload,
         timeout=timeout,
     )
     r.raise_for_status()
@@ -348,6 +392,11 @@ def call_llm_openai_compat(
     }
     if float(top_p) < 1.0:
         payload["top_p"] = float(top_p)
+    # Optional output cap: some providers (e.g. OpenRouter) apply a low default max_tokens
+    # that truncates long JSON answers mid-object. Set GENERATION_MAX_TOKENS to avoid this.
+    _max_tok = (os.getenv("GENERATION_MAX_TOKENS") or "").strip()
+    if _max_tok:
+        payload["max_tokens"] = int(_max_tok)
     r = requests.post(
         url,
         headers={
@@ -677,9 +726,11 @@ def main() -> int:
     )
     try:
         openai_compat = openai_compat_enabled()
+        citation_granularity = resolve_citation_granularity()
     except RuntimeError as e:
         logger.error("%s", e)
         return 1
+    logger.info("Citation granularity: %s", citation_granularity)
 
     if openai_compat:
         gen_base = (os.getenv("GEN_API_BASE") or "").strip()
@@ -857,7 +908,16 @@ def main() -> int:
                 logger.debug("Raw response (first 600 chars): %s", repr(raw[:600]))
             out["ideal_answer"] = None
             out["evidence_ids"] = []
-            out["error"] = str(last_error)
+            _err = str(last_error)
+            # Classify output truncation so the fix is actionable: an unterminated JSON object
+            # means the model ran out of output room — a config problem (context window /
+            # output cap), not a transient one. Retrying or shrinking the evidence hides it.
+            if "incomplete JSON object" in _err:
+                _err += (
+                    " [likely output truncation: raise GENERATION_NUM_CTX (ollama) or "
+                    "GENERATION_MAX_TOKENS (openai_compat); do not cut contexts]"
+                )
+            out["error"] = _err
             if qtype in ("yesno", "factoid", "list"):
                 out["exact_answer"] = None
         sanitize_generation_record(out)
@@ -868,14 +928,60 @@ def main() -> int:
     completed_count = 0
     use_tqdm = not args.no_progress and tqdm is not None and sys.stderr.isatty()
 
+    # Per-completion checkpoint so an interrupted run keeps its progress. The final answers
+    # file is written exactly as before (byte-identical), so this is cross-repo safe; the
+    # sidecar is removed on success. Disable with GENERATION_CHECKPOINT=0.
+    checkpoint_enabled = (os.getenv("GENERATION_CHECKPOINT", "1").strip().lower()
+                          not in ("0", "false", "no", "off"))
+    ckpt_path = json_path.parent / (json_path.name + ".partial")
+    ckpt_header = {
+        "input": str(args.input_path), "model": effective_model,
+        "backend": "openai_compat" if openai_compat else "ollama", "total": total,
+        "max_contexts": args.max_contexts, "max_chars_per_context": args.max_chars_per_context,
+    }
+    ckpt_fh = None
+    if checkpoint_enabled:
+        if ckpt_path.exists():
+            try:
+                with open(ckpt_path, "r", encoding="utf-8") as f:
+                    first = json.loads(f.readline() or "{}")
+                    if first.get("__checkpoint__") == ckpt_header:
+                        for line in f:
+                            line = line.strip()
+                            if not line:
+                                continue
+                            row = json.loads(line)
+                            rec = row.get("record")
+                            # reuse only clean completions; failed rows get regenerated
+                            if isinstance(rec, dict) and not rec.get("error"):
+                                results_by_idx[int(row["__idx__"])] = rec
+                        logger.info(
+                            "Resuming from checkpoint %s: %d completed record(s) reused",
+                            ckpt_path, len(results_by_idx),
+                        )
+                    else:
+                        logger.warning(
+                            "Checkpoint %s does not match this run (input/model/params changed); ignoring it",
+                            ckpt_path,
+                        )
+            except Exception as e:
+                logger.warning("Could not read checkpoint %s: %s; ignoring it", ckpt_path, e)
+        ckpt_fh = open(ckpt_path, "w", encoding="utf-8")
+        ckpt_fh.write(json.dumps({"__checkpoint__": ckpt_header}, ensure_ascii=False) + "\n")
+        for i, rec in sorted(results_by_idx.items()):
+            ckpt_fh.write(json.dumps({"__idx__": i, "record": rec}, ensure_ascii=False) + "\n")
+        ckpt_fh.flush()
+
     with ThreadPoolExecutor(max_workers=args.concurrency) as ex:
         futs = {
             ex.submit(process_one, idx, obj): (idx, obj)
             for idx, obj in enumerate(all_objs, start=1)
+            if idx not in results_by_idx
         }
+        completed_count = len(results_by_idx)
         completed = as_completed(futs)
         if use_tqdm:
-            completed = tqdm(completed, total=total, desc="Generation")
+            completed = tqdm(completed, total=total, initial=completed_count, desc="Generation")
         for fut in completed:
             idx, obj = futs[fut]
             try:
@@ -899,6 +1005,10 @@ def main() -> int:
                     rec["exact_answer"] = None
                 sanitize_generation_record(rec)
                 results_by_idx[idx] = rec
+            if ckpt_fh is not None:
+                ckpt_fh.write(json.dumps({"__idx__": idx, "record": results_by_idx[idx]},
+                                         ensure_ascii=False) + "\n")
+                ckpt_fh.flush()
             completed_count += 1
             if progress_every and (completed_count == 1 or completed_count % progress_every == 0 or completed_count == total):
                 logger.info("Generation progress: %d/%d", completed_count, total)
@@ -928,6 +1038,13 @@ def main() -> int:
             logger.warning("No result for index %d (id=%s); added record with error", i, question_qid(obj))
 
     write_questions_jsonl(json_path, records_out)
+
+    if ckpt_fh is not None:
+        ckpt_fh.close()
+        try:
+            ckpt_path.unlink()
+        except OSError:
+            pass
 
     logger.info("Wrote %d records to %s", len(records_out), json_path)
     return 0
