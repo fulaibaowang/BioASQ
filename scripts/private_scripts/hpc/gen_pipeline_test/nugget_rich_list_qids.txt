@@ -1,0 +1,26 @@
+# split	qid	n_nuggets	n_gold_docs	body
+13B3	67cf3b6381b1027333000024	23	14	Please list the active compounds that can be extracted from Sophora to
+13B1	67d43cd218b1e36f2e000011	17	29	Symptoms of polycystic ovarian syndrome.
+13B4	67d7ff2c18b1e36f2e000049	17	17	Manifestations of gluten allergy/intolerance.
+13B1	67d7201b18b1e36f2e00002c	16	17	Indications of cesarean section.
+13B1	67d7219018b1e36f2e000030	15	16	Causes of sudden deafness.
+13B1	67d81c7218b1e36f2e00004d	13	6	Characteristics of prion diseases.
+13B4	680a087218b1e36f2e00014f	13	38	What types of features are typically extracted in radiomics?
+13B2	67e2abdf18b1e36f2e000089	12	23	Complications of elective abortion.
+13B4	6805568118b1e36f2e000145	12	45	Please list the DORA type drugs
+13B4	67f8527318b1e36f2e000104	12	49	Please list the types of Videolaryngoscopy for adults undergoing trach
+13B4	67e2a8d618b1e36f2e000088	12	66	Which parasitic infections can cause anemia?
+13B1	67cc94f681b102733300000e	11	67	Please list diseases that can be treated with MSCs, Human Mesenchymal 
+13B2	67d1a0de81b102733300002a	11	3	Please list the complications associaated with Plastic Multilayer Clos
+13B4	680c174d353a4a2e6b000001	11	58	What are some common post-translational modifications of proteins?
+13B2	67e40a2418b1e36f2e0000a1	10	62	Infections caused by Klebsiella spp.
+13B4	6810c54b353a4a2e6b000011	10	27	Indications for Electro-convulsive therapy.
+13B1	67d7503018b1e36f2e00003e	9	26	What are the main transcription factors driving the mesenchymal-like (
+13B2	67e2c4b618b1e36f2e000095	9	44	Consequences of environmental exposure to lead poisoning.
+13B3	67fbe1a118b1e36f2e000112	9	48	Which mutations increase the risk for pancreatic cancer?
+13B1	67d6c1bb18b1e36f2e000029	8	17	Causes of infectious myocardiopathy.
+13B2	67e2b26318b1e36f2e00008c	8	26	Which biologic drugs are used in respiratory diseases?
+13B2	67eaf28f18b1e36f2e0000df	8	41	What are the key components of the glioblastoma tumor microenvironment
+13B4	67fbe10618b1e36f2e000111	8	15	Differential traits of autism spectrum disorders in girls.
+13B4	67e291a718b1e36f2e000081	8	29	Phobias affecting humans.
+13B4	67d7fded18b1e36f2e000042	8	6	Symptoms of chlamydia genital infection in women.

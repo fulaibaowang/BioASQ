@@ -1,0 +1,60 @@
+13B1	67d7503018b1e36f2e00003e	26	What are the main transcription factors driving the mesenchymal-like (MES-like) 
+13B1	67cddce881b102733300001c	34	Please list major complications of Clostridum Difficile infection.
+13B1	67d43cd218b1e36f2e000011	29	Symptoms of polycystic ovarian syndrome.
+13B1	67d9f6a418b1e36f2e000051	39	What are the lineage transcription factors of oligodendrocyte progenitor cells (
+13B1	660999a0fdcbea915f00001a	54	What are the colorectal surgical options for patients with Familial Polyposis?
+13B1	67d7201b18b1e36f2e00002c	17	Indications of cesarean section.
+13B1	67da148418b1e36f2e000054	25	What are the main transcriptional cell states found in melanoma?
+13B1	67cdbe0c81b1027333000019	25	Please list the 4 problems that are found in the tetrology of Fallot.
+13B1	67d6bf9a18b1e36f2e000023	30	Adverse effects of metformin.
+13B1	67d430f918b1e36f2e00000f	11	Adverse effects of statins.
+13B1	67cc9ca681b1027333000014	29	What are the treatments for endometrioma/endometriosis?
+13B1	67d6c1bb18b1e36f2e000029	17	Causes of infectious myocardiopathy.
+13B1	67cc94f681b102733300000e	67	Please list diseases that can be treated with MSCs, Human Mesenchymal Stem cells
+13B1	67d7219018b1e36f2e000030	16	Causes of sudden deafness.
+13B2	67e0533418b1e36f2e000069	56	Please list the symptoms of Chikungunya virus infection
+13B2	67e2abdf18b1e36f2e000089	23	Complications of elective abortion.
+13B2	67e6c4dd18b1e36f2e0000ca	30	What are features of the WHIM syndrome?
+13B2	67e85c4318b1e36f2e0000d9	43	The percutaneous thermal ablation techniques that aresuitable for the treatment 
+13B2	67decf2a18b1e36f2e00005c	43	What are the current interventions for congenital talipes equinovarus?
+13B2	67e2b26318b1e36f2e00008c	26	Which biologic drugs are used in respiratory diseases?
+13B2	67eb569718b1e36f2e0000e8	65	Which immune checkpoint proteins do tumors often exploit to evade immune respons
+13B2	67e6c6fa18b1e36f2e0000cb	21	What are features of Samter's Triad?
+13B2	67eaf28f18b1e36f2e0000df	41	What are the key components of the glioblastoma tumor microenvironment?
+13B2	67e40a2418b1e36f2e0000a1	62	Infections caused by Klebsiella spp.
+13B2	67e40e9418b1e36f2e0000a4	36	Diseases that are screened in the neonate with the heel prick test.
+13B2	67cf365781b1027333000023	32	What are the symptoms of Landau-Klettner syndrome?
+13B2	67e2c4b618b1e36f2e000095	44	Consequences of environmental exposure to lead poisoning.
+13B2	67eb7cf718b1e36f2e0000ef	54	What are some immunosuppressive cytokines secreted by tumors to induce the activ
+13B3	67f6f13618b1e36f2e0000ff	79	What transcription factors drive epithelial-to-mesenchymal transition (EMT)?
+13B3	67ed634018b1e36f2e0000fa	13	Which new measles vaccines are being investigated?
+13B3	67fbe1a118b1e36f2e000112	48	Which mutations increase the risk for pancreatic cancer?
+13B3	67e6b72818b1e36f2e0000bd	42	What is included in the VRd regiment for myeloma?
+13B3	67e56c7418b1e36f2e0000ae	54	What are targets of Tirzepatide?
+13B3	67fd73dd18b1e36f2e000140	61	What are some commonly used markers to identify exhausted T cells?
+13B3	67e5731918b1e36f2e0000b3	20	Which drugs are included in the epclusa pill?
+13B3	67f8f45518b1e36f2e000108	25	What proteins are measured in a blood test for Alzheimers disease?
+13B3	67fce38c18b1e36f2e000135	10	What are the glioblastoma stem cell (GSC) states identified through chromatin ac
+13B3	67cf3b6381b1027333000024	14	Please list the active compounds that can be extracted from Sophora tonkinensis
+13B3	67e3cf4318b1e36f2e0000a0	12	Causes of testicular torsion.
+13B3	67e6c8dd18b1e36f2e0000cc	19	What medications are included in the CAPIRI regimen?
+13B3	67eb701618b1e36f2e0000ea	59	How do tumors evade immune responses?
+13B3	67ed575b18b1e36f2e0000f7	29	What is the treatment for restless leg syndrome?
+13B4	67e5749b18b1e36f2e0000b5	53	What are the targets of blinatumomab?
+13B4	680a087218b1e36f2e00014f	38	What types of features are typically extracted in radiomics?
+13B4	6810daad353a4a2e6b000013	77	What diseases are treated with fecal transplants?
+13B4	67fbe10618b1e36f2e000111	15	Differential traits of autism spectrum disorders in girls.
+13B4	680fcb72353a4a2e6b00000e	21	What are the major classes of immunoglobulins?
+13B4	6805568118b1e36f2e000145	45	Please list the DORA type drugs
+13B4	67e2cfcf18b1e36f2e00009a	27	Recommended prevention of osteoporosis in postmenopausal women.
+13B4	67fbe21818b1e36f2e000113	33	Factors that are associated with thyroid cancer.
+13B4	67f8527318b1e36f2e000104	49	Please list the types of Videolaryngoscopy for adults undergoing tracheal intuba
+13B4	67d7ff2c18b1e36f2e000049	17	Manifestations of gluten allergy/intolerance.
+13B4	680bc74618b1e36f2e000155	48	What are some recent advances in cancer immunotherapy?
+13B4	67e291a718b1e36f2e000081	29	Phobias affecting humans.
+13B4	680c174d353a4a2e6b000001	58	What are some common post-translational modifications of proteins?
+13B4	67e2a8d618b1e36f2e000088	66	Which parasitic infections can cause anemia?
+13B4	680c137818b1e36f2e000158	19	What cancer hallmarks are characteristically promoted by tumor microenvironment 
+13B4	6810c54b353a4a2e6b000011	27	Indications for Electro-convulsive therapy.
+13B4	67eaf14c18b1e36f2e0000de	25	Which transcription factors are important to define human astrocyte identity?
+13B4	67cdb26a81b1027333000017	84	Please list the benefits of sodium-glucose cotransporter 2 inhibitors
