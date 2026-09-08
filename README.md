@@ -15,7 +15,25 @@ At a high level: **hybrid retrieval** (BM25 + RM3 and dense HNSW with fusion), *
 
 This repository accompanies our BioASQ Task 14b (2026) working note:
 
-> Yun Wang. *A Multistage Evidence Retrieval System for BioASQ Task 14b: Hybrid Retrieval, Reranking, and Snippet Selection.* CLEF 2026 Working Notes, BioASQ Lab.
+> Yun Wang. *A Multistage Evidence Retrieval System for BioASQ Task 14b: Hybrid Retrieval, Reranking, and Snippet Selection.* CLEF 2026 Working Notes, BioASQ Lab. \
+> **[[PDF]](https://clef-staging.pages.dev/paper49.pdf)** &nbsp;·&nbsp; LaTeX source: [`workingnotes/paper.tex`](workingnotes/paper.tex) &nbsp;·&nbsp; archived code: [release v0.1.0](https://github.com/fulaibaowang/BioASQ/releases/tag/v0.1.0)
+
+<sub>The link above points to the CLEF 2026 working-notes proceedings copy; the permanent CEUR-WS URL and volume number will replace it once the volume is published.</sub>
+
+```bibtex
+@inproceedings{wang2026bioasq14b,
+  author    = {Yun Wang},
+  title     = {A Multistage Evidence Retrieval System for {BioASQ} Task 14b:
+               Hybrid Retrieval, Reranking, and Snippet Selection},
+  booktitle = {Working Notes of CLEF 2026 -- Conference and Labs of the
+               Evaluation Forum},
+  series    = {CEUR Workshop Proceedings},
+  publisher = {CEUR-WS.org},
+  address   = {Jena, Germany},
+  year      = {2026},
+  url       = {https://clef-staging.pages.dev/paper49.pdf}
+}
+```
 
 ### Prompts and schemas
 
