@@ -56,7 +56,7 @@ Terrier indexing peaked at the full 96 GB it was given — do not go below that.
 
 | | Requested | Observed peak |
 |---|---|---|
-| GPU | 1 × A100 or L4 | fits in **24 GB**; the reranker is the largest resident model (568 M params, fp32) |
+| GPU | 1 × A100 or L4 | **5.0 GB VRAM** (the reranker; stages run sequentially) |
 | CPU | 16 cores | — |
 | **Host RAM** | 256 GB | **155–177 GB** |
 | Wall clock | 12 h limit | 1–4 h, see below |
@@ -65,6 +65,20 @@ Terrier indexing peaked at the full 96 GB it was given — do not go below that.
 **Host RAM, not GPU, is the binding constraint.** `retrieve_dense.py` loads *all* HNSW shards into
 RAM at once, so the 69 GB index plus Terrier, the candidate frames and the corpus scan land around
 170 GB. Skip the dense route and this collapses to a few GB.
+
+Peak VRAM per model stage, measured on an L4 at the batch sizes and `max_length` in the shipped
+configs (`torch.cuda.max_memory_allocated`, fp32, model resident + one forward pass):
+
+| Stage | Model | Batch / max_len | Peak VRAM |
+|---|---|---|---|
+| **Document rerank** | `BAAI/bge-reranker-v2-m3` (568 M) | 64 / 512 | **5.0 GB** |
+| Snippet dense | `BAAI/bge-m3` | 32 | 3.5 GB |
+| Snippet cross-encoder | `ncbi/MedCPT-Cross-Encoder` (109 M) | 64 / 512 | 1.2 GB |
+| Dense index / query encode | `abhinand/MedEmbed-small-v0.1` (33 M) | 128 | 0.7 GB |
+
+The stages run one at a time, so the pipeline's GPU high-water mark is the reranker's 5 GB — with
+the CUDA context, **an 8 GB card is enough**. Picking an A100 over an L4 buys wall time, not
+headroom (2.3× on the rerank step; see below). Lower `RERANK_MODEL_BATCH` if you need less still.
 
 ### Worked example: one 14b batch
 
