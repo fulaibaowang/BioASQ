@@ -31,90 +31,6 @@ All LLM prompts used by the pipeline are in the repository:
 
 Build the image, build indexes, and run the orchestrator with a config file: [docs/USAGE.md](docs/USAGE.md).
 
-## Estimated resource requirements
-
-Measured on the **Frida** HPC (SLURM + enroot, container `bioasq_08.03.26.sqfs`) against the
-**PubMed 2026 baseline — 39,958,371 abstracts**. Numbers scale with corpus size, `TOP_K`,
-`RERANK_CANDIDATE_LIMIT` and the generation backend.
-
-### One-time: corpus and indexes
-
-Built once, reused by every run.
-
-| Artifact | Disk | Resources | Wall time |
-|---|---|---|---|
-| Parsed corpus `jsonl_2026/` (1,334 shards) | **54 GB** (17 GB gzipped) | CPU only | a few hours, parallel per XML file |
-| BM25 / Terrier index (39.9 M docs, 6.5 M terms) | **14 GB** | 16 CPU, **96 GB RAM**, no GPU | **1 h 45 m** |
-| Dense HNSW, 10 shards à ~4.0 M docs (`MedEmbed-small-v0.1`, 384-dim, M=32, efC=200) | **69 GB** (6.9 GB/shard) | 1 GPU + 16 CPU + 256 GB RAM **per shard** | **3 h 52 m/shard** (A100-80GB) or **6 h 44 m/shard** (L4), run as a 10-way array |
-| Model weights (HF cache, default models) | ~3 GB | — | download once |
-| Container image (`.sqfs` / `.sif`) | 10 GB | — | — |
-
-**≈ 140 GB steady state** for corpus + both indexes; budget ~200 GB with the tarball and scratch.
-Terrier indexing peaked at the full 96 GB it was given — do not go below that.
-
-### Per run
-
-| | Requested | Observed peak |
-|---|---|---|
-| GPU | 1 × A100 or L4 | **5.0 GB VRAM** (the reranker; stages run sequentially) |
-| CPU | 16 cores | — |
-| **Host RAM** | 256 GB | **155–177 GB** |
-| Wall clock | 12 h limit | 1–4 h, see below |
-| Output per batch | — | 110–150 MB |
-
-**Host RAM, not GPU, is the binding constraint.** `retrieve_dense.py` loads *all* HNSW shards into
-RAM at once, so the 69 GB index plus Terrier, the candidate frames and the corpus scan land around
-170 GB. Skip the dense route and this collapses to a few GB.
-
-Peak VRAM per model stage, measured on an L4 at the batch sizes and `max_length` in the shipped
-configs (`torch.cuda.max_memory_allocated`, fp32, model resident + one forward pass):
-
-| Stage | Model | Batch / max_len | Peak VRAM |
-|---|---|---|---|
-| **Document rerank** | `BAAI/bge-reranker-v2-m3` (568 M) | 64 / 512 | **5.0 GB** |
-| Snippet dense | `BAAI/bge-m3` | 32 | 3.5 GB |
-| Snippet cross-encoder | `ncbi/MedCPT-Cross-Encoder` (109 M) | 64 / 512 | 1.2 GB |
-| Dense index / query encode | `abhinand/MedEmbed-small-v0.1` (33 M) | 128 | 0.7 GB |
-
-The stages run one at a time, so the pipeline's GPU high-water mark is the reranker's 5 GB — with
-the CUDA context, **an 8 GB card is enough**. Picking an A100 over an L4 buys wall time, not
-headroom (2.3× on the rerank step; see below). Lower `RERANK_MODEL_BATCH` if you need less still.
-
-### Worked example: one 14b batch
-
-Same config, same 80-question test set, only the GPU differs (`[timing]` lines in the job log):
-
-| Step | 80 q, **L4** | 80 q, **A100-40GB** | 60 q, A100 (no generation) |
-|---|---|---|---|
-| 1 BM25 + RM3 | 280 s | 308 s | 284 s |
-| 2 Dense HNSW (HyDE, 2 sub-runs) | 367 s | 454 s | 210 s |
-| 3 Retrieval fusion | 30 s | 62 s | 26 s |
-| **4 Cross-encoder rerank** | **8,521 s** | **3,727 s** | **2,907 s** |
-| 5 Post-rerank RRF | 3 s | 3 s | 2 s |
-| 6 Snippet window + CE rerank | 1,086 s | 708 s | 630 s |
-| 7 Snippet/doc fusion | 1 s | 0 s | 1 s |
-| Evidence build + generation | 4,930 s | 5,011 s | 635 s |
-| **Total** | **4 h 14 m** | **2 h 52 m** | **1 h 19 m** |
-
-- **Reranking dominates** and scales as `n_queries × RERANK_CANDIDATE_LIMIT` (60 q × 2,000 = 120 k
-  query–document pairs). An A100 is **2.3× faster** than an L4 here; halving the candidate limit
-  roughly halves the step.
-- **Evidence build costs ~4.5 min per route** almost regardless of question count — it is a linear
-  scan of the 54 GB corpus to pull a few hundred abstracts. Both routes ≈ 10 min.
-- **Generation is LLM-bound, not pipeline-bound**: `llama3.3:70b` on a self-hosted Ollama at
-  `concurrency=1` takes **20–23 s per question per route** (~45 min for 60 questions, both routes).
-  A vLLM backend on newer hardware brought the same step down to ~5 min. The GPU in the table is
-  idle during this step if the LLM is served elsewhere.
-
-### Running smaller
-
-| Goal | Change | Cost (MAP@10, mean over 5 splits) |
-|---|---|---|
-| Drop 69 GB disk and ~140 GB RAM | BM25 only: `STAGE1_SOURCE=bm25`, no dense index | **−0.014** (0.399 → 0.385) — the cheapest saving by far |
-| Halve wall clock | `RERANK_CANDIDATE_LIMIT=1000`, `TOP_K=1000` | some recall at deep cutoffs |
-| No GPU | `--no-rerank` | **−0.096** (0.399 → 0.303) |
-| Just try it | `example/` — toy PubMed XMLs + 50-question sample | runs on a laptop |
-
 ## Results
 
 Some results: [docs/RESULTS.md](docs/RESULTS.md).
@@ -123,3 +39,54 @@ Some results: [docs/RESULTS.md](docs/RESULTS.md).
 
 Container image and Python pins live only under the vendored [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts/tree/main) tree: [Dockerfile](scripts/public/shared_scripts/Dockerfile), [requirements-docker-pytorch.txt](scripts/public/shared_scripts/requirements-docker-pytorch.txt), [requirements-docker.txt](scripts/public/shared_scripts/requirements-docker.txt). Build from the repo root: `docker build -t bioasq-pipeline -f scripts/public/shared_scripts/Dockerfile scripts/public/shared_scripts` (see [docs/USAGE.md](docs/USAGE.md)).
 
+## Estimated resource requirements
+
+Measured on a SLURM cluster with one GPU per job, indexing the **PubMed 2026 baseline
+(39,958,371 abstracts)**. Treat them as a rough guide — everything scales with corpus size,
+`TOP_K`, `RERANK_CANDIDATE_LIMIT` and your generation backend.
+
+### Corpus and indexes (one-time)
+
+Parsing the PubMed baseline XML gives ~**54 GB** of JSONL. From that, the BM25 (Terrier) index is
+~**14 GB** and takes ~2 h on 16 CPU cores with 96 GB RAM, no GPU. The dense HNSW index
+(`MedEmbed-small-v0.1`, 384-dim) is ~**69 GB**, built as 10 shards of ~4 M documents at roughly
+4 h per shard on one A100-80GB — run them as a job array. Add ~10 GB for the container image and
+~3 GB for model weights.
+
+**Budget ~150 GB of disk**, built once and reused by every run.
+
+### Per run
+
+| | Typical request | Observed peak |
+|---|---|---|
+| GPU | 1 | ~5 GB VRAM (see below) |
+| CPU | 16 cores | — |
+| RAM | 256 GB | **155–177 GB** |
+| Wall clock | — | 1–4 h per batch |
+
+**RAM is the binding constraint, not the GPU** — dense retrieval holds all HNSW shards in memory at
+once. Running BM25-only (`STAGE1_SOURCE=bm25`) drops this to a few GB and costs ~0.014 MAP@10 after
+reranking, which is the cheapest saving available here.
+
+**VRAM depends on which reranker you choose.** The default `bge-reranker-v2-m3` peaks at ~5 GB at
+batch 64 / max_length 512, so an 8 GB card is enough for the whole pipeline; the snippet models are
+smaller. LLM-based rerankers are a different class — `bge-reranker-v2-gemma` alone is ~9.4 GB of
+fp32 weights before activations — so measure before switching, or lower `RERANK_MODEL_BATCH`.
+A faster GPU buys wall time, not headroom: an A100 reranks ~2.3× faster than an L4.
+
+### Worked example: one batch of 80 questions, both routes
+
+`TOP_K=5000`, `RERANK_CANDIDATE_LIMIT=2000`, one A100-40GB, generation on a self-hosted
+`llama3.3:70b`:
+
+| Stage | Time |
+|---|---|
+| BM25 + dense retrieval + fusion | ~14 min |
+| Cross-encoder rerank | ~62 min |
+| Snippet windows + rerank + fusion | ~12 min |
+| Evidence build + answer generation | ~84 min |
+| **Total** | **~2 h 50 m** |
+
+Reranking scales as `n_queries × RERANK_CANDIDATE_LIMIT`, so halving the candidate limit roughly
+halves that step. Generation is bound by the LLM backend, not the pipeline (~20 s per question per
+route here); a faster served backend cuts it to minutes. Output is ~150 MB per batch.
