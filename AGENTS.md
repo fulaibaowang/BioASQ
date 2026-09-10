@@ -21,44 +21,30 @@ So the first question for any change is **which side of the line it falls on**:
 | Task data, configs, results, notebooks | here | ours |
 
 **Read [RAG-scripts AGENTS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/AGENTS.md)
-before touching anything under that directory** — it is the pipeline's own operating manual (stage
-table, conventions, the stage-skipping gotcha, CI). Everything it says applies here unchanged,
-but the vendored copy is **frozen** (below), so check the vendored tree for what is actually
-present here rather than assuming upstream's current state.
+before touching anything under `shared_scripts/`** — conventions, the stage-skipping gotcha, CI.
+Everything it says applies here unchanged, but the vendored copy is **frozen** (below), so check
+the vendored tree for what is actually present rather than assuming upstream's current state.
 
 ### The subtree is frozen
 
-**This repo no longer tracks upstream.** The subtree was last synced on 2026-07-06 and is now held
-at that state: the working note and the 14b submissions were produced with this pipeline, and
-pulling would move the code out from under published results. RAG-scripts has continued to evolve
-(it now carries its own `AGENTS.md`, a public demo corpus, `STAGE1_SOURCE`, distillation modes) —
-read it for reference, but do not assume anything there exists here, and do not run
-`git subtree pull` as routine maintenance. Doing it deliberately, for a reason, is a different
-matter; say so in the commit message.
+Last synced 2026-07-06. Do not run `git subtree pull` as routine maintenance — it would move the
+code out from under published results. RAG-scripts `main` has moved on; read it for reference,
+don't assume `STAGE1_SOURCE`, distillation modes, or its current `AGENTS.md` exist here.
 
-Two rules survive the freeze, because the tree is still shared code:
-
-- **Fix it upstream unless the change is genuinely BioASQ-specific.** If it needs to know about
-  PMIDs, BioASQ question types, or the BioASQ wire format, it does not belong upstream at all —
-  write it under `scripts/public/{format,data,evidence,query_parsing}/` instead.
-- **Never delete or rename a config variable, an output path, or a JSONL field** because BioASQ
+- **Fix it upstream unless the change is genuinely BioASQ-specific.** PMIDs, question types, and
+  the BioASQ wire format belong under `scripts/public/{format,data,evidence,query_parsing}/`.
+- **Never delete or rename** a config variable, an output path, or a JSONL field because BioASQ
   stopped using it. Another consumer still does.
 
-**The published state is the `v0.1.0` tag** — the BioASQ 14b working-note submission. Its vendored
-subtree is byte-identical to RAG-scripts `v0.1.0` (both tree `0bf93ba`), so that pair of tags is
-what reproduces the paper. `main` has moved on since.
+**The published state is the `v0.1.0` tag.** Its vendored subtree is byte-identical to RAG-scripts
+`v0.1.0` (both tree `0bf93ba`). `main` has moved on since.
 
 ## The BioASQ boundary: adapt-in and adapt-out
 
-The pipeline reads and writes **JSONL only**, with `query_id` / `query_text` / `query_type` on the
-wire. Official BioASQ files are wrapped JSON (`{"questions": [...]}`) with `id` / `body` / `type`.
-Three adapters bridge that, and they are the whole of the task coupling:
-
-| Direction | Script | Turns |
-|---|---|---|
-| **in** | `scripts/public/format/bioasq_json_to_queries_jsonl.py` | `{"questions":[…]}` → one query object per line |
-| **out (answers)** | `scripts/public/format/queries_jsonl_to_bioasq_json.py` | `*_answers.jsonl` → `{"questions":[…]}` with `documents` URLs |
-| **out (Phase A evidence)** | `scripts/public/evidence/contexts_json_to_bioasq_snippets.py` | `*_contexts.jsonl` → `documents` + `snippets` with character offsets |
+The pipeline speaks JSONL (`query_id` / `query_text` / `query_type`). Official files are wrapped
+JSON (`{"questions":[…]}` with `id` / `body` / `type`). Three adapters are the whole of the task
+coupling — script list: [scripts/public/README.md](scripts/public/README.md). Commands:
+[docs/USAGE.md](docs/USAGE.md).
 
 ```bash
 python3 scripts/public/format/bioasq_json_to_queries_jsonl.py --input task.json --output queries.jsonl
@@ -68,9 +54,9 @@ python3 scripts/public/format/queries_jsonl_to_bioasq_json.py --input …_answer
 
 What to keep true when editing them:
 
-- **Adapt-in is lossless and additive.** `documents` and `snippets` (gold, when present) ride along
-  untouched so the pipeline can compute metrics; `query_parse` / `hyde` metadata rides along too.
-  Unknown fields pass through. Adding a field must not change what an existing consumer sees.
+- **Adapt-in is lossless and additive.** Gold `documents` / `snippets` ride along so the pipeline
+  can compute metrics; `query_parse` / `hyde` metadata too. Unknown fields pass through. Adding a
+  field must not change what an existing consumer sees.
 - **Adapt-out strips pipeline-only fields, it does not invent them.** `_PIPELINE_STRIP_KEYS` in
   `queries_jsonl_to_bioasq_json.py` is the list; `evidence_ids` is deliberately *kept* as
   provenance. Numeric doc ids become `http://www.ncbi.nlm.nih.gov/pubmed/<pmid>` URLs; non-numeric
@@ -79,25 +65,18 @@ What to keep true when editing them:
   in the snippet adapter — that is the BioASQ Phase A submission limit, not a display choice.
 - **Snippet offsets are computed against the corpus text, not the context text.** The snippet
   adapter re-reads the PubMed JSONL (`--corpus-path`) and aligns spans the same way snippet contexts
-  were built (NLTK sentence splits on the raw abstract). If you change window construction upstream,
-  this alignment is what breaks, and it breaks silently into `--allow-fallback-offsets` territory.
+  were built (NLTK sentence splits on the raw abstract). If you change window construction
+  upstream, this alignment is what breaks, and it breaks silently into `--allow-fallback-offsets`
+  territory.
 
 ## The corpus and the indexes
 
-`docno` **is the PMID** — the one place this repo leans on docid shape, and the reason adapt-out can
-build PubMed URLs. Upstream treats docids as opaque; keep that assumption out of `shared_scripts/`.
+`docno` **is the PMID** — the one place this repo leans on docid shape, and the reason adapt-out
+can build PubMed URLs. Upstream treats docids as opaque; keep that assumption out of
+`shared_scripts/`.
 
-The corpus is built once, then reused by every run:
-
-```
-PubMed baseline XML.gz  (ftp.ncbi.nlm.nih.gov/pubmed/baseline/)
-  → scripts/public/data/parse_pubmed_local.py           → JSONL shards
-      {docno, pmid, type, title, text, mesh_terms, keywords, is_deleted}
-  → shared_scripts/index/build_bm25_index_from_jsonl_shards.py        → Terrier index   (BM25_INDEX_PATH)
-  → shared_scripts/index/build_dense_hnsw_index_from_jsonl_shards.py  → HNSW index      (DENSE_INDEX_DIR / DENSE_INDEX_GLOB)
-```
-
-Facts worth having before you touch indexing (commands: [docs/USAGE.md](docs/USAGE.md)):
+Build commands: [docs/USAGE.md](docs/USAGE.md). Parse output schema:
+`{docno, pmid, type, title, text, mesh_terms, keywords, is_deleted}`.
 
 - **The same JSONL shards are the corpus at three points**: index build, reranker candidate text,
   and evidence/snippet construction (`DOCS_JSONL`). A shard set that disagrees with the index is a
@@ -107,98 +86,76 @@ Facts worth having before you touch indexing (commands: [docs/USAGE.md](docs/USA
 - **`scripts/public/data/migrate_jsonl_schema.py` exists because the shard schema changed once**
   (`abstract` → `text`, added `type`). It is idempotent and atomic per shard; run it rather than
   hand-editing old shards.
-- Full-PubMed indexing is a ~150 GB, ~6 h job — see the requirements table in
+- Full-PubMed indexing is a ~150 GB, ~6 h job — see
   [README.md](README.md#estimated-resource-requirements) before suggesting a rebuild.
 
 ## Running a batch
-
-One entrypoint, one config file:
 
 ```bash
 ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config /path/to/my_run.env
 ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --help    # authoritative flag list
 ```
 
-Start from [`bioasq_data/14b/workflow_config_14b_example.env`](bioasq_data/14b/workflow_config_14b_example.env)
-(BioASQ-shaped: both routes, PubMed paths, `GENERATION_SCHEMAS_DIR` pointed at this repo) or from the
-upstream templates in `scripts/public/shared_scripts/conf/`. Copy it to a private path — configs
-carry absolute paths and are not committed.
+Start from [`bioasq_data/14b/workflow_config_14b_example.env`](bioasq_data/14b/workflow_config_14b_example.env).
+Copy it to a private path — configs carry absolute paths and are not committed.
 
-BioASQ-specific settings that are easy to get wrong:
+Easy to get wrong:
 
-- **`GENERATION_SCHEMAS_DIR=$REPO_ROOT/scripts/public/prompts/schemas`.** Without it, generation
-  falls back to the upstream default prompts dir and every question gets the generic schema instead
-  of the per-type one. This is the single most common cause of "the answers came back in the wrong
-  shape".
+- **`GENERATION_SCHEMAS_DIR=$REPO_ROOT/scripts/public/prompts/schemas`.** Without it, every question
+  gets the generic schema. This is the usual cause of answers in the wrong shape.
 - **`HAVE_GROUND_TRUTH=0` for Phase A test sets.** Official test sets have no gold `documents`, so
-  metrics come back all zero and look like a broken run. Only golden-enriched and training data have
-  ground truth.
-- **`--dense-query-field query_text,query_text_hyde`** to use HyDE (see below). BM25 stays on
-  `query_text`; HyDE helps dense retrieval, not lexical.
+  metrics come back all zero and look like a broken run.
+- **`--dense-query-field query_text,query_text_hyde`** to use HyDE. BM25 stays on `query_text`.
 
-**A stage whose outputs already exist is skipped.** Editing a stage and re-running the same config
-changes nothing. Point `WORKFLOW_OUTPUT_DIR` somewhere new — it is the only reliable reset. (Full
-explanation, including the generation checkpoint sidecar, in the upstream AGENTS.md.)
+**A stage whose outputs already exist is skipped.** Point `WORKFLOW_OUTPUT_DIR` somewhere new.
+Full explanation: upstream AGENTS.md.
 
 ## Query parsing and HyDE (stage 0, BioASQ-only)
 
-`scripts/public/query_parsing/` adds fields to questions *before* adapt-in. One LLM pass normalizes
-the question and, **per question**, decides whether HyDE helps: it is switched off for
-numeric/measurement, exact-identifier and other narrow-target questions, where a hypothetical
-abstract pulls retrieval away from the answer. The decision is a `hyde_enabled` flag inside
-`query_parse`, and the prompt that makes it is [`query_parsing/prompt.md`](scripts/public/query_parsing/prompt.md)
-(background: [`MULTI_QUERY_HYDE.md`](scripts/public/query_parsing/MULTI_QUERY_HYDE.md)).
+`scripts/public/query_parsing/` runs *before* adapt-in. One LLM pass normalizes the question and
+sets a per-question `hyde_enabled` flag (off for numeric/measurement and exact-identifier targets).
+Prompt: [`query_parsing/prompt.md`](scripts/public/query_parsing/prompt.md).
 
-`prepare_query.py` turns `query_parse` into the `query_text_normalized` and `query_text_hyde` fields;
-adapt-in applies the same rules in-process when a question already carries a complete `query_parse`,
-so the two paths must stay in agreement — `bioasq_json_to_queries_jsonl.py` imports `prepare()`
-rather than reimplementing it. Keep it that way.
+`prepare_query.py` turns `query_parse` into `query_text_normalized` and `query_text_hyde`; adapt-in
+applies the same rules in-process when a question already carries a complete `query_parse`.
+`bioasq_json_to_queries_jsonl.py` imports `prepare()` — keep it that way.
 
 ## Answer schemas per question type
 
-BioASQ has four question types and each wants a different answer object. One file per type in
-`scripts/public/prompts/schemas/` — `factoid.txt`, `list.txt`, `yesno.txt`, `summary.txt`, plus
-`default.txt` as the fallback for a missing or unknown `query_type`. Generation resolves
-`<type>.txt` by name, so **adding a type is adding a file**, not changing code. `query_type` is
-optional on the wire; never write code that requires it.
+One file per type in `scripts/public/prompts/schemas/` (`factoid`, `list`, `yesno`, `summary`, plus
+`default` for a missing or unknown `query_type`). Generation resolves `<type>.txt` by name, so
+**adding a type is adding a file**, not changing code. `query_type` is optional on the wire; never
+write code that requires it.
 
 ## Verifying a change
 
 There is no unit test framework here. What exists:
 
 ```bash
-python3 -m compileall -q scripts/public/            # syntax
-./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh -h    # orchestrator parses
-python3 -m compileall -q notebooks/                 # notebooks are .py first (see below)
-```
-
-`.github/workflows/pipeline-smoke.yml` runs the first two on every push touching
-`scripts/public/shared_scripts/**`. It is deliberately light: no corpus, no index, no GPU.
-**The real pipeline CI is upstream** — RAG-scripts runs mock-LLM generation and end-to-end configs
-in Docker. A pipeline change belongs there, where it is actually tested.
-
-Round-tripping the adapters on a committed sample is the cheapest real check available here:
-
-```bash
+python3 -m compileall -q scripts/public/
+./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh -h
+python3 -m compileall -q notebooks/
 python3 scripts/public/format/bioasq_json_to_queries_jsonl.py \
   --input example/13b_golden_50q_sample.json --output /tmp/q.jsonl
 ```
 
-`example/` ships three question samples (`13b_golden_50q_sample.json`,
-`training14b_10pct_sample.json`, `training14b_3pct_sample.json`); everything else there is
-gitignored local scratch.
+`.github/workflows/pipeline-smoke.yml` runs the first two on pushes touching
+`scripts/public/shared_scripts/**` — no corpus, no GPU. **Pipeline CI is upstream.** A pipeline
+change belongs there.
+
+`example/` ships three question samples; everything else there is gitignored local scratch.
 
 ## Notebooks
 
 `jupytext` with `formats = "ipynb,py:percent"` (`pyproject.toml`). **The `.py` files are the source
-of truth**; `.ipynb` is generated. Edit the `.py`, then `jupytext --sync notebooks/<name>.py`. Never
-resolve a conflict by editing the `.ipynb`.
+of truth.** Edit the `.py`, then `jupytext --sync notebooks/<name>.py`. Never resolve a conflict by
+editing the `.ipynb`.
 
 ## Repo map
 
 | Path | Contents |
 |---|---|
-| `scripts/public/shared_scripts/` | **Subtree from RAG-scripts** — the pipeline. Its own AGENTS.md governs it |
+| `scripts/public/shared_scripts/` | **Subtree from RAG-scripts** — the pipeline |
 | `scripts/public/format/` | Adapt-in and adapt-out for the BioASQ JSON wire format |
 | `scripts/public/data/` | PubMed XML parsing, shard schema migration, PMID subsetting, question simplification |
 | `scripts/public/evidence/` | Contexts → BioASQ `documents` + `snippets` with offsets (Phase A) |
@@ -208,8 +165,8 @@ resolve a conflict by editing the `.ipynb`.
 | `example/` | Small committed question samples for local testing |
 | `docs/` | BioASQ-oriented runbook, results, task background |
 | `notebooks/` | Analysis and ablations (jupytext `.py` is source) |
-| `scripts/private_scripts/` | HPC/SLURM job scripts and configs — machine-specific, not runnable as-is |
-| `scripts/deprecated/` | Superseded experiments, kept for the record. **Do not build on these** |
+| `scripts/private_scripts/` | HPC/SLURM job scripts — machine-specific, not runnable as-is |
+| `scripts/deprecated/` | Superseded experiments. **Do not build on these** |
 
 ## Where the answers are
 
@@ -227,12 +184,11 @@ When `--help` and the docs disagree, `--help` is right — then fix the docs.
 
 ## What we know that the code doesn't say
 
-- **BM25 usually beats dense retrieval on BioASQ.** Biomedical questions are entity-heavy and the
-  lexical match is often exactly right. Fused (`rrf`) still beats either alone; don't propose
-  dropping BM25.
+- **BM25 usually beats dense retrieval on BioASQ.** Fused (`rrf`) still beats either alone; don't
+  propose dropping BM25.
 - **HyDE helps dense retrieval, selectively.** Hence the per-question `hyde_enabled` flag rather
   than a global switch.
-- **LLM query rewriting did not improve MAP** in the configurations tested — see
+- **LLM query rewriting did not improve MAP** in the configurations tested —
   `scripts/deprecated/query_rewrite_llm.py`. Treat it as answered, not unexplored.
 - **`bge-reranker-v2-m3` at `max_length=512` is the default reranker** because it measurably beat
   the MiniLM cross-encoder. Reranking, not first-stage retrieval, is where the gain is.
