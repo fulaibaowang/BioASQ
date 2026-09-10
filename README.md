@@ -104,16 +104,18 @@ One BioASQ 14b batch — 80 questions, both routes, on a single A100:
 | | |
 |---|---|
 | CPU | 16 cores |
-| RAM | ~170 GB peak |
+| RAM | ~80 GB |
 | GPU | ~5 GB VRAM |
 | Runtime | ~1.5 h retrieval and reranking, plus ~1.5 h generation |
 | Output | ~150 MB |
 
-**RAM is the constraint, not the GPU** — dense retrieval keeps the whole HNSW index in memory.
+**RAM is the constraint, not the GPU** — dense retrieval holds all ten HNSW shards (~70 GB) in
+memory at once.
 BM25-only retrieval needs a few GB instead and loses little accuracy once the reranker runs.
 
-**VRAM depends on the reranker.** The default `bge-reranker-v2-m3` needs ~5 GB, so an 8 GB card is
-enough; LLM-based rerankers such as `bge-reranker-v2-gemma` need far more.
+**VRAM depends on the reranker and its batch size.** The default `bge-reranker-v2-m3` needs ~5 GB at
+the shipped batch of 64, so an 8 GB card is enough; lower `RERANK_MODEL_BATCH` to fit a smaller one.
+LLM rerankers such as `bge-reranker-v2-gemma` (2.5 B params, fp16) need a larger card.
 
 **Generation time depends on the generator.** The ~1.5 h above is a self-hosted `llama3.3:70b`
 answering one question at a time; a batched OpenAI-compatible API takes minutes.
