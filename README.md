@@ -19,6 +19,11 @@ This repository accompanies our BioASQ Task 14b (2026) working note:
 > Yun Wang. *A Multistage Evidence Retrieval System for BioASQ Task 14b: Hybrid Retrieval, Reranking, and Snippet Selection.* CLEF 2026 Working Notes, BioASQ Lab. \
 > **[[PDF]](https://clef-staging.pages.dev/paper49.pdf)** &nbsp;·&nbsp; archived code: [release v0.1.0](https://github.com/fulaibaowang/BioASQ/releases/tag/v0.1.0)
 
+The submissions were produced at **`v0.1.0`**, whose vendored pipeline is identical to
+[RAG-scripts `v0.1.0`](https://github.com/fulaibaowang/RAG-scripts/releases/tag/v0.1.0) — that pair
+of tags is what reproduces the paper. The vendored copy under `scripts/public/shared_scripts/` is
+**frozen** at its 2026-07-06 state and no longer tracks upstream; RAG-scripts `main` has moved on.
+
 ### Prompts and schemas
 
 All LLM prompts used by the pipeline are in the repository:

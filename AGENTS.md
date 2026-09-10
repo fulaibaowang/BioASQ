@@ -22,22 +22,31 @@ So the first question for any change is **which side of the line it falls on**:
 
 **Read [RAG-scripts AGENTS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/AGENTS.md)
 before touching anything under that directory** — it is the pipeline's own operating manual (stage
-table, conventions, the stage-skipping gotcha, CI). Everything it says applies here unchanged.
-The vendored copy can lag upstream, so read it upstream and check the vendored tree for what is
-actually present here.
+table, conventions, the stage-skipping gotcha, CI). Everything it says applies here unchanged,
+but the vendored copy is **frozen** (below), so check the vendored tree for what is actually
+present here rather than assuming upstream's current state.
 
-### The subtree rule
+### The subtree is frozen
 
-`scripts/public/shared_scripts/` is not ours to edit casually. A commit there propagates upstream
-and from upstream into other consumers, so:
+**This repo no longer tracks upstream.** The subtree was last synced on 2026-07-06 and is now held
+at that state: the working note and the 14b submissions were produced with this pipeline, and
+pulling would move the code out from under published results. RAG-scripts has continued to evolve
+(it now carries its own `AGENTS.md`, a public demo corpus, `STAGE1_SOURCE`, distillation modes) —
+read it for reference, but do not assume anything there exists here, and do not run
+`git subtree pull` as routine maintenance. Doing it deliberately, for a reason, is a different
+matter; say so in the commit message.
+
+Two rules survive the freeze, because the tree is still shared code:
 
 - **Fix it upstream unless the change is genuinely BioASQ-specific.** If it needs to know about
   PMIDs, BioASQ question types, or the BioASQ wire format, it does not belong upstream at all —
   write it under `scripts/public/{format,data,evidence,query_parsing}/` instead.
 - **Never delete or rename a config variable, an output path, or a JSONL field** because BioASQ
   stopped using it. Another consumer still does.
-- Bring upstream changes down with
-  `git subtree pull --prefix scripts/public/shared_scripts sharedscripts main --squash`.
+
+**The published state is the `v0.1.0` tag** — the BioASQ 14b working-note submission. Its vendored
+subtree is byte-identical to RAG-scripts `v0.1.0` (both tree `0bf93ba`), so that pair of tags is
+what reproduces the paper. `main` has moved on since.
 
 ## The BioASQ boundary: adapt-in and adapt-out
 
