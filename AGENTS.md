@@ -20,26 +20,27 @@ So the first question for any change is **which side of the line it falls on**:
 | BioASQ JSON ⇄ pipeline JSONL, PubMed parsing, PMID handling, per-type schemas, HyDE query parsing | here | task-specific by definition |
 | Task data, configs, results, notebooks | here | ours |
 
-**Read [RAG-scripts AGENTS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/AGENTS.md)
-before touching anything under `shared_scripts/`** — conventions, the stage-skipping gotcha, CI.
-Everything it says applies here unchanged, but the vendored copy is **frozen** (below), so check
-the vendored tree for what is actually present rather than assuming upstream's current state.
-
-### The subtree is frozen
-
-Last synced 2026-07-06. Do not run `git subtree pull` as routine maintenance — it would move the
-code out from under published results. RAG-scripts `main` has moved on; read it for reference,
-don't assume `STAGE1_SOURCE`, distillation modes, or its current `AGENTS.md` exist here. Pulling
-deliberately, for a reason, is a different matter — say so in the commit message.
-
 - **Fix it upstream unless the change is genuinely BioASQ-specific.** PMIDs, question types, and
   the BioASQ wire format belong under `scripts/public/{format,data,evidence,query_parsing}/`.
 - **Never delete or rename** a config variable, an output path, or a JSONL field because BioASQ
   stopped using it. Another consumer still does.
 
-**The published state is the `v0.1.0` tag.** Its vendored subtree is byte-identical to RAG-scripts
-`v0.1.0` (both tree `0bf93ba`) — that pair of tags is what reproduces the working-note
-submissions. `main` has moved on since.
+**Read [RAG-scripts AGENTS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/AGENTS.md)
+before touching anything under `shared_scripts/`** — conventions, the stage-skipping gotcha, CI.
+It describes upstream `main`, though, and the vendored copy is frozen at an earlier state.
+
+### Which pipeline version
+
+- **`main` is frozen at the state used for the post-working-note analysis**: tree `2f479ef`
+  (RAG-scripts, 2026-07-08), the same pipeline as dictycite `v0.3.0`. Check with
+  `git rev-parse HEAD:scripts/public/shared_scripts`. RAG-scripts `main` has moved on since, so
+  check the vendored tree for what is present rather than assuming upstream's current state.
+- **The working-note submissions are tag `v0.1.0`.** Its vendored pipeline is byte-identical to
+  RAG-scripts `v0.1.0` (both tree `0bf93ba`) and predates `STAGE1_SOURCE` and the generation
+  checkpoint. Reproducing a submission means checking out that tag.
+- Don't run `git subtree pull` as routine maintenance — it would move the code out from under
+  published results. Pulling deliberately, for a reason, is a different matter — say so in the
+  commit message.
 
 ## The BioASQ boundary: adapt-in and adapt-out
 
@@ -93,11 +94,6 @@ Build commands: [docs/USAGE.md](docs/USAGE.md). Parse output schema:
   [README.md](README.md#estimated-resource-requirements) before suggesting a rebuild.
 
 ## Running a batch
-
-```bash
-./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config /path/to/my_run.env
-./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --help    # authoritative flag list
-```
 
 Start from [`bioasq_data/14b/workflow_config_14b_example.env`](bioasq_data/14b/workflow_config_14b_example.env).
 Copy it to a private path — configs carry absolute paths and are not committed.
@@ -182,14 +178,15 @@ editing the `.ipynb`.
 | Question | Source |
 |---|---|
 | What flags and env toggles exist? | `run_retrieval_rerank_pipeline.sh --help` |
-| What does a knob do, what range is sane? | [RAG-scripts docs/PARAMETERS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/docs/PARAMETERS.md) |
-| What does a run write, and where? | [RAG-scripts docs/output.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/docs/output.md) |
+| What does a knob do, what range is sane? | [vendored docs/PARAMETERS.md](scripts/public/shared_scripts/docs/PARAMETERS.md) |
+| What does a run write, and where? | [vendored docs/output.md](scripts/public/shared_scripts/docs/output.md) |
 | How do I change the pipeline? | [RAG-scripts AGENTS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/AGENTS.md) |
 | Docker, indexes, BioASQ paths, adapters | [docs/USAGE.md](docs/USAGE.md) |
 | What did we measure? | [docs/RESULTS.md](docs/RESULTS.md) |
 | What is the task, who won last year? | [docs/BioASQ.md](docs/BioASQ.md) |
 
-When `--help` and the docs disagree, `--help` is right — then fix the docs.
+When `--help` and the docs disagree, `--help` is right — fix BioASQ docs here, pipeline docs
+upstream.
 
 ## What we know that the code doesn't say
 

@@ -5,7 +5,9 @@ This repository supports **BioASQ Task 14b** (2026) **Phase A/A+**: a **RAG-styl
 **Where to read next**
 
 - [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts/blob/main/README.md) as backbone:
-  - there you can read **Pipeline overview and flowchart** as well as detailed commands and parameters setting
+  - there you can read the **Pipeline overview and flowchart**
+  - for commands and parameter settings, use the vendored copy's docs, which match the frozen code here:
+    [USAGE.md](scripts/public/shared_scripts/docs/USAGE.md) and [PARAMETERS.md](scripts/public/shared_scripts/docs/PARAMETERS.md)
 - **indexes, and BioASQ-oriented commands, e.g input and output conversion for BioASQ format** [docs/USAGE.md](docs/USAGE.md)
 - **changing anything in this repo (with or without a coding agent)** — repo map, the adapt-in/adapt-out contract, and what belongs upstream instead: [AGENTS.md](AGENTS.md)
 
@@ -21,8 +23,10 @@ This repository accompanies our BioASQ Task 14b (2026) working note:
 
 The submissions were produced at **`v0.1.0`**, whose vendored pipeline is identical to
 [RAG-scripts `v0.1.0`](https://github.com/fulaibaowang/RAG-scripts/releases/tag/v0.1.0) — that pair
-of tags is what reproduces the paper. The vendored copy under `scripts/public/shared_scripts/` is
-**frozen** at its 2026-07-06 state and no longer tracks upstream; RAG-scripts `main` has moved on.
+of tags is what reproduces the paper. On `main`, the vendored copy under
+`scripts/public/shared_scripts/` is **frozen** at its 2026-07-08 state, used for the analysis after
+the working note (the same pipeline as dictycite `v0.3.0`), and no longer tracks upstream;
+RAG-scripts `main` has moved on.
 
 ### Prompts and schemas
 
