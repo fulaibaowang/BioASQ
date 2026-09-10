@@ -1,8 +1,7 @@
 # AGENTS.md
 
-Orientation for coding agents working in this repository. Read by Cursor directly, and by Claude
-Code through the `@AGENTS.md` import in `CLAUDE.md`. Humans should start with [README.md](README.md)
-and [docs/USAGE.md](docs/USAGE.md); this file is the operating manual for *changing* things safely.
+How to *change* this repository safely. For running it, start with [README.md](README.md) and
+[docs/USAGE.md](docs/USAGE.md).
 
 ## What this is
 
