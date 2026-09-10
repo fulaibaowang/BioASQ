@@ -41,6 +41,53 @@ Build the image, build indexes, and run the orchestrator with a config file: [do
 
 Some results: [docs/RESULTS.md](docs/RESULTS.md).
 
+## Reproducing a 14b batch
+
+The questions, the configuration and the container are all here; **the corpus is the cost**. Once
+the PubMed indexes exist, a batch is one command.
+
+1. **Build the corpus and indexes** once — parse the PubMed baseline to JSONL, then build the BM25
+   and dense indexes ([docs/USAGE.md](docs/USAGE.md)). Budget ~150 GB and ~6 h, and note that
+   running a batch afterwards needs ~170 GB RAM (see [requirements](#estimated-resource-requirements)).
+2. **Copy the submitted configuration** and fill in your paths:
+   [`bioasq_data/14b/workflow_config_14b_submitted.env`](bioasq_data/14b/workflow_config_14b_submitted.env).
+   It is the system described in the working note — hybrid retrieval, `bge-reranker-v2-m3` rerank,
+   post-rerank fusion, and the snippet route. The four batches differ only in `INPUT_JSONL`.
+3. **Run it**, inside the container from [Environment](#environment):
+
+   ```bash
+   ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config /path/to/your_copy.env
+   ```
+
+4. **Convert the outputs** into BioASQ JSON. Documents and snippets (Phase A) come from the snippet
+   route's contexts; answers (Phase B) come from the generation output:
+
+   ```bash
+   python3 scripts/public/evidence/contexts_json_to_bioasq_snippets.py \
+     --contexts-jsonl $WORKFLOW_OUTPUT_DIR/evidence/evidence_snippet/*_contexts.jsonl \
+     --corpus-path "/path/to/pubmed_corpus/jsonl_shards/*.jsonl" \
+     --output-json phaseA_submission.json
+
+   python3 scripts/public/format/queries_jsonl_to_bioasq_json.py \
+     --input $WORKFLOW_OUTPUT_DIR/generation/generation_snippet/*_answers.jsonl \
+     --output phaseB_submission.json
+   ```
+
+**What will and will not match.** Retrieval and reranking reproduce closely but not bit-for-bit:
+nearest-neighbour ties break arbitrarily, and NCBI revises records between PubMed baselines, so a
+corpus built later is not the corpus we indexed. Generation reproduces less than that — answers came
+from a sampling LLM, and re-running an identical configuration flips individual answers. Expect
+metrics within noise of [docs/RESULTS.md](docs/RESULTS.md), not identical files.
+
+**Two things we did that you should not bother reproducing.** Alongside the system above we
+submitted variants that swapped the cross-encoder for the LLM reranker `bge-reranker-v2-gemma`, and
+that added a RankZephyr listwise reranking stage in a separate vLLM container. Neither is part of the
+working note's results, and the listwise stage was driven by an orchestrator version that is no
+longer vendored here — `RUN_LISTWISE=1` in an old config has no effect on the pipeline as it now
+stands, and `listwise_script/` is standalone tooling, not a pipeline stage. The LLM reranker is a
+supported option (`RERANK_MODEL=BAAI/bge-reranker-v2-gemma`, `RERANK_RERANKER_TYPE=llm`) but wants
+far more VRAM than the ~5 GB default. **Reproduce the cross-encoder system; leave listwise off.**
+
 ## Environment
 
 Container image and Python pins live only under the vendored [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts/tree/main) tree: [Dockerfile](scripts/public/shared_scripts/Dockerfile), [requirements-docker-pytorch.txt](scripts/public/shared_scripts/requirements-docker-pytorch.txt), [requirements-docker.txt](scripts/public/shared_scripts/requirements-docker.txt). Build from the repo root: `docker build -t bioasq-pipeline -f scripts/public/shared_scripts/Dockerfile scripts/public/shared_scripts` (see [docs/USAGE.md](docs/USAGE.md)).
