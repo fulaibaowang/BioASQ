@@ -19,6 +19,7 @@ runs_dense/
 .venv/
 report/
 bioasq14_output/
-CLAUDE.md
+AGENTS.local.md
+CLAUDE.local.md
 docs/pipeline_highlights.md
 workingnotes/camera_ready_checklist.md
