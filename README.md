@@ -49,10 +49,11 @@ the PubMed indexes exist, a batch is one command.
 1. **Build the corpus and indexes** once — parse the PubMed baseline to JSONL, then build the BM25
    and dense indexes ([docs/USAGE.md](docs/USAGE.md)). Budget ~150 GB and ~6 h, and note that
    running a batch afterwards needs ~170 GB RAM (see [requirements](#estimated-resource-requirements)).
-2. **Copy the submitted configuration** and fill in your paths:
-   [`bioasq_data/14b/workflow_config_14b_submitted.env`](bioasq_data/14b/workflow_config_14b_submitted.env).
-   It is the system described in the working note — hybrid retrieval, `bge-reranker-v2-m3` rerank,
-   post-rerank fusion, and the snippet route. The four batches differ only in `INPUT_JSONL`.
+2. **Copy the config for the system you want** from
+   [`bioasq_data/14b/conf/`](bioasq_data/14b/conf/) and fill in your paths. The files are named
+   after our submitted systems: `dictycite-baseline` (document route), `dictycite-snippet`
+   (snippet route), `dictycite-max` (snippet route with the 2.5 B LLM reranker), `dictycite-max-rew`
+   (the same, driven by normalized queries and HyDE).
 3. **Run it**, inside the container from [Environment](#environment):
 
    ```bash
@@ -73,32 +74,9 @@ the PubMed indexes exist, a batch is one command.
      --output phaseB_submission.json
    ```
 
-**What will and will not match.** Retrieval and reranking reproduce closely but not bit-for-bit:
-nearest-neighbour ties break arbitrarily, and NCBI revises records between PubMed baselines, so a
-corpus built later is not the corpus we indexed. Generation reproduces less than that — answers came
-from a sampling LLM, and re-running an identical configuration flips individual answers. Expect
-metrics within noise of [docs/RESULTS.md](docs/RESULTS.md), not identical files.
-
-**The listwise stage is not reproducible here.** Some of our submitted variants added a RankZephyr
-listwise reranker in a separate vLLM container. That stage was driven by an orchestrator version
-that is no longer vendored in this repo: `RUN_LISTWISE=1` in an old config has no effect on the
-pipeline as it now stands, and `listwise_script/` is standalone tooling rather than a wired-in
-stage. It is not part of the working note's results either, so nothing in the paper depends on it.
-Leave it off.
-
-**The LLM reranker, on the other hand, is worth your VRAM.** `BAAI/bge-reranker-v2-gemma` (2.5 B)
-gives the highest MAP at every cutoff we measured — see the reranker comparison in the working note
-— and it is a supported swap, not a fork:
-
-```bash
-RERANK_MODEL=BAAI/bge-reranker-v2-gemma
-RERANK_RERANKER_TYPE=llm
-RERANK_MODEL_BATCH=16          # we ran 64 with the cross-encoder
-```
-
-We ship `bge-reranker-v2-m3` as the default because it fits on an 8 GB card and is consistently
-second; the gemma reranker needs far more memory and time for a smaller additional gain. If you have
-the GPU, run it.
+Some of our submitted runs added a RankZephyr listwise reranking stage on top of the snippet route.
+It is not part of the working note's results and we do not recommend it, so none of the configs
+above enable it; `listwise_script/` holds the tooling if you want to try it anyway.
 
 ## Environment
 
