@@ -29,7 +29,8 @@ the vendored tree for what is actually present rather than assuming upstream's c
 
 Last synced 2026-07-06. Do not run `git subtree pull` as routine maintenance — it would move the
 code out from under published results. RAG-scripts `main` has moved on; read it for reference,
-don't assume `STAGE1_SOURCE`, distillation modes, or its current `AGENTS.md` exist here.
+don't assume `STAGE1_SOURCE`, distillation modes, or its current `AGENTS.md` exist here. Pulling
+deliberately, for a reason, is a different matter — say so in the commit message.
 
 - **Fix it upstream unless the change is genuinely BioASQ-specific.** PMIDs, question types, and
   the BioASQ wire format belong under `scripts/public/{format,data,evidence,query_parsing}/`.
@@ -37,7 +38,8 @@ don't assume `STAGE1_SOURCE`, distillation modes, or its current `AGENTS.md` exi
   stopped using it. Another consumer still does.
 
 **The published state is the `v0.1.0` tag.** Its vendored subtree is byte-identical to RAG-scripts
-`v0.1.0` (both tree `0bf93ba`). `main` has moved on since.
+`v0.1.0` (both tree `0bf93ba`) — that pair of tags is what reproduces the working-note
+submissions. `main` has moved on since.
 
 ## The BioASQ boundary: adapt-in and adapt-out
 
@@ -62,7 +64,8 @@ What to keep true when editing them:
   provenance. Numeric doc ids become `http://www.ncbi.nlm.nih.gov/pubmed/<pmid>` URLs; non-numeric
   ids pass through verbatim.
 - **The `documents` cap is 10 by default** (`--max-documents`, `0` for no limit) and `DOC_CAP = 10`
-  in the snippet adapter — that is the BioASQ Phase A submission limit, not a display choice.
+  in the snippet adapter (`scripts/public/evidence/contexts_json_to_bioasq_snippets.py`) — that is
+  the BioASQ Phase A submission limit, not a display choice.
 - **Snippet offsets are computed against the corpus text, not the context text.** The snippet
   adapter re-reads the PubMed JSONL (`--corpus-path`) and aligns spans the same way snippet contexts
   were built (NLTK sentence splits on the raw abstract). If you change window construction
@@ -101,24 +104,30 @@ Copy it to a private path — configs carry absolute paths and are not committed
 
 Easy to get wrong:
 
-- **`GENERATION_SCHEMAS_DIR=$REPO_ROOT/scripts/public/prompts/schemas`.** Without it, every question
-  gets the generic schema. This is the usual cause of answers in the wrong shape.
+- **`GENERATION_SCHEMAS_DIR=$REPO_ROOT/scripts/public/prompts/schemas`.** Without it, generation
+  falls back to upstream's default prompts and every question gets the generic schema. This is the
+  usual cause of answers in the wrong shape.
 - **`HAVE_GROUND_TRUTH=0` for Phase A test sets.** Official test sets have no gold `documents`, so
-  metrics come back all zero and look like a broken run.
+  metrics come back all zero and look like a broken run. Only golden-enriched and training data
+  have ground truth.
 - **`--dense-query-field query_text,query_text_hyde`** to use HyDE. BM25 stays on `query_text`.
 
 **A stage whose outputs already exist is skipped.** Point `WORKFLOW_OUTPUT_DIR` somewhere new.
-Full explanation: upstream AGENTS.md.
+Symptoms and the generation checkpoint sidecar:
+[RAG-scripts AGENTS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/AGENTS.md).
 
 ## Query parsing and HyDE (stage 0, BioASQ-only)
 
 `scripts/public/query_parsing/` runs *before* adapt-in. One LLM pass normalizes the question and
-sets a per-question `hyde_enabled` flag (off for numeric/measurement and exact-identifier targets).
-Prompt: [`query_parsing/prompt.md`](scripts/public/query_parsing/prompt.md).
+sets a per-question `hyde_enabled` flag — off for numeric/measurement, exact-identifier and other
+narrow-target questions, where a hypothetical abstract pulls retrieval away from the answer.
+Prompt: [`query_parsing/prompt.md`](scripts/public/query_parsing/prompt.md) (background:
+[`MULTI_QUERY_HYDE.md`](scripts/public/query_parsing/MULTI_QUERY_HYDE.md)).
 
 `prepare_query.py` turns `query_parse` into `query_text_normalized` and `query_text_hyde`; adapt-in
-applies the same rules in-process when a question already carries a complete `query_parse`.
-`bioasq_json_to_queries_jsonl.py` imports `prepare()` — keep it that way.
+applies the same rules in-process when a question already carries a complete `query_parse`, so the
+two paths must agree: `bioasq_json_to_queries_jsonl.py` imports `prepare()` rather than
+reimplementing it — keep it that way.
 
 ## Answer schemas per question type
 
@@ -184,8 +193,9 @@ When `--help` and the docs disagree, `--help` is right — then fix the docs.
 
 ## What we know that the code doesn't say
 
-- **BM25 usually beats dense retrieval on BioASQ.** Fused (`rrf`) still beats either alone; don't
-  propose dropping BM25.
+- **BM25 usually beats dense retrieval on BioASQ.** Biomedical questions are entity-heavy and the
+  lexical match is often exactly right. Fused (`rrf`) still beats either alone; don't propose
+  dropping BM25.
 - **HyDE helps dense retrieval, selectively.** Hence the per-question `hyde_enabled` flag rather
   than a global switch.
 - **LLM query rewriting did not improve MAP** in the configurations tested —
