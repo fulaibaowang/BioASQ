@@ -79,14 +79,26 @@ corpus built later is not the corpus we indexed. Generation reproduces less than
 from a sampling LLM, and re-running an identical configuration flips individual answers. Expect
 metrics within noise of [docs/RESULTS.md](docs/RESULTS.md), not identical files.
 
-**Two things we did that you should not bother reproducing.** Alongside the system above we
-submitted variants that swapped the cross-encoder for the LLM reranker `bge-reranker-v2-gemma`, and
-that added a RankZephyr listwise reranking stage in a separate vLLM container. Neither is part of the
-working note's results, and the listwise stage was driven by an orchestrator version that is no
-longer vendored here — `RUN_LISTWISE=1` in an old config has no effect on the pipeline as it now
-stands, and `listwise_script/` is standalone tooling, not a pipeline stage. The LLM reranker is a
-supported option (`RERANK_MODEL=BAAI/bge-reranker-v2-gemma`, `RERANK_RERANKER_TYPE=llm`) but wants
-far more VRAM than the ~5 GB default. **Reproduce the cross-encoder system; leave listwise off.**
+**The listwise stage is not reproducible here.** Some of our submitted variants added a RankZephyr
+listwise reranker in a separate vLLM container. That stage was driven by an orchestrator version
+that is no longer vendored in this repo: `RUN_LISTWISE=1` in an old config has no effect on the
+pipeline as it now stands, and `listwise_script/` is standalone tooling rather than a wired-in
+stage. It is not part of the working note's results either, so nothing in the paper depends on it.
+Leave it off.
+
+**The LLM reranker, on the other hand, is worth your VRAM.** `BAAI/bge-reranker-v2-gemma` (2.5 B)
+gives the highest MAP at every cutoff we measured — see the reranker comparison in the working note
+— and it is a supported swap, not a fork:
+
+```bash
+RERANK_MODEL=BAAI/bge-reranker-v2-gemma
+RERANK_RERANKER_TYPE=llm
+RERANK_MODEL_BATCH=16          # we ran 64 with the cross-encoder
+```
+
+We ship `bge-reranker-v2-m3` as the default because it fits on an 8 GB card and is consistently
+second; the gemma reranker needs far more memory and time for a smaller additional gain. If you have
+the GPU, run it.
 
 ## Environment
 
