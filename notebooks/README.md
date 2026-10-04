@@ -58,6 +58,7 @@ source of truth.
 | `analyze_workflow_results.py` | Workflow-runner results: MAP@10 (ours) vs `d_MAP` (official), per-stage stability. Supports `3pct` and `10pct`. | workflow output |
 | `workflow_baseline_full_run_report.py` | Plots for `output/workflow_baseline_full_run_both_routes/{bm25,dense,hybrid}` — GitHub issue #4. | workflow output |
 | `oneoff_llm_evidence_vs_map10.py` | One-off: BioASQ AP@10 for original `documents` order vs LLM `evidence_ids` reordering (cited PMIDs first). | one workflow split |
+| `oneoff_leaderboard_rouge_vs_manual.py` | One-off: does ROUGE track the manual score of ideal answers? Per-batch scatter + Spearman/Pearson, per system and one-per-team. Tables, figures and `correlations.csv` in `leaderboard_rouge_vs_manual/`. | public results pages (11b–14b Phase B) |
 
 ## Utilities
 

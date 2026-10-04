@@ -1,0 +1,277 @@
+dataset,batch,team,n_systems,picked_system,R-2 (F1),manual_mean
+14b_phaseB,1,MedQA,5,MedQA-1,0.3042,4.7425
+14b_phaseB,1,dmiip,5,dmiip2024_1,0.2623,4.6650
+14b_phaseB,1,EP,5,EP-2,0.2660,4.6625
+14b_phaseB,1,Bio26NIA,1,Bio26NIA,0.2991,4.6525
+14b_phaseB,1,Another,1,Another,0.1812,4.6400
+14b_phaseB,1,UR-IW,5,UR-IW-4,0.2461,4.6350
+14b_phaseB,1,pancras,2,pancras_naive,0.2079,4.6200
+14b_phaseB,1,Dif-C,1,Dif-C,0.2956,4.6000
+14b_phaseB,1,DMISTeam3,1,DMISTeam3,0.2571,4.5875
+14b_phaseB,1,DMIS_MES_TEST,5,DMIS_MES_TEST_1,0.2571,4.5875
+14b_phaseB,1,CS 1st submit,1,CS 1st submit,0.2556,4.5575
+14b_phaseB,1,CSA-IISR,5,CSA-IISR 1st,0.2556,4.5575
+14b_phaseB,1,IR_J/IR_Y,9,IR_J-3,0.1864,4.5375
+14b_phaseB,1,bioinfo,2,bioinfo-0,0.1861,4.4925
+14b_phaseB,1,config,2,config-1,0.1977,4.4750
+14b_phaseB,1,dictycite,1,dictycite-baseline,0.2434,4.4650
+14b_phaseB,1,Biomedical QA,4,Biomedical QA s.4,0.1621,4.4375
+14b_phaseB,1,WM Licensing Oracle,1,WM Licensing Oracle,0.1801,4.4150
+14b_phaseB,1,Organization name,1,Organization name,0.1973,4.4075
+14b_phaseB,1,RMC,2,RMC_2,0.2497,4.3975
+14b_phaseB,1,Fleming,1,Fleming-1,0.1769,4.3725
+14b_phaseB,1,asmalltrialsystem,1,asmalltrialsystem,0.2057,4.3500
+14b_phaseB,1,ossllm,1,ossllm,0.2057,4.3500
+14b_phaseB,1,porties-llama3-base,1,porties-llama3-base,0.1641,4.3100
+14b_phaseB,1,DSGT,1,DS@GT-BioASQ,0.1813,4.2125
+14b_phaseB,1,ubuntu,1,ubuntu,0.0671,3.4000
+14b_phaseB,1,health-nlp,5,h-nlp-autob-medcpt,0.0291,1.0225
+14b_phaseB,2,dictycite,2,dictycite-max-rew-sl,0.3039,4.7725
+14b_phaseB,2,Bio26NIA,1,Bio26NIA,0.3095,4.7550
+14b_phaseB,2,EP,5,EP-3,0.2696,4.7475
+14b_phaseB,2,dmiip,5,dmiip2024_3,0.2967,4.7275
+14b_phaseB,2,Another,1,Another,0.2908,4.7225
+14b_phaseB,2,Dif-C,1,Dif-C,0.2873,4.7150
+14b_phaseB,2,MedQA,5,MedQA-1,0.2993,4.7125
+14b_phaseB,2,bioinfo,5,bioinfo-2,0.2622,4.6975
+14b_phaseB,2,UR-IW,5,UR-IW-4,0.2313,4.6800
+14b_phaseB,2,pancras,2,pancras_naive,0.2074,4.6375
+14b_phaseB,2,13b,2,13b-1,0.2182,4.6350
+14b_phaseB,2,bm25 + splade,1,bm25 + splade,0.2844,4.6300
+14b_phaseB,2,CSA-IISR,5,CSA-IISR 2nd,0.2450,4.6200
+14b_phaseB,2,lean_rag,1,lean_rag,0.2615,4.5950
+14b_phaseB,2,IR_J/IR_Y,8,IR_J-3,0.1858,4.5875
+14b_phaseB,2,WM Licensing Oracle,1,WM Licensing Oracle,0.1945,4.5850
+14b_phaseB,2,RMC,2,RMC_2,0.2631,4.5450
+14b_phaseB,2,Biomedical QA,4,Biomedical QA system,0.1783,4.5400
+14b_phaseB,2,ossllm,1,ossllm,0.2220,4.4500
+14b_phaseB,2,Fleming,1,Fleming-1,0.1944,4.4200
+14b_phaseB,2,ubuntu,1,ubuntu,0.2257,4.3525
+14b_phaseB,2,Final/qwen,1,qwen,0.1712,4.1825
+14b_phaseB,2,mckpt,2,mckpt1,0.1907,4.1325
+14b_phaseB,2,Organization name,1,Organization name,0.1986,4.0975
+14b_phaseB,2,Hybrid Retrieval,1,Hybrid Retrieval,0.1408,3.9975
+14b_phaseB,2,LLM Biomedical QA,1,LLM Biomedical QA,0.0970,3.9925
+14b_phaseB,2,DSGT,2,DS@GT-BioASQ,0.1533,3.9450
+14b_phaseB,2,DMIS_MES_TEST,5,DMIS_MES_TEST_1,0.0755,1.6850
+14b_phaseB,2,health-nlp,4,health-nlp-4,0.0531,1.2625
+14b_phaseB,3,EP,5,EP-2,0.2410,4.8925
+14b_phaseB,3,dictycite,3,dictycite-max-rew-sl,0.3088,4.8825
+14b_phaseB,3,Another,1,Another,0.2935,4.8575
+14b_phaseB,3,Bio26NIA,1,Bio26NIA,0.2935,4.8575
+14b_phaseB,3,IR_J/IR_Y,8,IR_J-4,0.2852,4.8275
+14b_phaseB,3,UR-IW,5,UR-IW-4,0.2377,4.8225
+14b_phaseB,3,dmiip,5,dmiip2024_3,0.2862,4.8125
+14b_phaseB,3,MedQA,5,MedQA-3,0.2823,4.7950
+14b_phaseB,3,CSA-IISR,5,CSA-IISR 1st,0.2510,4.7900
+14b_phaseB,3,bioinfo,5,bioinfo-1,0.2410,4.7625
+14b_phaseB,3,Dif-C,1,Dif-C,0.2760,4.7525
+14b_phaseB,3,RMC,2,RMC_2,0.2861,4.7500
+14b_phaseB,3,lean_rag,3,lean_rag_ft,0.2676,4.7350
+14b_phaseB,3,pancras,2,pancras_naive,0.2001,4.7275
+14b_phaseB,3,DSGT,1,DS@GT-BioASQ,0.2364,4.6400
+14b_phaseB,3,multi-stage rank&llm,1,multi-stage rank&llm,0.2175,4.6175
+14b_phaseB,3,Fleming,1,Fleming-1,0.1772,4.5775
+14b_phaseB,3,llama for 14b b,1,llama for 14b b,0.2209,4.2475
+14b_phaseB,3,asmalltrialsystem,1,asmalltrialsystem,0.1128,4.2425
+14b_phaseB,3,Organization name,1,Organization name,0.1763,4.1525
+14b_phaseB,3,agentic graph,1,agentic graph,0.1125,3.8925
+14b_phaseB,3,DMIS_MES_TEST,5,DMIS_MES_TEST_1,0.1027,2.3425
+14b_phaseB,3,health-nlp,5,h-nlp-autob-medcpt,0.0362,1.2325
+14b_phaseB,3,Gen-Doc,1,Gen-Doc,0.0575,1.2250
+14b_phaseB,3,LLM Biomedical QA,1,LLM Biomedical QA,0.0577,1.2050
+14b_phaseB,4,NewM,1,NewM,0.2792,4.8525
+14b_phaseB,4,dictycite,3,dictycite-max-rew-sl,0.2901,4.8425
+14b_phaseB,4,EP,5,EP-1,0.2065,4.8275
+14b_phaseB,4,dmiip,5,dmiip2024_3,0.2835,4.8025
+14b_phaseB,4,Another,1,Another,0.2761,4.7925
+14b_phaseB,4,Dif-C,1,Dif-C,0.2786,4.7900
+14b_phaseB,4,EHM-9,1,EHM-9,0.2614,4.7750
+14b_phaseB,4,UR-IW,5,UR-IW-3,0.2117,4.7700
+14b_phaseB,4,IR_J/IR_Y,8,IR_Y-5,0.2656,4.7675
+14b_phaseB,4,bioinfo,5,bioinfo-2,0.2264,4.7575
+14b_phaseB,4,Bio26NIA,1,Bio26NIA,0.2759,4.7375
+14b_phaseB,4,N system,5,2 system,0.2172,4.7200
+14b_phaseB,4,lean_rag,2,lean_rag,0.2296,4.6725
+14b_phaseB,4,pancras,2,pancras_naive,0.1873,4.6675
+14b_phaseB,4,MedQA,5,MedQA-4,0.2009,4.6500
+14b_phaseB,4,multi-stage rank&llm,2,multi-stage rank&llm,0.1997,4.6275
+14b_phaseB,4,DSGT,2,DS@GT-BioASQ,0.2068,4.5950
+14b_phaseB,4,RMC,2,RMC_2,0.2555,4.5750
+14b_phaseB,4,Fleming,4,Fleming-1,0.1747,4.5450
+14b_phaseB,4,Final/qwen,2,Finalcorrected,0.1644,4.4575
+14b_phaseB,4,SATO,1,SATO,0.2039,4.0725
+14b_phaseB,4,agentic graph,1,agentic graph,0.1432,3.8900
+14b_phaseB,4,CSA-IISR,3,CSA-IISR 2nd,0.1563,3.1550
+14b_phaseB,4,DMIS_MES_TEST,5,DMIS_MES_TEST_1,0.1108,2.2575
+14b_phaseB,4,health-nlp,5,h-nlp-autob-medcpt,0.0297,1.0450
+14b_phaseB,4,LLM Biomedical QA,1,LLM Biomedical QA,0.0406,0.9875
+13b_phaseB,1,UR-IW,5,UR-IW-1,0.2290,4.4175
+13b_phaseB,1,EP,5,EP-4,0.2665,4.3975
+13b_phaseB,1,config,5,config-5,0.2303,4.3825
+13b_phaseB,1,dense,1,dense,0.2453,4.3625
+13b_phaseB,1,bioinfo,5,bioinfo-3,0.1991,4.3500
+13b_phaseB,1,Fleming,3,Fleming-1,0.2150,4.3475
+13b_phaseB,1,GPT,2,GPT4O,0.2196,4.3325
+13b_phaseB,1,IISR,5,IISR 2nd submit,0.2625,4.3275
+13b_phaseB,1,llama,1,llama,0.2459,4.3200
+13b_phaseB,1,bious,5,bious5,0.2440,4.3200
+13b_phaseB,1,deepseek,6,deepseek32b-f,0.1818,4.3175
+13b_phaseB,1,phaseB,2,phaseB-5,0.1877,4.3075
+13b_phaseB,1,mistral,2,Mistral7BIns10shots,0.2526,4.2875
+13b_phaseB,1,*_&_LLM,2,DB_vector_&_LLM,0.2068,4.2750
+13b_phaseB,1,dmiip,5,dmiip2024_3,0.2183,4.2375
+13b_phaseB,1,UniTor,4,UniTor_0,0.2209,4.1325
+13b_phaseB,1,using free 7b LLM,1,using free 7b LLM,0.2183,4.0475
+13b_phaseB,1,lasige,1,lasigeBioTM,0.1376,3.7025
+13b_phaseB,1,vllm agents,1,vllm agents,0.1061,3.5725
+13b_phaseB,1,MedQA,5,MedQA-3,0.0423,0.9175
+13b_phaseB,2,bious,5,bious4,0.2643,4.5550
+13b_phaseB,2,UR-IW,5,UR-IW-4,0.2059,4.5200
+13b_phaseB,2,config,5,config-4,0.2367,4.5175
+13b_phaseB,2,mistral,2,Mistral7BIns10shots,0.3122,4.4875
+13b_phaseB,2,GPT,3,GPT4turbo,0.3019,4.4875
+13b_phaseB,2,EP,5,EP-5,0.2851,4.4875
+13b_phaseB,2,phaseB,2,phaseB-5,0.2480,4.4800
+13b_phaseB,2,IISR,5,IISR first submit,0.2494,4.4650
+13b_phaseB,2,bioinfo,5,bioinfo-0,0.2144,4.4500
+13b_phaseB,2,Fleming,3,Fleming-3,0.2307,4.4425
+13b_phaseB,2,dmiip,5,dmiip2024_3,0.2458,4.4400
+13b_phaseB,2,deepseek,6,deepseek32b-f,0.1836,4.4375
+13b_phaseB,2,lasige,4,lasigeBioTM-ku-bl,0.2778,4.4250
+13b_phaseB,2,llama,1,llama,0.2160,4.4200
+13b_phaseB,2,UniTor,4,UniTor_0,0.2883,4.3500
+13b_phaseB,2,dense,1,dense,0.2422,4.3425
+13b_phaseB,2,MedQA,5,MedQA-1,0.0776,1.1650
+13b_phaseB,3,IISR,5,IISR 5th submit,0.2865,4.4700
+13b_phaseB,3,bioinfo,5,bioinfo-1,0.2020,4.4625
+13b_phaseB,3,llama,1,llama,0.1829,4.4525
+13b_phaseB,3,dense,1,dense,0.2542,4.4425
+13b_phaseB,3,UR-IW,5,UR-IW-2,0.1433,4.4375
+13b_phaseB,3,mistral,1,mistral,0.2272,4.4225
+13b_phaseB,3,EP,4,EP-2,0.2340,4.4000
+13b_phaseB,3,bious,5,bious5,0.2336,4.3975
+13b_phaseB,3,deepseek,6,deepseek32b-f,0.1783,4.3875
+13b_phaseB,3,GPT,1,GPT4O,0.2046,4.3800
+13b_phaseB,3,phaseB,2,phaseB-5,0.2049,4.3800
+13b_phaseB,3,lasige,4,lasigeBioTM-onto-bl,0.1945,4.3425
+13b_phaseB,3,dmiip,5,dmiip2024_1,0.2276,4.3150
+13b_phaseB,3,UniTor,4,UniTor_1,0.2576,4.2850
+13b_phaseB,3,Fleming,4,Fleming-1,0.1822,4.2825
+13b_phaseB,3,AQAMS2,1,AQAMS2,0.1996,4.1900
+13b_phaseB,3,RMC,2,"""RMC_1""",0.2526,3.6700
+13b_phaseB,3,MedQA,4,MedQA-2,0.0690,1.1175
+13b_phaseB,4,UR-IW,5,UR-IW-2,0.1301,4.3675
+13b_phaseB,4,deepseek,5,deepseek32b-f,0.1675,4.3425
+13b_phaseB,4,phaseB,2,phaseB-4,0.1596,4.3425
+13b_phaseB,4,mistral,2,mistral,0.1638,4.3100
+13b_phaseB,4,bioinfo,5,bioinfo-1,0.1765,4.2825
+13b_phaseB,4,llama,1,llama,0.2189,4.2800
+13b_phaseB,4,Fleming,5,Fleming-3,0.1184,4.2475
+13b_phaseB,4,*_&_LLM,1,DB_vector_&_LLM,0.1489,4.2450
+13b_phaseB,4,EP,5,EP-5,0.2028,4.2325
+13b_phaseB,4,IISR,5,IISR 3rd submit,0.1979,4.2150
+13b_phaseB,4,bious,5,bious3,0.2102,4.2075
+13b_phaseB,4,dense,1,dense,0.1814,4.1900
+13b_phaseB,4,RMC,2,"""RMC_1""",0.2314,4.1750
+13b_phaseB,4,dmiip,5,dmiip2024_1,0.2128,4.1750
+13b_phaseB,4,AQAMS2,1,AQAMS2,0.1720,4.1625
+13b_phaseB,4,GPT,5,GPT4turbo,0.2318,4.1600
+13b_phaseB,4,lasige,4,lasigeBioTM-onto-bl,0.1857,4.1600
+13b_phaseB,4,UniTor,4,UniTor_1,0.2045,4.1350
+13b_phaseB,4,Machinen Results,1,Machinen Results,0.1584,3.8050
+13b_phaseB,4,3.PhaseB_System,1,3.PhaseB_System,0.1734,3.7175
+13b_phaseB,4,edo,1,edo,0.1041,2.9500
+13b_phaseB,4,My system 1,1,My system 1,0.0401,1.1050
+13b_phaseB,4,MedQA,5,MedQA-2,0.0424,0.9025
+13b_phaseB,4,NLP-UTB4,1,NLP-UTB4,0.0164,0.6675
+12b_phaseB,1,IISR,5,IISR 2nd submit,0.2889,4.5975
+12b_phaseB,1,mibi_rag,2,mibi_rag_snippet,0.3016,4.5475
+12b_phaseB,1,RMC,2,"""RMC_1""",0.3360,4.5450
+12b_phaseB,1,dmiip,5,dmiip2024_3,0.2628,4.5200
+12b_phaseB,1,UR-IW,1,UR-IW-1,0.2745,4.4075
+12b_phaseB,1,Gatech,1,Gatech competition,0.2479,4.4025
+12b_phaseB,1,mistral,1,Mistral-7B finetune,0.3236,4.3475
+12b_phaseB,1,RAG for medicine,1,RAG for medicine,0.2008,4.3425
+12b_phaseB,1,Fleming,1,Fleming-1,0.1686,4.3200
+12b_phaseB,1,CPS,1,CPS,0.2860,4.2425
+12b_phaseB,1,bioinfo,5,bioinfo-0,0.1418,4.1800
+12b_phaseB,1,MedQA,1,MedQA-4,0.2549,4.0550
+12b_phaseB,1,LLM4SciLit,1,LLM4SciLit,0.0776,3.3675
+12b_phaseB,1,lasige,1,lasige-ku,0.0469,3.0175
+12b_phaseB,2,IISR,5,IISR 2nd submit,0.2278,4.6425
+12b_phaseB,2,UR-IW,5,UR-IW-1,0.2527,4.6400
+12b_phaseB,2,RMC,2,"""RMC_1""",0.2824,4.6250
+12b_phaseB,2,dmiip,5,dmiip2024_3,0.1908,4.5800
+12b_phaseB,2,mibi_rag,2,mibi_rag_snippet,0.2618,4.5650
+12b_phaseB,2,MedQA,5,MedQA-3,0.1959,4.4250
+12b_phaseB,2,bioinfo,5,bioinfo-1,0.1854,4.3725
+12b_phaseB,2,Gatech,2,GTBioASQsys2,0.1698,4.3650
+12b_phaseB,2,mistral,1,Mistral-7B finetune,0.2500,4.3475
+12b_phaseB,2,Fleming,1,Fleming-3,0.1659,4.3350
+12b_phaseB,2,CPS,2,CPS,0.2219,4.1950
+12b_phaseB,2,LLM4SciLit,1,LLM4SciLit,0.0634,3.3650
+12b_phaseB,2,lasige,1,lasige-ku,0.0547,3.2425
+12b_phaseB,3,IISR,5,IISR 4th submit,0.3165,4.6225
+12b_phaseB,3,mibi_rag,5,mibi_rag_snippet,0.3004,4.6175
+12b_phaseB,3,dmiip,5,dmiip2024_3,0.2640,4.6125
+12b_phaseB,3,UR-IW,4,UR-IW-4,0.3280,4.5525
+12b_phaseB,3,RMC,3,"""RMC_1""",0.3476,4.5275
+12b_phaseB,3,bioinfo,5,bioinfo-4,0.2109,4.4925
+12b_phaseB,3,Gatech,2,GTBioASQsys2,0.2380,4.3975
+12b_phaseB,3,Fleming,3,Fleming-3,0.2144,4.3950
+12b_phaseB,3,CPS,2,CPS2,0.2468,4.1775
+12b_phaseB,3,lasige,1,lasige-ku,0.0749,3.2875
+12b_phaseB,3,MedQA,5,MedQA-5,0.0409,0.8375
+12b_phaseB,4,UR-IW,5,UR-IW-1,0.2745,4.6550
+12b_phaseB,4,IISR,5,IISR 5th submit,0.3385,4.6150
+12b_phaseB,4,dmiip,5,dmiip2024,0.3214,4.5450
+12b_phaseB,4,RMC,4,"""RMC_1""",0.3290,4.5125
+12b_phaseB,4,mibi_rag,5,mibi_rag_abstract,0.3225,4.5050
+12b_phaseB,4,bioinfo,5,bioinfo-4,0.1839,4.4500
+12b_phaseB,4,Fleming,3,Fleming-1,0.2446,4.4450
+12b_phaseB,4,CPS,2,CPS,0.2646,4.1550
+12b_phaseB,4,Gatech,2,Gatech competition,0.1199,4.0625
+12b_phaseB,4,lasige,1,lasige-ku,0.0876,3.6300
+12b_phaseB,4,MedQA,4,MedQA-5,0.0435,0.8975
+11b_phaseB,1,IISR,3,IISR-2,0.3653,4.7525
+11b_phaseB,1,MQ,5,MQ-3,0.3980,4.6350
+11b_phaseB,1,bioinfo,1,bioinfo-0,0.2979,4.5800
+11b_phaseB,1,dmiip,5,dmiip1,0.3032,4.2575
+11b_phaseB,1,UR-IW,3,UR-IW-2,0.2136,4.2350
+11b_phaseB,1,BioASQ Baseline,2,BioASQ Baseline FS,0.2493,4.0350
+11b_phaseB,1,BART,1,BART,0.2001,3.6325
+11b_phaseB,1,Deep ML methods for,1,Deep ML methods for,0.1385,3.6300
+11b_phaseB,1,MedQA,3,MedQA-4,0.0700,1.0900
+11b_phaseB,2,IISR,3,IISR-2,0.3500,4.8125
+11b_phaseB,2,dmiip,5,dmiip5,0.3719,4.7250
+11b_phaseB,2,bioinfo,5,bioinfo-3,0.3376,4.6825
+11b_phaseB,2,MQ,5,MQ-2,0.2430,4.5475
+11b_phaseB,2,capstone,3,capstone-1,0.3288,4.3275
+11b_phaseB,2,UR-IW,2,UR-IW-2,0.2316,4.2750
+11b_phaseB,2,BioASQ Baseline,2,BioASQ Baseline FS,0.2425,3.6675
+11b_phaseB,2,MindLab,4,MindLab QA Reloaded,0.0798,3.3700
+11b_phaseB,2,Deep ML methods for,1,Deep ML methods for,0.0765,3.2525
+11b_phaseB,2,MedQA,3,MedQA-4,0.0813,0.9925
+11b_phaseB,3,IISR,3,IISR-2,0.3313,4.8375
+11b_phaseB,3,MQ,5,MQ-3,0.3636,4.7900
+11b_phaseB,3,dmiip,5,dmiip5,0.3525,4.7525
+11b_phaseB,3,UR-IW,4,UR-IW-2,0.2151,4.3725
+11b_phaseB,3,ELErank,1,ELErank,0.2491,4.3550
+11b_phaseB,3,bioinfo,3,bioinfo-2,0.1328,4.3275
+11b_phaseB,3,capstone,5,capstone-1,0.2807,4.3000
+11b_phaseB,3,BioASQ Baseline,2,BioASQ Baseline FS,0.1923,3.8825
+11b_phaseB,3,Deep ML methods for,1,Deep ML methods for,0.0957,3.2175
+11b_phaseB,3,MindLab,3,MindLab QA Reloaded,0.0767,3.1775
+11b_phaseB,3,MedQA,5,MedQA-1,0.1226,1.1800
+11b_phaseB,4,IISR,5,IISR-2,0.2882,4.8400
+11b_phaseB,4,MQ,5,MQ-1,0.3670,4.7575
+11b_phaseB,4,bioinfo,5,bioinfo-1,0.2247,4.6875
+11b_phaseB,4,dmiip,5,dmiip5,0.3075,4.5800
+11b_phaseB,4,UR-IW,4,UR-IW-2,0.2658,4.3800
+11b_phaseB,4,capstone,5,capstone-1,0.3339,4.3000
+11b_phaseB,4,ELErank,2,ELErank,0.2557,4.2500
+11b_phaseB,4,BioASQ Baseline,2,BioASQ Baseline FS,0.2236,3.6475
+11b_phaseB,4,MindLab,2,MindLab QA System,0.0967,3.1950
+11b_phaseB,4,Deep ML methods for,1,Deep ML methods for,0.0546,3.0625
+11b_phaseB,4,MedQA,5,MedQA-2,0.1106,1.1100
