@@ -182,6 +182,7 @@ editing the `.ipynb`.
 | What does a run write, and where? | [vendored docs/output.md](scripts/public/shared_scripts/docs/output.md) |
 | How do I change the pipeline? | [RAG-scripts AGENTS.md](https://github.com/fulaibaowang/RAG-scripts/blob/main/AGENTS.md) |
 | Docker, indexes, BioASQ paths, adapters | [docs/USAGE.md](docs/USAGE.md) |
+| Running against an existing PubMed corpus and indexes | [docs/REUSE.md](docs/REUSE.md) |
 | What did we measure? | [docs/RESULTS.md](docs/RESULTS.md) |
 | What is the task, who won last year? | [docs/BioASQ.md](docs/BioASQ.md) |
 
