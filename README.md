@@ -18,8 +18,24 @@ At a high level: **hybrid retrieval** (BM25 + RM3 and dense HNSW with fusion), *
 
 This repository accompanies our BioASQ Task 14b (2026) working note:
 
-> Yun Wang. *A Multistage Evidence Retrieval System for BioASQ Task 14b: Hybrid Retrieval, Reranking, and Snippet Selection.* CLEF 2026 Working Notes, BioASQ Lab. \
-> **[[PDF]](https://clef-staging.pages.dev/paper49.pdf)** &nbsp;·&nbsp; **[[Poster]](docs/poster.pdf)** &nbsp;·&nbsp; archived code: [release v0.1.0](https://github.com/fulaibaowang/BioASQ/releases/tag/v0.1.0)
+> Yun Wang. *A Multistage Evidence Retrieval System for BioASQ Task 14b: Hybrid Retrieval, Reranking, and Snippet Selection.* CLEF 2026 Working Notes, BioASQ Lab, CEUR-WS Vol-4283, pp. 778–793. \
+> **[[PDF]](https://ceur-ws.org/Vol-4283/paper49.pdf)** &nbsp;·&nbsp; **[[Poster]](docs/poster.pdf)** &nbsp;·&nbsp; archived code: [release v0.1.0](https://github.com/fulaibaowang/BioASQ/releases/tag/v0.1.0)
+
+```bibtex
+@inproceedings{wang2026bioasq14b,
+  author    = {Yun Wang},
+  title     = {A Multistage Evidence Retrieval System for {BioASQ} Task 14b: Hybrid Retrieval, Reranking, and Snippet Selection},
+  booktitle = {Working Notes of the Conference and Labs of the Evaluation Forum (CLEF 2026)},
+  editor    = {Eva S{\'a}nchez Salido and Alberto Barr{\'o}n-Cede{\~n}o and Alba Garc{\'{\i}}a Seco de Herrera and Sean MacAvaney and Julia Maria Stru{\ss}},
+  series    = {CEUR Workshop Proceedings},
+  volume    = {4283},
+  pages     = {778--793},
+  publisher = {CEUR-WS.org},
+  address   = {Jena, Germany},
+  year      = {2026},
+  url       = {https://ceur-ws.org/Vol-4283/paper49.pdf}
+}
+```
 
 The submissions were produced at **`v0.1.0`**, whose vendored pipeline is identical to
 [RAG-scripts `v0.1.0`](https://github.com/fulaibaowang/RAG-scripts/releases/tag/v0.1.0) — that pair
