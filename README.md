@@ -1,65 +1,39 @@
 # BioASQ 14b (2026): retrieval, reranking, and generation
 
-This repository supports **BioASQ Task 14b** (2026) **Phase A/A+**: a **RAG-style** stack that retrieves biomedical literature, reranks with a cross-encoder and optionally snippet windows, and generates answers from evidence.
+Our system for **BioASQ Task 14b** (2026), Phases A and A+: **hybrid retrieval** (BM25 + RM3 and dense
+HNSW, fused), **cross-encoder reranking**, an optional **snippet ranking** branch, and **LLM
+generation** with one prompt schema per `query_type` (factoid, list, yesno, summary).
 
-**Where to read next**
-
-- [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts/blob/main/README.md) as backbone:
-  - there you can read the **Pipeline overview and flowchart**
-  - for commands and parameter settings, use the vendored copy's docs, which match the frozen code here:
-    [USAGE.md](scripts/public/shared_scripts/docs/USAGE.md) and [PARAMETERS.md](scripts/public/shared_scripts/docs/PARAMETERS.md)
-- **indexes, and BioASQ-oriented commands, e.g input and output conversion for BioASQ format** [docs/USAGE.md](docs/USAGE.md)
-- **changing anything in this repo (with or without a coding agent)** — repo map, the adapt-in/adapt-out contract, and what belongs upstream instead: [AGENTS.md](AGENTS.md)
-
-
-At a high level: **hybrid retrieval** (BM25 + RM3 and dense HNSW with fusion), **document reranking** and post-rerank fusion, an **optional snippet ranking and snippet-document-fusion** branch for snippet-style evidence, and **LLM generation** with **different prompts per `query_type`** (factoid, list, yesno, summary). 
+The pipeline itself is [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts), vendored under
+`scripts/public/shared_scripts/`. This repo adds the BioASQ side: the PubMed corpus, the adapters to
+and from the BioASQ JSON format, the per-type answer schemas, and the task data.
 
 ## Paper
-
-This repository accompanies our BioASQ Task 14b (2026) working note:
 
 > Yun Wang. *A Multistage Evidence Retrieval System for BioASQ Task 14b: Hybrid Retrieval, Reranking, and Snippet Selection.* CLEF 2026 Working Notes, BioASQ Lab, CEUR-WS Vol-4283, pp. 778–793. \
 > **[[PDF]](https://ceur-ws.org/Vol-4283/paper49.pdf)** &nbsp;·&nbsp; **[[Poster]](docs/poster.pdf)** &nbsp;·&nbsp; archived code: [release v0.1.0](https://github.com/fulaibaowang/BioASQ/releases/tag/v0.1.0)
 
-```bibtex
-@inproceedings{wang2026bioasq14b,
-  author    = {Yun Wang},
-  title     = {A Multistage Evidence Retrieval System for {BioASQ} Task 14b: Hybrid Retrieval, Reranking, and Snippet Selection},
-  booktitle = {Working Notes of the Conference and Labs of the Evaluation Forum (CLEF 2026)},
-  editor    = {Eva S{\'a}nchez Salido and Alberto Barr{\'o}n-Cede{\~n}o and Alba Garc{\'{\i}}a Seco de Herrera and Sean MacAvaney and Julia Maria Stru{\ss}},
-  series    = {CEUR Workshop Proceedings},
-  volume    = {4283},
-  pages     = {778--793},
-  publisher = {CEUR-WS.org},
-  address   = {Jena, Germany},
-  year      = {2026},
-  url       = {https://ceur-ws.org/Vol-4283/paper49.pdf}
-}
-```
+The submissions were produced at tag **`v0.1.0`** (pipeline identical to
+[RAG-scripts `v0.1.0`](https://github.com/fulaibaowang/RAG-scripts/releases/tag/v0.1.0)). On `main`,
+the vendored pipeline is frozen at its 2026-07-08 state, used for the post-paper analysis; upstream
+has moved on. BibTeX: [Citation](#citation).
 
-The submissions were produced at **`v0.1.0`**, whose vendored pipeline is identical to
-[RAG-scripts `v0.1.0`](https://github.com/fulaibaowang/RAG-scripts/releases/tag/v0.1.0) — that pair
-of tags is what reproduces the paper. On `main`, the vendored copy under
-`scripts/public/shared_scripts/` is **frozen** at its 2026-07-08 state, used for the analysis after
-the working note (the same pipeline as dictycite `v0.3.0`), and no longer tracks upstream;
-RAG-scripts `main` has moved on.
+## Documentation
 
-### Prompts and schemas
+| | |
+|---|---|
+| Docker image, building indexes, BioASQ format conversion | [docs/USAGE.md](docs/USAGE.md) |
+| Running against existing PubMed indexes | [docs/REUSE.md](docs/REUSE.md) |
+| Results | [docs/RESULTS.md](docs/RESULTS.md) |
+| Pipeline commands and parameters (vendored, matches the frozen code) | [USAGE.md](scripts/public/shared_scripts/docs/USAGE.md), [PARAMETERS.md](scripts/public/shared_scripts/docs/PARAMETERS.md) |
+| Pipeline overview and flowchart | [RAG-scripts README](https://github.com/fulaibaowang/RAG-scripts/blob/main/README.md) |
+| Changing this repo (repo map, adapter contract, what belongs upstream) | [AGENTS.md](AGENTS.md) |
 
-All LLM prompts used by the pipeline are in the repository:
+### Prompts
 
-- **Query parsing, normalization, and the per-question HyDE decision/generation** — [`scripts/public/query_parsing/prompt.md`](scripts/public/query_parsing/prompt.md) (background: [`MULTI_QUERY_HYDE.md`](scripts/public/query_parsing/MULTI_QUERY_HYDE.md)). This step sets a per-question `hyde_enabled` flag and disables HyDE for numeric/measurement, exact-identifier, and other highly specific-target questions.
-- **Answer generation** — [`scripts/public/shared_scripts/prompts/system.txt`](scripts/public/shared_scripts/prompts/system.txt) and [`scripts/public/shared_scripts/prompts/user_base.txt`](scripts/public/shared_scripts/prompts/user_base.txt).
-- **Per-`query_type` answer schemas** — [`scripts/public/prompts/schemas/`](scripts/public/prompts/schemas/) (`factoid`, `list`, `yesno`, `summary`, `default`).
+- **Query parsing, normalization, per-question HyDE** — [`scripts/public/query_parsing/prompt.md`](scripts/public/query_parsing/prompt.md) (background: [`MULTI_QUERY_HYDE.md`](scripts/public/query_parsing/MULTI_QUERY_HYDE.md)). HyDE is disabled for numeric/measurement, exact-identifier, and other narrow-target questions.
+- **Answer generation** — [`system.txt`](scripts/public/shared_scripts/prompts/system.txt) and [`user_base.txt`](scripts/public/shared_scripts/prompts/user_base.txt), plus the per-`query_type` schemas in [`scripts/public/prompts/schemas/`](scripts/public/prompts/schemas/).
 - **Query-rewriting ablation (Variants A/B)** — [`notebooks/archive/oneoff_query_rewrite_llm.py`](notebooks/archive/oneoff_query_rewrite_llm.py).
-
-## Usage (Docker)
-
-Build the image, build indexes, and run the orchestrator with a config file: [docs/USAGE.md](docs/USAGE.md).
-
-## Results
-
-Some results: [docs/RESULTS.md](docs/RESULTS.md).
 
 ## Reproducing a 14b batch
 
@@ -67,21 +41,26 @@ The questions, the configuration and the container are all here; **the corpus is
 the PubMed indexes exist, a batch is one command.
 
 1. **Build the corpus and indexes** once — parse the PubMed baseline to JSONL, then build the BM25
-   and dense indexes ([docs/USAGE.md](docs/USAGE.md)). Budget ~150 GB and ~6 h, and note that
-   running a batch afterwards needs ~170 GB RAM (see [requirements](#estimated-resource-requirements)).
-2. **Copy the config for the system you want** from
-   [`bioasq_data/14b/conf/`](bioasq_data/14b/conf/) and fill in your paths. The files are named
-   after our submitted systems: `dictycite-baseline` (document route), `dictycite-snippet`
-   (snippet route), `dictycite-max` (snippet route with the 2.5 B LLM reranker), `dictycite-max-rew`
-   (the same, driven by normalized queries and HyDE).
-3. **Run it**, inside the container from [Environment](#environment):
+   and dense indexes ([docs/USAGE.md](docs/USAGE.md)). Budget ~150 GB disk and ~6 h; a batch then
+   needs ~80 GB RAM ([requirements](#estimated-resource-requirements)).
+2. **Build the container**:
+
+   ```bash
+   docker build -t bioasq-pipeline -f scripts/public/shared_scripts/Dockerfile scripts/public/shared_scripts
+   ```
+
+3. **Copy the config for the system you want** from
+   [`bioasq_data/14b/conf/`](bioasq_data/14b/conf/) and fill in your paths. Files are named after
+   our submitted systems: `*-baseline` (document route), `*-snippet` (snippet route), `*-max`
+   (snippet route with the 2.5 B LLM reranker), `*-max-rew` (the same, with normalized queries and HyDE).
+4. **Run it** inside the container:
 
    ```bash
    ./scripts/public/shared_scripts/run_retrieval_rerank_pipeline.sh --config /path/to/your_copy.env
    ```
 
-4. **Convert the outputs** into BioASQ JSON. Documents and snippets (Phase A) come from the snippet
-   route's contexts; answers (Phase B) come from the generation output:
+5. **Convert the outputs** into BioASQ JSON. Documents and snippets (Phase A) come from the snippet
+   route's contexts; answers (Phase B) from the generation output:
 
    ```bash
    python3 scripts/public/evidence/contexts_json_to_bioasq_snippets.py \
@@ -94,13 +73,9 @@ the PubMed indexes exist, a batch is one command.
      --output phaseB_submission.json
    ```
 
-Some of our submitted runs added a RankZephyr listwise reranking stage on top of the snippet route.
-It is not part of the working note's results and we do not recommend it, so none of the configs
-above enable it; `listwise_script/` holds the tooling if you want to try it anyway.
-
-## Environment
-
-Container image and Python pins live only under the vendored [RAG-scripts](https://github.com/fulaibaowang/RAG-scripts/tree/main) tree: [Dockerfile](scripts/public/shared_scripts/Dockerfile), [requirements-docker-pytorch.txt](scripts/public/shared_scripts/requirements-docker-pytorch.txt), [requirements-docker.txt](scripts/public/shared_scripts/requirements-docker.txt). Build from the repo root: `docker build -t bioasq-pipeline -f scripts/public/shared_scripts/Dockerfile scripts/public/shared_scripts` (see [docs/USAGE.md](docs/USAGE.md)).
+Some submitted runs added a RankZephyr listwise reranking stage. It is not part of the working
+note's results and we do not recommend it, so no config enables it; the tooling is in
+`scripts/public/shared_scripts/listwise_script/`.
 
 ## Estimated resource requirements
 
@@ -139,3 +114,22 @@ LLM rerankers such as `bge-reranker-v2-gemma` (2.5 B params, fp16) need a larger
 
 **Generation time depends on the generator.** The ~1.5 h above is a self-hosted `llama3.3:70b`
 answering one question at a time; a batched OpenAI-compatible API takes minutes.
+
+## Citation
+
+```bibtex
+@inproceedings{wang2026bioasq14b,
+  author    = {Yun Wang},
+  title     = {A Multistage Evidence Retrieval System for {BioASQ} Task 14b: Hybrid Retrieval, Reranking, and Snippet Selection},
+  booktitle = {Working Notes of the Conference and Labs of the Evaluation Forum (CLEF 2026)},
+  editor    = {Eva S{\'a}nchez Salido and Alberto Barr{\'o}n-Cede{\~n}o and Alba Garc{\'{\i}}a Seco de Herrera and Sean MacAvaney and Julia Maria Stru{\ss}},
+  series    = {CEUR Workshop Proceedings},
+  volume    = {4283},
+  pages     = {778--793},
+  publisher = {CEUR-WS.org},
+  address   = {Jena, Germany},
+  year      = {2026},
+  url       = {https://ceur-ws.org/Vol-4283/paper49.pdf}
+}
+```
+
